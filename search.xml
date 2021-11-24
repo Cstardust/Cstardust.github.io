@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>BUG</title>
+    <url>/2021/09/04/C-Bug/</url>
+    <content><![CDATA[<h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
+<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
+<ul>
+<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
+<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
+<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
+<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
+<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
+<li>(宏的定义域只局限于一个文件) </li>
+<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
+</ul>
+</li>
+<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
+<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
+<li>这段引自博客,链接我真没找到。。</li>
+</ul>
+</li>
+</ul>
+<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
+<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
+<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
+</ul>
+</li>
+<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
+<li><a href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
+</ul>
+<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
+<li>若定义在<code>.cpp</code>文件则会<ul>
+<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
+<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
+</ul>
+</li>
+<li><ol>
+<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
+</ol>
+</li>
+<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
+</ul>
+<h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
+<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
+<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
+<li>或者取消把他内联的想法。交给编译器，听他的。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
+<li>两个头文件相互包含</li>
+<li>若在B的头文件中：<ul>
+<li><ol>
+<li><strong>使用<code>A对象</code>或<code>A对象</code>作为返回值的则要<code>include A.h</code></strong></li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
+</ol>
+</li>
+<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
+<li><ol start="3">
+<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
+<p><code>There is no matching member for call to &#39;find&#39;</code></p>
+<ul>
+<li><strong>原因</strong><ul>
+<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
+</ul>
+</li>
+<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
+<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
+<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
+</ul>
+</li>
+<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
+<li>图片来自<a href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/C-Bug/2021-11-24-09-12-38.png"></li>
+</ul>
+<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
+<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
+<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
+<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li>运行结果<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
+<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
+<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
+<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
+<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
+<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
+<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
+<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
+</ul>
+]]></content>
+      <categories>
+        <category>BUG</category>
+      </categories>
+      <tags>
+        <tag>BUG</tag>
+        <tag>小白血泪史</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux I/O</title>
+    <url>/2021/11/05/Linux-IO/</url>
+    <content><![CDATA[<p>Unix I/O</p>
+<span id="more"></span>
+
+<h1 id="Unix基础知识"><a href="#Unix基础知识" class="headerlink" title="Unix基础知识"></a>Unix基础知识</h1><ul>
+<li><p><strong>系统调用</strong></p>
+<ul>
+<li>写文件 ，即对磁盘操作。从用户空间进入内核空间，借助驱动，驱动磁盘工作。库函数没有办法直接使用驱动，应该通过系统函数来使用驱动完成对磁盘的操作。<br><img src="/2021/11/05/Linux-IO/2021-11-21-19-38-48.png"></li>
+</ul>
+</li>
+<li><p><strong>预读入 缓输出</strong></p>
+<ul>
+<li><code>read  write : unbuffered I/O</code>。不带（用户区）缓冲的<code>I/O</code>。内核处有。 </li>
+<li>为什么<code>write(fd,const char *,n);</code>比<code>fputc</code>慢。如图<br><img src="/2021/11/05/Linux-IO/2021-11-21-19-43-36.png"></li>
+<li>在上图中的磁盘和<code>kernal</code>之间，采取预读入缓输出机制<ul>
+<li>即从磁盘往<code>kernal</code>读东西的时候，一次读4096个字节，避免之后读取时多次与硬盘交互。</li>
+<li>从<code>kernal</code>向磁盘写东西的时候，一次写4096个，避免多次与磁盘交互。 </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>所以</p>
+<ul>
+<li>即使学了系统调用，能使用库函数的地方，优先使用库函数    </li>
+<li>那为什么要学系统函数，因为只用库函数可能会有逻辑上的障碍。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>阻塞与非阻塞</strong></p>
+<ul>
+<li>是所读文件的性质，不是<code>read write</code>的性质</li>
+<li>读常规文件不会阻塞；读网络会阻塞</li>
+<li>同样，写常规文件是不会阻塞的，而向终端设备或网络写则不一定。</li>
+<li>现在明确一下阻塞<code>（Block）</code>这个概念。当进程调用一个阻塞的系统函数时，该进程被置于睡眠（<code>Sleep</code>）状态，这时内核调度其它进程运行，直到该进程等待的事件发生了（比如网络上接收到数据包，或者调用 <code>sleep</code> 指定的睡眠时间到了）它才有可能继续运行。与睡眠状态相对的是运行（<code>Running</code>）状态，在 <code>Linux</code> 内核中，处于运行状态的进程分为两种情况：<ul>
+<li>正在被调度执行。<code>CPU</code> 处于该进程的上下文环境中，程序计数器（<code>eip</code>）里保存着该进程的指令地址，通用寄存器里保存着该进程运算过程的中间结果，正在执行该进程的指令，正在读写该进程的地址空间。</li>
+<li>就绪状态：该进程不需要等待什么事件发生，随时都可以执行，但 <code>CPU</code> 暂时还在执行另一个进程，所以该进程在一个就绪队列中等待被内核调度。系统中可能同时有多个就绪的进程，那么该调度谁执行呢？内核的调度算法是基于优先级和时间片的，而且会根据每个进程的运行情况动态调整它的优先级和时间片，让每个进程都能比较公平地得到机会执行，同时要兼顾用户体验，不能让和用户交互的进程响应太慢</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>每一个进程都有如下结构</strong><br><img src="/2021/11/05/Linux-IO/2021-11-24-20-09-47.png"></p>
+</li>
+</ul>
+<h1 id="文件IO"><a href="#文件IO" class="headerlink" title="文件IO"></a>文件IO</h1><h2 id="导图"><a href="#导图" class="headerlink" title="导图"></a>导图</h2><p><img src="/2021/11/05/Linux-IO/2021-11-24-08-54-28.png"></p>
+<h2 id="UNIX：文件相关数据结构"><a href="#UNIX：文件相关数据结构" class="headerlink" title="UNIX：文件相关数据结构"></a>UNIX：文件相关数据结构</h2><ul>
+<li><p>每个进程在进程表都有成员变量 <code>file_struct *file</code> 指向文件描述符表</p>
+<ul>
+<li>进程表即 PCB进程控制块 <code>task_struct</code></li>
+</ul>
+</li>
+<li><p>与每个fd相关联的是</p>
+<ul>
+<li>文件描述符标志</li>
+<li>指向一个文件表项<code>（struct file&#123;&#125;）</code>的指针</li>
+</ul>
+</li>
+<li><p>内核为所有打开文件维持一张文件表。每个文件表包含：</p>
+<ul>
+<li>文件状态标志<ul>
+<li>读，写，添写，同步，非阻塞等</li>
+</ul>
+</li>
+<li>当前文件偏移量</li>
+<li>指向该文件v节点表项的指针</li>
+</ul>
+</li>
+<li><p>每个<strong>打开</strong>文件都有一个<code>v</code>节点结构<code>v-node</code>。<code>v</code>节点包含了文件类型和对此文件进行各种操作函数的指针。对于大多数文件，<code>v</code>节点还包含了i节点<code>（i-node）</code>。这些信息是在打开文件时从磁盘读入内存的。所以，文件的所有相关信息都是随时可用的。如，<code>i-node</code>包含了文件所有者、文件长度、指向文件实际数据块在磁盘上所在位置的指针等。</p>
+</li>
+<li><p>打开文件时的数据结构<br><img src="/2021/11/05/Linux-IO/2021-11-24-08-04-42.png"></p>
+</li>
+<li><p>注：Linux没有使用<code>v</code>节点。而是使用通用i节点结构。虽然实现略有不同，但在概念上<code>v</code>节点与<code>i</code>节点是一样的。两这都指向文件系统特有的<code>i</code>节点结构。</p>
+</li>
+</ul>
+<p><img src="/2021/11/05/Linux-IO/2021-11-24-08-05-36.png"></p>
+<ul>
+<li>上图也说明了为什么多个进程可以打开同一文件：<ul>
+<li>打开文件的每个进程都获得各自的一个文件表项，但对于给定的文件只有一个<code>v</code>节点表项。之所以每个进程都获得自己的文件表项，是因为这可以使得每个进程都有它自己的对该文件的当前偏移量。</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2021/11/05/Linux-IO/2021-11-23-20-52-47.png"><br><img src="/2021/11/05/Linux-IO/2021-11-23-20-57-42.png"></p>
+<ul>
+<li>每个<code>i</code>节点中都有一个链接计数（对应<code>stat</code>结构中的<code>nlink_t</code>)，其值是指向该i节点的目录项。链接计数减少为0时，才可删除该文件，即释放该i节点指向的数据块。所以，删除目录项就做<code>unlink</code>而非<code>delete</code>。</li>
+<li><code>i</code>节点中包含文件所有信息：文件类型，文件访问权限，文件长度，指向文件数据块的指针等。<code>stat</code>结构中大多信息来自i节点。只有文件名和i节点编号放在目录块中。<code>i</code>节点编号数据类型<code>：ino_t</code></li>
+<li>为文件重命名时：文件内容并未移动，只要构造一个指向该文件的新目录项，并删除老目录项。</li>
+</ul>
+<h2 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h2><ul>
+<li><code>stderr</code>是写到哪里？为什么和<code>stdout</code>一样也是显示在终端上？<ul>
+<li>每当运行一个程序时，所有<code>shell</code>都为其打开三个文件描述符，即标准输入<code>STDIN_FILENO 0</code>，标准输出<code>STDOUT_FILENO 1</code> ，标准错误<code>STDERR_FILENO 2</code>。如果不做特殊处理，则这这3个文件描述符都连接到终端。</li>
+</ul>
+</li>
+</ul>
+<h2 id="一些IO函数"><a href="#一些IO函数" class="headerlink" title="一些IO函数"></a>一些IO函数</h2><h3 id="lseek"><a href="#lseek" class="headerlink" title="lseek"></a><code>lseek</code></h3><ul>
+<li>文件空洞不要求在磁盘上占用存储区。但是如果在超出文件尾端时写了，就会占用。</li>
+</ul>
+<h3 id="unlink"><a href="#unlink" class="headerlink" title="unlink"></a><code>unlink</code></h3><ul>
+<li><code>unlink</code></li>
+<li>当一个文件的硬链接计数减少至0时，该文件的数据块会被操作系统择机释放。</li>
+<li>所以，我们删除文件，只是让文件具备了被释放的条件。</li>
+<li><code>unlink</code>特征：解除对一个文件的链接时，如果文件的硬链接计数减小到0，无目录块dentry对应，但该文件i节点指向的数据块不会被立刻释放，而是等到所有打开该文件的进程关闭该文件，系统才会挑时间将他释放。</li>
+</ul>
+<h3 id="dup"><a href="#dup" class="headerlink" title="dup"></a><code>dup</code></h3><ul>
+<li>拷贝文件描述符</li>
+<li><code>int dup(int oldfd);</code><ul>
+<li><code>success: return a new fd</code>，新文件描述符指向旧文件描述符指向的文件。 </li>
+<li>失败，-1 并设置 <code>errno</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="dup2"><a href="#dup2" class="headerlink" title="dup2"></a><code>dup2</code></h3><ul>
+<li>拷贝文件描述符，重定向文件描述符指向</li>
+<li><code>int dup2(int oldfd,int newfd);</code><ul>
+<li>将<code>oldfd</code>拷贝给<code>newfd</code></li>
+<li><code>success</code><ul>
+<li><code>return a new fd</code>，如果oldfd有效，则返回的文件描述符与oldfd指向同一文件</li>
+</ul>
+</li>
+<li><code>fail</code><ul>
+<li><code>oldfd</code>无效，则失败，关闭<code>newfd</code>。返回-1，同时设置<code>errno</code>  </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="stat-lstat"><a href="#stat-lstat" class="headerlink" title="stat lstat"></a><code>stat lstat</code></h3><ul>
+<li>查询文件信息，传入文件路径，信息保存在<code>struct stat</code>中传出</li>
+<li><code>#include &lt;sys/stat.h&gt;</code></li>
+<li><code>int stat(const char *filename,struct stat *statbuf)</code></li>
+<li><code>int lstat(const char *filename,struct stat *statbuf)</code><ul>
+<li><code>filename</code> ：文件路径+名称</li>
+<li><strong><code>struct stat* statbuf</code>：结构体地址。文件信息将保存在这里。</strong></li>
+<li>成功 <code>0</code> 失败 <code>-1</code></li>
+<li><code>lstat</code>会获取软链接指向的文件的信息，<code>stat</code>会穿透软链接<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">    #include &lt;sys/types.h&gt;</span></span><br><span class="line"><span class="comment">    #include &lt;sys/stat.h&gt;</span></span><br><span class="line"><span class="comment">    #include &lt;unistd.h&gt;</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    int stat(const char *pathname, struct stat *statbuf);</span></span><br><span class="line"><span class="comment">        作用：获取一个文件相关的一些信息</span></span><br><span class="line"><span class="comment">        参数:</span></span><br><span class="line"><span class="comment">            - pathname：操作的文件的路径</span></span><br><span class="line"><span class="comment">            - statbuf：结构体变量，传出参数，用于保存获取到的文件的信息</span></span><br><span class="line"><span class="comment">        返回值：</span></span><br><span class="line"><span class="comment">            成功：返回0</span></span><br><span class="line"><span class="comment">            失败：返回-1 设置errno</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    int lstat(const char *pathname, struct stat *statbuf);</span></span><br><span class="line"><span class="comment">        参数:</span></span><br><span class="line"><span class="comment">            - pathname：操作的文件的路径</span></span><br><span class="line"><span class="comment">            - statbuf：结构体变量，传出参数，用于保存获取到的文件的信息</span></span><br><span class="line"><span class="comment">        返回值：</span></span><br><span class="line"><span class="comment">            成功：返回0</span></span><br><span class="line"><span class="comment">            失败：返回-1 设置errno</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/stat.h&gt;</span> </span></span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argv[])</span> </span></span><br><span class="line"><span class="function"></span>&#123; </span><br><span class="line"><span class="comment">//      int fd = open(&quot;../rev.c&quot;,O_RDONLY|O_CREAT|O_TRUNC,0664);        //  有 则只读打开；没有，则以0664&amp;umask权限创建 </span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">stat</span> <span class="title">sb</span>;</span> </span><br><span class="line">        <span class="keyword">int</span> ret = stat(argv[<span class="number">1</span>],&amp;sb);<span class="comment">// stat 穿透符号链接（软链接）lstat：不穿透符号链接 </span></span><br><span class="line">         </span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;size = %ld\t&quot;</span>,sb.st_size); </span><br><span class="line">         </span><br><span class="line">        <span class="keyword">if</span>(S_ISREG(sb.st_mode)) </span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;it&#x27;s a regular\n&quot;</span>); </span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(S_ISDIR(sb.st_mode)) </span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;it&#x27;s a directory\n&quot;</span>);    </span><br><span class="line">         </span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>; </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./stat_shc.out test01.txt</span><br><span class="line">size = <span class="number">0</span>	it<span class="number">&#x27;</span>s a regular</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./stat_shc.out ..</span><br><span class="line">size = <span class="number">4096</span>	it<span class="number">&#x27;</span>s a directory</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">The <span class="built_in">stat</span> structure</span><br><span class="line">     All of these system calls <span class="built_in">return</span> a <span class="built_in">stat</span> structure, <span class="built_in">which</span> contains the following fields:</span><br><span class="line"></span><br><span class="line">         struct <span class="built_in">stat</span> &#123;</span><br><span class="line">             dev_t     st_dev;         /* ID of device containing file */</span><br><span class="line">             ino_t     st_ino;         /* Inode number */</span><br><span class="line">             mode_t    st_mode;        /* File <span class="built_in">type</span> and mode */</span><br><span class="line">             nlink_t   st_nlink;       /* Number of hard links */</span><br><span class="line">             uid_t     st_uid;         /* User ID of owner */</span><br><span class="line">             gid_t     st_gid;         /* Group ID of owner */</span><br><span class="line">             dev_t     st_rdev;        /* Device ID (<span class="keyword">if</span> special file) */</span><br><span class="line">             off_t     st_size;        /* Total size, <span class="keyword">in</span> bytes */</span><br><span class="line">             blksize_t st_blksize;     /* Block size <span class="keyword">for</span> filesystem I/O */</span><br><span class="line">             blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */</span><br><span class="line"></span><br><span class="line">             /* Since Linux 2.6, the kernel supports nanosecond</span><br><span class="line">                precision <span class="keyword">for</span> the following timestamp fields.</span><br><span class="line">                For the details before Linux 2.6, see NOTES. */</span><br><span class="line"></span><br><span class="line">             struct timespec st_atim;  /* Time of last access */</span><br><span class="line">             struct timespec st_mtim;  /* Time of last modification */</span><br><span class="line">             struct timespec st_ctim;  /* Time of last status change */</span><br><span class="line"></span><br><span class="line">         <span class="comment">#define st_atime st_atim.tv_sec      /* Backward compatibility */</span></span><br><span class="line">         <span class="comment">#define st_mtime st_mtim.tv_sec</span></span><br><span class="line">         <span class="comment">#define st_ctime st_ctim.tv_sec</span></span><br><span class="line">         &#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="模拟ls-l-fileName"><a href="#模拟ls-l-fileName" class="headerlink" title="模拟ls -l fileName"></a>模拟<code>ls -l fileName</code></h3><p><img src="/2021/11/05/Linux-IO/2021-11-24-08-45-45.png"></p>
+<ul>
+<li><p><strong><code>st_mode</code></strong></p>
+<ul>
+<li><p><strong><code>mode_t st_mode</code></strong>   —-&gt;  <strong><code>mode_t : unsigned int</code></strong></p>
+</li>
+<li><p><code>st_mode</code>中<code>[0,15]</code>位的二进制数起作用</p>
+</li>
+<li><p>如何求出文件类型 ?</p>
+<ul>
+<li><p><code>statbuf.st_mode &amp; S_IFMT</code><br>去除了<code>[11,0]</code>的表征其他性质的位(变成了<code>0</code>)<br>；将<code>[15,12]</code>位所有位为1的位都保留了下来。其他位都变成了<code>0</code></p>
+</li>
+<li><p>因此现在的<code>[15,0]</code>位所组成的值再与这些特征值比较 就可以得出该文件的类型（容易得知<code>[11,0]</code>一定均为<code>0</code>)<br><img src="/2021/11/05/Linux-IO/2021-11-24-09-04-54.png"></p>
+</li>
+<li><p>文件类型特征值</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">S_IFSOCK 0140000 套接字</span><br><span class="line">S_IFLNK 0120000 符号链接（软链接）</span><br><span class="line">S_IFREG 0100000 普通文件</span><br><span class="line">S_IFBLK 0060000 块设备</span><br><span class="line">S_IFDIR 0040000 目录</span><br><span class="line">S_IFCHR 0020000 字符设备</span><br><span class="line">S_IFIFO 0010000 管道</span><br><span class="line">S_IFMT 0170000 掩码</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>权限特征值(<code>[9,0]</code>)</p>
+<ul>
+<li><code>usr</code><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">S_IRUSR <span class="number">00400</span></span><br><span class="line">S_IWUSR <span class="number">00200</span></span><br><span class="line">S_IXUSR <span class="number">00100</span></span><br><span class="line">S_IRWXU <span class="number">00700</span></span><br></pre></td></tr></table></figure></li>
+<li><code>group</code><ul>
+<li>换成<code>S_I*GRP</code>即可</li>
+</ul>
+</li>
+<li><code>other</code><ul>
+<li>换成<code>S_I*OTH</code>即可</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong><code>struct group *getgrgid(gid_t gid);</code></strong></p>
+<ul>
+<li>同上</li>
+</ul>
+</li>
+<li><p><strong>模拟代码</strong></p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">henry@henry:~/code/learn/stat_learn$ gcc ls-l.c -o ls</span><br><span class="line">henry@henry:~/code/learn/stat_learn$ ./ls -l a.txt</span><br><span class="line">-rw-r--r-- 1d henry henry 10 Sat Oct 16 16:21:29 2021 a.txt</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pwd.h&gt;</span>     <span class="comment">//  struct passwd *getpwuid(uid_t uid);     uid_t :unsigned int</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;grp.h&gt;</span>     <span class="comment">//  struct group *getgrgid(gid_t gid);</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;time.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">// mock ls -l filename</span></span><br><span class="line"><span class="comment">// ls -l a.txt</span></span><br><span class="line"><span class="comment">// -rw-r--r-- 1 henry henry 10 10月 16 16:21 a.txt</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argvs[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  判断输入参数是否正确</span></span><br><span class="line">    <span class="keyword">if</span>(argc&lt;=<span class="number">2</span>) <span class="comment">//argvs[0] : ./ls.out  ; argvs[1] : ./-l  ;  argvs[2] : File name at the same level</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%s -l filename\n&quot;</span>,argvs[<span class="number">0</span>]);   <span class="comment">//  the name of ./ls.out + -l + filename</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  获取文件信息 文件信息存储在struct stat类型结构体 stub中</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">stat</span> <span class="title">stb</span>;</span> </span><br><span class="line">    <span class="keyword">int</span> res = stat(argvs[<span class="number">2</span>],&amp;stb);  <span class="comment">// argvs[1] </span></span><br><span class="line">    <span class="keyword">if</span>(res==<span class="number">-1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        perror(<span class="string">&quot;stat get the information of the file&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  获取文件类型 和 user group other的读写权限</span></span><br><span class="line">    <span class="comment">//  获取文件类型</span></span><br><span class="line">    <span class="keyword">char</span> info[<span class="number">11</span>]=&#123;<span class="number">0</span>&#125;;     <span class="comment">// info : file class and the permissions</span></span><br><span class="line">    <span class="keyword">int</span> m = stb.st_mode &amp; S_IFMT;   </span><br><span class="line">    <span class="keyword">switch</span>(m)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">case</span> S_IFSOCK:  <span class="comment">// IF : is file </span></span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;s&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFLNK:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;l&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFREG:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFBLK:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;b&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFDIR:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;d&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFCHR:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;c&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> S_IFIFO:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;p&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">            info[<span class="number">0</span>] = <span class="string">&#x27;?&#x27;</span>;</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 获取user group other的读写执行权限</span></span><br><span class="line">    <span class="comment">// USR : user</span></span><br><span class="line">    info[<span class="number">1</span>] = stb.st_mode &amp; S_IRUSR ? <span class="string">&#x27;r&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;    <span class="comment">// is read</span></span><br><span class="line">    info[<span class="number">2</span>] = stb.st_mode &amp; S_IWUSR ? <span class="string">&#x27;w&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;    <span class="comment">// is write</span></span><br><span class="line">    info[<span class="number">3</span>] = stb.st_mode &amp; S_IXUSR ? <span class="string">&#x27;x&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;    <span class="comment">// is x </span></span><br><span class="line">    <span class="comment">// info[3] = stb.st_mode &amp; S_IRWXU ? &#x27;1&#x27; : &#x27;0&#x27;;    // is read write x</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// GRP : group person</span></span><br><span class="line">    info[<span class="number">4</span>] = stb.st_mode &amp; S_IRGRP ? <span class="string">&#x27;r&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line">    info[<span class="number">5</span>] = stb.st_mode &amp; S_IWGRP ? <span class="string">&#x27;w&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line">    info[<span class="number">6</span>] = stb.st_mode &amp; S_IXGRP ? <span class="string">&#x27;x&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// OTH : others </span></span><br><span class="line">    info[<span class="number">7</span>] = stb.st_mode &amp; S_IROTH ? <span class="string">&#x27;r&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line">    info[<span class="number">8</span>] = stb.st_mode &amp; S_IWOTH ? <span class="string">&#x27;w&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line">    info[<span class="number">9</span>] = stb.st_mode &amp; S_IXOTH ? <span class="string">&#x27;x&#x27;</span> : <span class="string">&#x27;-&#x27;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  硬链接数</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">int</span> linknum = stb.st_nlink;   <span class="comment">//  hard link</span></span><br><span class="line">    <span class="comment">//  user name</span></span><br><span class="line">    <span class="keyword">char</span> *fileUsr = getpwuid(stb.st_uid)-&gt;pw_name;    </span><br><span class="line">    <span class="comment">//  group name</span></span><br><span class="line">    <span class="keyword">char</span> *fileGrp = getgrgid(stb.st_gid)-&gt;gr_name;    </span><br><span class="line">    <span class="comment">//  文件大小</span></span><br><span class="line">    <span class="keyword">long</span> fileSize = stb.st_size;</span><br><span class="line">    <span class="comment">//  创建时间</span></span><br><span class="line">    <span class="comment">//  st_time:the time since 1970 ; ctime:convert the time to local time</span></span><br><span class="line">    <span class="keyword">char</span> *time = ctime(&amp;stb.st_mtime);   </span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  去掉\n</span></span><br><span class="line">    <span class="keyword">char</span> time_buf[<span class="number">512</span>] = &#123;<span class="number">0</span>&#125;;   <span class="comment">//  strncpy不会自动补&#x27;\0&#x27;</span></span><br><span class="line">    <span class="built_in">strncpy</span>(time_buf,time,<span class="built_in">strlen</span>(time)<span class="number">-1</span>);  </span><br><span class="line">    time_buf[<span class="built_in">strlen</span>(time)<span class="number">-1</span>] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  sprintf写入buf</span></span><br><span class="line">    <span class="keyword">char</span> buf[<span class="number">1024</span>];</span><br><span class="line">    <span class="built_in">sprintf</span>(buf,<span class="string">&quot;%s %lud %s %s %ld %s %s&quot;</span>,info,linknum,fileUsr,fileGrp,fileSize,time_buf,argvs[<span class="number">2</span>]);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  输出结果</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%s\n&quot;</span>,buf);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;   </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">- **`extern struct passwd *getpwuid(uid_t uid)`**</span></span><br><span class="line"><span class="comment">  - `uid_t uid`</span></span><br><span class="line"><span class="comment">    - `uid_t :unsigned int`</span></span><br><span class="line"><span class="comment">    - `uid: user id` </span></span><br><span class="line"><span class="comment">  - `passwd`</span></span><br><span class="line"><span class="comment">  The passwd structure.  </span></span><br><span class="line"><span class="comment">  struct passwd</span></span><br><span class="line"><span class="comment">  &#123;</span></span><br><span class="line"><span class="comment">    char *pw_name;		/* Username.  */</span></span><br><span class="line">    <span class="keyword">char</span> *pw_passwd;		<span class="comment">/* Password.  */</span></span><br><span class="line">    <span class="keyword">__uid_t</span> pw_uid;		<span class="comment">/* User ID.  */</span></span><br><span class="line">    <span class="keyword">__gid_t</span> pw_gid;		<span class="comment">/* Group ID.  */</span></span><br><span class="line">    <span class="keyword">char</span> *pw_gecos;		<span class="comment">/* Real name.  */</span></span><br><span class="line">    <span class="keyword">char</span> *pw_dir;			<span class="comment">/* Home directory.  */</span></span><br><span class="line">    <span class="keyword">char</span> *pw_shell;		<span class="comment">/* Shell program.  */</span></span><br><span class="line">  &#125;;</span><br><span class="line">  </span><br><span class="line">  - <span class="keyword">uid_t</span> uid从哪里来？</span><br><span class="line">  </span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">stat</span> <span class="title">stab</span></span></span><br><span class="line"><span class="class">      //   <span class="title">int</span> <span class="title">stat</span>(<span class="title">const</span> <span class="title">char</span> *<span class="title">pathname</span>, <span class="keyword">struct</span> <span class="title">stat</span> *<span class="title">statbuf</span>);</span></span><br><span class="line">  stat(文件名,stab);</span><br><span class="line">  <span class="comment">//stab.st_uid即为getpwuid所需要的参数</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">passwd</span> * <span class="title">pp</span> =</span> getpwuid(stab.st_uid);</span><br><span class="line">  <span class="keyword">char</span> * userName = pp -&gt; pw_name; </span><br><span class="line">  </span><br><span class="line">*/</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="manpage阅读"><a href="#manpage阅读" class="headerlink" title="manpage阅读"></a>manpage阅读</h2><ul>
+<li><code>stat</code><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">AME</span><br><span class="line">       <span class="built_in">stat</span>, fstat, lstat, fstatat - get file status</span><br><span class="line"></span><br><span class="line">SYNOPSIS</span><br><span class="line">       <span class="comment">#include &lt;sys/types.h&gt;</span></span><br><span class="line">       <span class="comment">#include &lt;sys/stat.h&gt;</span></span><br><span class="line">       <span class="comment">#include &lt;unistd.h&gt;</span></span><br><span class="line"></span><br><span class="line">       int <span class="built_in">stat</span>(const char *pathname, struct <span class="built_in">stat</span> *statbuf);</span><br><span class="line">       int fstat(int fd, struct <span class="built_in">stat</span> *statbuf);</span><br><span class="line">       int lstat(const char *pathname, struct <span class="built_in">stat</span> *statbuf);</span><br><span class="line"></span><br><span class="line">       <span class="comment">#include &lt;fcntl.h&gt;           /* Definition of AT_* constants */</span></span><br><span class="line">       <span class="comment">#include &lt;sys/stat.h&gt;</span></span><br><span class="line"></span><br><span class="line">       int fstatat(int dirfd, const char *pathname, struct <span class="built_in">stat</span> *statbuf,</span><br><span class="line">                   int flags);</span><br><span class="line"></span><br><span class="line">   Feature Test Macro Requirements <span class="keyword">for</span> glibc (see feature_test_macros(7)):</span><br><span class="line"></span><br><span class="line">       lstat():</span><br><span class="line">           /* glibc 2.19 and earlier */ _BSD_SOURCE</span><br><span class="line">               || /* Since glibc 2.20 */ _DEFAULT_SOURCE</span><br><span class="line">               || _XOPEN_SOURCE &gt;= 500</span><br><span class="line">               || /* Since glibc 2.10: */ _POSIX_C_SOURCE &gt;= 200112L</span><br><span class="line"></span><br><span class="line">       fstatat():</span><br><span class="line">           Since glibc 2.10:</span><br><span class="line">               _POSIX_C_SOURCE &gt;= 200809L</span><br><span class="line">           Before glibc 2.10:</span><br><span class="line">               _ATFILE_SOURCE</span><br><span class="line"></span><br><span class="line">DESCRIPTION</span><br><span class="line">       These  <span class="built_in">functions</span>  <span class="built_in">return</span> information about a file, <span class="keyword">in</span> the buffer pointed to by statbuf.  No permissions are required on the file itself, but—<span class="keyword">in</span> the <span class="keyword">case</span> of <span class="built_in">stat</span>(), fstatat(), and lstat()—exe‐</span><br><span class="line">       cute (search) permission is required on all of the directories <span class="keyword">in</span> pathname that lead to the file.</span><br><span class="line"></span><br><span class="line">       <span class="built_in">stat</span>() and fstatat() retrieve information about the file pointed to by pathname; the differences <span class="keyword">for</span> fstatat() are described below.</span><br><span class="line"></span><br><span class="line">       lstat() is identical to <span class="built_in">stat</span>(), except that <span class="keyword">if</span> pathname is a symbolic link, <span class="keyword">then</span> it returns information about the link itself, not the file that it refers to.</span><br><span class="line"></span><br><span class="line">       fstat() is identical to <span class="built_in">stat</span>(), except that the file about <span class="built_in">which</span> information is to be retrieved is specified by the file descriptor fd.</span><br><span class="line">  The <span class="built_in">stat</span> structure</span><br><span class="line">       All of these system calls <span class="built_in">return</span> a <span class="built_in">stat</span> structure, <span class="built_in">which</span> contains the following fields:</span><br><span class="line"></span><br><span class="line">           struct <span class="built_in">stat</span> &#123;</span><br><span class="line">               dev_t     st_dev;         /* ID of device containing file */</span><br><span class="line">               ino_t     st_ino;         /* Inode number */</span><br><span class="line">               mode_t    st_mode;        /* File <span class="built_in">type</span> and mode */</span><br><span class="line">               nlink_t   st_nlink;       /* Number of hard links */</span><br><span class="line">               uid_t     st_uid;         /* User ID of owner */</span><br><span class="line">               gid_t     st_gid;         /* Group ID of owner */</span><br><span class="line">               dev_t     st_rdev;        /* Device ID (<span class="keyword">if</span> special file) */</span><br><span class="line">               off_t     st_size;        /* Total size, <span class="keyword">in</span> bytes */</span><br><span class="line">               blksize_t st_blksize;     /* Block size <span class="keyword">for</span> filesystem I/O */</span><br><span class="line">               blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */</span><br><span class="line"></span><br><span class="line">               /* Since Linux 2.6, the kernel supports nanosecond</span><br><span class="line">                  precision <span class="keyword">for</span> the following timestamp fields.</span><br><span class="line">                  For the details before Linux 2.6, see NOTES. */</span><br><span class="line"></span><br><span class="line">               struct timespec st_atim;  /* Time of last access */</span><br><span class="line">               struct timespec st_mtim;  /* Time of last modification */</span><br><span class="line">               struct timespec st_ctim;  /* Time of last status change */</span><br><span class="line"></span><br><span class="line">           <span class="comment">#define st_atime st_atim.tv_sec      /* Backward compatibility */</span></span><br><span class="line">           <span class="comment">#define st_mtime st_mtim.tv_sec</span></span><br><span class="line">           <span class="comment">#define st_ctime st_ctim.tv_sec</span></span><br><span class="line">           &#125;;</span><br><span class="line">RETURN VALUE</span><br><span class="line">       On success, zero is returned.  On error, -1 is returned, and errno is <span class="built_in">set</span> appropriately.</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux命令常识</title>
+    <url>/2021/11/05/Linux%E5%91%BD%E4%BB%A4%E5%B8%B8%E8%AF%86/</url>
+    <content><![CDATA[<ul>
+<li><code>od -c 文件</code><ul>
+<li><code>od</code> 观察文件实际内容</li>
+<li><code>-c</code>以字符方式打印文件内容</li>
+</ul>
+</li>
+<li><code>ln -s</code><ul>
+<li>创建软链接，又称符号链接。建议采用绝对路径。</li>
+<li><code>shc@shc-virtual-machine:~/code/revier$ ln -s test02.txt ./soft_test02</code></li>
+</ul>
+</li>
+<li><code>ln</code> <ul>
+<li>创建硬链接。</li>
+<li><code>shc@shc-virtual-machine:~/code/revier$ ln test01.txt ./test01_hard</code></li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ReStart</title>
+    <url>/2021/11/04/ReStart/</url>
+    <content><![CDATA[<p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
+<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
+<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
+<li>什么环境都没得了，幸好笔记还都在</li>
+<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
+<li>继续记录吧。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>碎碎念</category>
+      </categories>
+      <tags>
+        <tag>碎碎念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World</title>
+    <url>/2021/11/03/hello-world/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>!</p>
+<span id="more"></span>
+
+<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+      <categories>
+        <category>Blog_test</category>
+      </categories>
+      <tags>
+        <tag>Blog_test</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>test</title>
+    <url>/2021/11/04/test/</url>
+    <content><![CDATA[<p>这是摘要</p>
+<span id="more"></span>
+<p>以下是正文</p>
+<h1 id="标题1"><a href="#标题1" class="headerlink" title="标题1"></a>标题1</h1><p>1</p>
+<h2 id="子标题1"><a href="#子标题1" class="headerlink" title="子标题1"></a>子标题1</h2><p>1.1</p>
+<h3 id="子子标题1"><a href="#子子标题1" class="headerlink" title="子子标题1"></a>子子标题1</h3><p>1.1.1</p>
+<h1 id="标题2"><a href="#标题2" class="headerlink" title="标题2"></a>标题2</h1><p>2</p>
+<h2 id="子标题2"><a href="#子标题2" class="headerlink" title="子标题2"></a>子标题2</h2><p>2.2</p>
+<h3 id="子子标题2"><a href="#子子标题2" class="headerlink" title="子子标题2"></a>子子标题2</h3><p>2.2.2</p>
+]]></content>
+      <categories>
+        <category>Blog_test</category>
+      </categories>
+      <tags>
+        <tag>Blog_test</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2021/11/14/static-library-And-shared-object/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>test02</title>
+    <url>/2021/11/04/test02/</url>
+    <content><![CDATA[<p>如何插入图片</p>
+<span id="more"></span>
+<p><img src="/2021/11/04/test02/2021-11-04-21-26-16.png"></p>
+<h1 id="如何插入图片"><a href="#如何插入图片" class="headerlink" title="如何插入图片"></a>如何插入图片</h1><ul>
+<li>过程<ul>
+<li><code>hexo new xxx</code><ul>
+<li>会生成一个同名文件夹</li>
+</ul>
+</li>
+<li><code>ctrl + alt + v</code>  <ul>
+<li>图片会自动到同名文件夹下。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>有用插件 <ul>
+<li><code>hexo-asset-image</code></li>
+<li><code>hexo-renderer-ejs</code></li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Blog_test</category>
+      </categories>
+      <tags>
+        <tag>Blog_test</tag>
+      </tags>
+  </entry>
+</search>
