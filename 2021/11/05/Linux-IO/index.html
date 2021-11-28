@@ -287,7 +287,7 @@
 </li>
 <li><p><strong>预读入 缓输出</strong></p>
 <ul>
-<li><code>read  write : unbuffered I/O</code>。不带（用户区）缓冲的<code>I/O</code>。内核处有。 </li>
+<li><code>read  write : unbuffered I/O</code>。不带（用户区）缓冲的<code>I/O</code>。内核处有内核级别的缓冲区，默认大小4096B。 </li>
 <li>为什么<code>write(fd,const char *,n);</code>比<code>fputc</code>慢。如图<br><img src="/2021/11/05/Linux-IO/2021-11-21-19-43-36.png"></li>
 <li>在上图中的磁盘和<code>kernal</code>之间，采取预读入缓输出机制<ul>
 <li>即从磁盘往<code>kernal</code>读东西的时候，一次读4096个字节，避免之后读取时多次与硬盘交互。</li>
@@ -379,7 +379,7 @@
 <li><code>unlink</code>特征：解除对一个文件的链接时，如果文件的硬链接计数减小到0，无目录块dentry对应，但该文件i节点指向的数据块不会被立刻释放，而是等到所有打开该文件的进程关闭该文件，系统才会挑时间将他释放。</li>
 </ul>
 <h3 id="dup"><a href="#dup" class="headerlink" title="dup"></a><code>dup</code></h3><ul>
-<li>拷贝文件描述符</li>
+<li>保存文件描述符</li>
 <li><code>int dup(int oldfd);</code><ul>
 <li><code>oldfd：</code>已经打开的旧的描述符。</li>
 <li><code>success: return a new fd</code>，新文件描述符指向旧文件描述符指向的文件。 </li>
@@ -556,7 +556,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-count">9</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
