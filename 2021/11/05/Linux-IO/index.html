@@ -367,16 +367,47 @@
 <li>每当运行一个程序时，所有<code>shell</code>都为其打开三个文件描述符，即标准输入<code>STDIN_FILENO 0</code>，标准输出<code>STDOUT_FILENO 1</code> ，标准错误<code>STDERR_FILENO 2</code>。如果不做特殊处理，则这这3个文件描述符都连接到终端。</li>
 </ul>
 </li>
+<li>困惑，在程序中这样创建了一个本不存在的文件，那么在本程序中对他的读写权限是？？？已经确定第一项改成<code>O_RDWR</code>一定可以读写<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> fd = open(<span class="string">&quot;./test_mmap3.txt&quot;</span>,O_RDONLY|O_CREAT|O_TRUNC,<span class="number">0664</span>);</span><br></pre></td></tr></table></figure></li>
 </ul>
-<h2 id="一些IO函数"><a href="#一些IO函数" class="headerlink" title="一些IO函数"></a>一些IO函数</h2><h3 id="lseek"><a href="#lseek" class="headerlink" title="lseek"></a><code>lseek</code></h3><ul>
+<h2 id="一些IO函数"><a href="#一些IO函数" class="headerlink" title="一些IO函数"></a>一些IO函数</h2><h3 id="open"><a href="#open" class="headerlink" title="open"></a><code>open</code></h3><ul>
+<li>作用：打开已有文件/创建新文件</li>
+<li><code>打开：int open(const char *pathname, int flags);</code></li>
+<li><code>创建：int open(const char *pathname, int flags, mode_t mode);</code></li>
+<li>例子<ul>
+<li><code>int fd = open(&quot;xxx&quot;,O_RDWR|O_TRUNC|O_CREAT,0664);</code> <ul>
+<li>若文件存在，以读写且截断方式打开</li>
+<li>若文件不存在，以0664权限创建<h3 id="lseek"><a href="#lseek" class="headerlink" title="lseek"></a><code>lseek</code></h3></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>作用：移动文件指针，仅仅移动文件指针，不进行IO操作</li>
 <li>文件空洞不要求在磁盘上占用存储区。但是如果在超出文件尾端时写了，就会占用。</li>
+<li><code>off_t lseek(int fd,off_t offset,int whence)</code><ul>
+<li><code>offset</code>是偏移量，<code>whence</code>是偏移量的基准位置</li>
+<li><code>whence</code> <ul>
+<li><code>SEEK_SET</code></li>
+<li><code>SEEK_END</code></li>
+<li><code>SEEK_CUR</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>RETURN VALUE    Upon  successful completion, lseek() returns the resulting offset location as measured in bytes from the beginning of the file.  On error, the value (off_t) -1 is returned and errno is set to    indicate the error.</code><ul>
+<li>成功</li>
+<li>返回从文件最开始的位置 到 文件<code>whence</code>（何处）向后偏移<code>offset</code>个字节的距离。（单位字节）</li>
+<li>失败</li>
+<li>返回-1</li>
+</ul>
+</li>
+<li>应用<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 文件扩容10字节</span></span><br><span class="line"> lseek(fd,<span class="number">9</span>,SEEK_END);   <span class="comment">//  将文件指针从SEEK_END向后移动9个字节</span></span><br><span class="line"> write(fd,<span class="string">&quot;\0&quot;</span>,<span class="number">1</span>);   <span class="comment">//  再写一个 </span></span><br><span class="line"> <span class="comment">// 等价于</span></span><br><span class="line"> ftruncate(fd,<span class="number">10</span>);</span><br><span class="line"> <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END); <span class="comment">//  返回从文件起始到 SEEK_END再向后便宜0字节的大小，即文件大小</span></span><br></pre></td></tr></table></figure></li>
 </ul>
 <h3 id="unlink"><a href="#unlink" class="headerlink" title="unlink"></a><code>unlink</code></h3><ul>
 <li><code>int unlink (const char* pathname)</code></li>
-<li>功能：删除目录块<code>dentry</code></li>
+<li>功能：删除目录块<code>dentry</code>（让文件具备了被释放的条件）</li>
 <li>当一个文件的硬链接计数减少至0时，该文件的数据块会被操作系统择机释放。</li>
-<li>所以，我们删除文件，只是让文件具备了被释放的条件。</li>
 <li><code>unlink</code>特征：解除对一个文件的链接时，如果文件的硬链接计数减小到0，无目录块dentry对应，但该文件i节点指向的数据块不会被立刻释放，而是等到所有打开该文件的进程关闭该文件，系统才会挑时间将他释放。</li>
+<li><code>int ret = unlink(&quot;xx&quot;);</code></li>
 </ul>
 <h3 id="dup"><a href="#dup" class="headerlink" title="dup"></a><code>dup</code></h3><ul>
 <li>保存文件描述符</li>
@@ -542,7 +573,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Unix%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">Unix基础知识</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%87%E4%BB%B6IO"><span class="nav-number">2.</span> <span class="nav-text">文件IO</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%BC%E5%9B%BE"><span class="nav-number">2.1.</span> <span class="nav-text">导图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#UNIX%EF%BC%9A%E6%96%87%E4%BB%B6%E7%9B%B8%E5%85%B3%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.2.</span> <span class="nav-text">UNIX：文件相关数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">2.3.</span> <span class="nav-text">一些问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9BIO%E5%87%BD%E6%95%B0"><span class="nav-number">2.4.</span> <span class="nav-text">一些IO函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#lseek"><span class="nav-number">2.4.1.</span> <span class="nav-text">lseek</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#unlink"><span class="nav-number">2.4.2.</span> <span class="nav-text">unlink</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dup"><span class="nav-number">2.4.3.</span> <span class="nav-text">dup</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dup2"><span class="nav-number">2.4.4.</span> <span class="nav-text">dup2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stat-lstat"><span class="nav-number">2.4.5.</span> <span class="nav-text">stat lstat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%8B%9Fls-l-fileName"><span class="nav-number">2.4.6.</span> <span class="nav-text">模拟ls -l fileName</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#manpage%E9%98%85%E8%AF%BB"><span class="nav-number">2.5.</span> <span class="nav-text">manpage阅读</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Unix%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">Unix基础知识</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%87%E4%BB%B6IO"><span class="nav-number">2.</span> <span class="nav-text">文件IO</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%BC%E5%9B%BE"><span class="nav-number">2.1.</span> <span class="nav-text">导图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#UNIX%EF%BC%9A%E6%96%87%E4%BB%B6%E7%9B%B8%E5%85%B3%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.2.</span> <span class="nav-text">UNIX：文件相关数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">2.3.</span> <span class="nav-text">一些问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9BIO%E5%87%BD%E6%95%B0"><span class="nav-number">2.4.</span> <span class="nav-text">一些IO函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#open"><span class="nav-number">2.4.1.</span> <span class="nav-text">open</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lseek"><span class="nav-number">2.4.2.</span> <span class="nav-text">lseek</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#unlink"><span class="nav-number">2.4.3.</span> <span class="nav-text">unlink</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dup"><span class="nav-number">2.4.4.</span> <span class="nav-text">dup</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dup2"><span class="nav-number">2.4.5.</span> <span class="nav-text">dup2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stat-lstat"><span class="nav-number">2.4.6.</span> <span class="nav-text">stat lstat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%8B%9Fls-l-fileName"><span class="nav-number">2.4.7.</span> <span class="nav-text">模拟ls -l fileName</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#manpage%E9%98%85%E8%AF%BB"><span class="nav-number">2.5.</span> <span class="nav-text">manpage阅读</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
