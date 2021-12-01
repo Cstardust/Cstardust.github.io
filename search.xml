@@ -353,6 +353,297 @@
       </tags>
   </entry>
   <entry>
+    <title>Linux-信号</title>
+    <url>/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/</url>
+    <content><![CDATA[<h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+<li>特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送</li>
+<li>信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉</li>
+<li>每个进程收到的所有信号，都是由内核负责发送的，内核处理。</li>
+<li>递达：递送并且到达进程。</li>
+<li>未决：产生和递达之间的状态。主要由于阻塞(屏蔽)导致该状态。</li>
+<li>产生信号: <ul>
+<li> 按键产生，如：<code>Ctrl+c、Ctrl+z、Ctrl+\</code></li>
+<li> 系统调用产生，如：<code>kill、raise、abort</code></li>
+<li> 软件条件产生，如：定时器 <code>alarm</code></li>
+<li> 硬件异常产生，如：非法访问内存(段错误)、除 0(浮点数例外)、内存对齐出错(总线错误)</li>
+<li> 命令产生，如：<code>kill</code> 命令</li>
+</ul>
+</li>
+<li>信号的处理方式:<ul>
+<li> 执行默认动作</li>
+<li> 忽略(丢弃)</li>
+<li> 捕捉(调用户处理函数)<h2 id="信号要素"><a href="#信号要素" class="headerlink" title="信号要素"></a>信号要素</h2></li>
+</ul>
+</li>
+<li><strong>信号4要素</strong><ul>
+<li>编号  </li>
+<li>名称 </li>
+<li>事件 </li>
+<li>默认处理动作<ul>
+<li> <code>Term：</code>终止进程</li>
+<li> <code>Ign：</code> 忽略信号 (默认即时对该种信号忽略操作)</li>
+<li> <code>Core</code>：终止进程，生成 Core 文件。(查验进程死亡原因， 用于 <code>gdb</code> 调试)</li>
+<li> <code>Stop：</code>停止（暂停）进程</li>
+<li> <code>Cont</code>：继续运行进程</li>
+</ul>
+</li>
+</ul>
+</li>
+<li> 1~31常规信号  </li>
+<li> <code>9 SIGKILL ; 19 SIGSTOP</code> 信号，不允许忽略和捕捉，只能执行默认动作。甚至不能将其设置为阻塞。</li>
+<li> 只有每个信号所对应的事件发生了，该信号才会被递送(但不一定递达)<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ <span class="built_in">kill</span> -l</span><br><span class="line"> 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP</span><br><span class="line"> 2) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1</span><br><span class="line">1)  SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM</span><br><span class="line">2)  SIGSTKFLT	17) SIGCHLD	18) SIGCONT	19) SIGSTOP	20) SIGTSTP</span><br><span class="line">3)  SIGTTIN	22) SIGTTOU	23) SIGURG	24) SIGXCPU	25) SIGXFSZ</span><br><span class="line">4)  SIGVTALRM	27) SIGPROF	28) SIGWINCH	29) SIGIO	30) SIGPWR</span><br><span class="line">5)  SIGSYS	34) SIGRTMIN	35) SIGRTMIN+1	36) SIGRTMIN+2	37) SIGRTMIN+3</span><br><span class="line">6)  SIGRTMIN+4	39) SIGRTMIN+5	40) SIGRTMIN+6	41) SIGRTMIN+7	42) SIGRTMIN+8</span><br><span class="line">7)  SIGRTMIN+9	44) SIGRTMIN+10	45) SIGRTMIN+11	46) SIGRTMIN+12	47) SIGRTMIN+13</span><br><span class="line">8)  SIGRTMIN+14	49) SIGRTMIN+15	50) SIGRTMAX-14	51) SIGRTMAX-13	52) SIGRTMAX-12</span><br><span class="line">9)  SIGRTMAX-11	54) SIGRTMAX-10	55) SIGRTMAX-9	56) SIGRTMAX-8	57) SIGRTMAX-7</span><br><span class="line">10) SIGRTMAX-6	59) SIGRTMAX-5	60) SIGRTMAX-4	61) SIGRTMAX-3	62) SIGRTMAX-2</span><br><span class="line">11) SIGRTMAX-1	64) SIGRTMAX	</span><br></pre></td></tr></table></figure></li>
+<li>常规信号的编号，名称，对应事件，默认处理动作。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="number">1</span>) SIGHUP: 当用户退出 shell 时，由该 shell 启动的所有进程将收到这个信号，默认动作为终止进程</span><br><span class="line"><span class="number">2</span>) SIGINT：当用户按下了&lt;Ctrl+C&gt;组合键时，用户终端向正在运行中的由该终端启动的程序发出此信号。默认动</span><br><span class="line">作为终止进程。</span><br><span class="line"><span class="number">3</span>) SIGQUIT：当用户按下&lt;ctrl+\&gt;组合键时产生该信号，用户终端向正在运行中的由该终端启动的程序发出些信</span><br><span class="line">号。默认动作为终止进程。</span><br><span class="line"><span class="number">4</span>) SIGILL：CPU 检测到某进程执行了非法指令。默认动作为终止进程并产生 core 文件</span><br><span class="line"><span class="number">5</span>) SIGTRAP：该信号由断点指令或其他 trap 指令产生。默认动作为终止里程 并产生 core 文件。</span><br><span class="line"><span class="number">6</span>) SIGABRT: 调用 abort 函数时产生该信号。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">7</span>) SIGBUS：非法访问内存地址，包括内存对齐出错，默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">8</span>) SIGFPE：在发生致命的运算错误时发出。不仅包括浮点运算错误，还包括溢出及除数为 <span class="number">0</span> 等所有的算法错误。</span><br><span class="line">默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">9</span>) SIGKILL：无条件终止进程。本信号不能被忽略，处理和阻塞。默认动作为终止进程。它向系统管理员提供了</span><br><span class="line">可以杀死任何进程的方法。</span><br><span class="line"><span class="number">10</span>) SIGUSE1：用户定义 的信号。即程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">11</span>) SIGSEGV：指示进程进行了无效内存访问。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">12</span>) SIGUSR2：另外一个用户自定义信号，程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">13</span>) SIGPIPE：Broken pipe 向一个没有读端的管道写数据。默认动作为终止进程。</span><br><span class="line">北京市昌平区建材城西路金燕龙办公楼一层 电话：<span class="number">400</span><span class="number">-618</span><span class="number">-9090</span></span><br><span class="line"><span class="number">14</span>) SIGALRM: 定时器超时，超时的时间 由系统调用 alarm 设置。默认动作为终止进程。</span><br><span class="line"><span class="number">15</span>) SIGTERM：程序结束信号，与 SIGKILL 不同的是，该信号可以被阻塞和终止。通常用来要示程序正常退出。</span><br><span class="line">执行 shell 命令 Kill 时，缺省产生这个信号。默认动作为终止进程。</span><br><span class="line"><span class="number">16</span>) SIGSTKFLT：Linux 早期版本出现的信号，现仍保留向后兼容。默认动作为终止进程。</span><br><span class="line"><span class="number">17</span>) SIGCHLD：子进程状态发生变化时，父进程会收到这个信号。默认动作为忽略这个信号。</span><br><span class="line"><span class="number">18</span>) SIGCONT：如果进程已停止，则使其继续运行。默认动作为继续/忽略。</span><br><span class="line"><span class="number">19</span>) SIGSTOP：停止进程的执行。信号不能被忽略，处理和阻塞。默认动作为暂停进程。</span><br><span class="line"><span class="number">20</span>) SIGTSTP：停止终端交互进程的运行。按下&lt;ctrl+z&gt;组合键时发出这个信号。默认动作为暂停进程。</span><br><span class="line"><span class="number">21</span>) SIGTTIN：后台进程读终端控制台。默认动作为暂停进程。</span><br><span class="line"><span class="number">22</span>) SIGTTOU: 该信号类似于 SIGTTIN，在后台进程要向终端输出数据时发生。默认动作为暂停进程。</span><br><span class="line"><span class="number">23</span>) SIGURG：套接字上有紧急数据时，向当前正在运行的进程发出些信号，报告有紧急数据到达。如网络带外</span><br><span class="line">数据到达，默认动作为忽略该信号。</span><br><span class="line"><span class="number">24</span>) SIGXCPU：进程执行时间超过了分配给该进程的 CPU 时间 ，系统产生该信号并发送给该进程。默认动作为</span><br><span class="line">终止进程。</span><br><span class="line"><span class="number">25</span>) SIGXFSZ：超过文件的最大长度设置。默认动作为终止进程。</span><br><span class="line"><span class="number">26</span>) SIGVTALRM：虚拟时钟超时时产生该信号。类似于 SIGALRM，但是该信号只计算该进程占用 CPU 的使用时</span><br><span class="line">间。默认动作为终止进程。</span><br><span class="line"><span class="number">27</span>) SGIPROF：类似于 SIGVTALRM，它不公包括该进程占用 CPU 时间还包括执行系统调用时间。默认动作为终止</span><br><span class="line">进程。</span><br><span class="line"><span class="number">28</span>) SIGWINCH：窗口变化大小时发出。默认动作为忽略该信号。</span><br><span class="line"><span class="number">29</span>) SIGIO：此信号向进程指示发出了一个异步 IO 事件。默认动作为忽略。</span><br><span class="line"><span class="number">30</span>) SIGPWR：关机。默认动作为终止进程。</span><br><span class="line"><span class="number">31</span>) SIGSYS：无效的系统调用。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">34</span>) SIGRTMIN ～ (<span class="number">64</span>) SIGRTMAX：LINUX 的实时信号，它们没有固定的含义（可以由用户自定义）。所有的实时</span><br><span class="line">信号的默认动作都为终止进程。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="阻塞信号集（信号屏蔽字）；未决信号集"><a href="#阻塞信号集（信号屏蔽字）；未决信号集" class="headerlink" title="阻塞信号集（信号屏蔽字）；未决信号集"></a>阻塞信号集（信号屏蔽字）；未决信号集</h2><ul>
+<li><p>阻塞信号集(信号屏蔽字)</p>
+<ul>
+<li>将某些信号加入集合，屏蔽他们。当收到x信号时，不处理x信号，直到对x的屏蔽解除后才处理。</li>
+</ul>
+</li>
+<li><p>未决信号集</p>
+<ul>
+<li>信号产生，未决信号集中描述该信号的位立刻翻转为 1，表信号处于未决状态。当信号被处理对应位翻转回为 0。这一时刻往往非常短暂。</li>
+<li>信号产生后由于某些原因(主要是阻塞)不能抵达。这类信号的集合称之为未决信号集。在屏蔽解除前，<br>信号一直处于未决状态</li>
+</ul>
+</li>
+<li><p>我们可以通过修改信号屏蔽字，来影响未决信号集。</p>
+</li>
+<li><p>其实就是加要屏蔽的信号加入信号屏蔽字，目的就是造成某些信号被屏蔽。<br>  <img src="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-43-32.png"></p>
+<p>  <img src="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-45-07.png"></p>
+</li>
+</ul>
+<h2 id="产生信号"><a href="#产生信号" class="headerlink" title="产生信号"></a>产生信号</h2><ul>
+<li><p>按键</p>
+<ul>
+<li><code>Ctrl+c : SIGINT</code>。终端、中断。<code>interrupt</code></li>
+<li><code>Ctrl+z : SIGTSTP</code>。暂停、停止。<code>terminal</code></li>
+<li><code>Ctrl+\ : SIGQUIT</code></li>
+</ul>
+</li>
+<li><p><code>kill</code> 命令</p>
+<ul>
+<li><code>kill -SIGKILL pid</code></li>
+</ul>
+</li>
+<li><p><code>kill</code> 函数</p>
+<ul>
+<li>给指定进程发送指定信号(不一定杀死)</li>
+<li><code>int kill(pid_t pid, int sig);</code></li>
+<li> 成功：0；失败：-1 (ID 非法，信号非法，普通用户杀 init 进程等权级问题)，设置 errno</li>
+<li>参数<ul>
+<li> <code>sig</code>：不推荐直接使用数字，应使用宏名，因为不同操作系统信号编号可能不同，但名称一致。</li>
+<li><code>pid</code><ul>
+<li> <code>pid &gt; 0</code>: 发送信号给指定的进程。</li>
+<li> <code>pid = 0</code>: 发送信号给 与调用 kill 函数进程属于同一进程组的所有进程。</li>
+<li> <code>pid &lt; 0</code>: 取<code>|pid|</code>发给对应进程组。</li>
+<li> <code>pid = -1</code>：发送给进程有权限发送的系统中所有进程。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>进程组：每个进程都属于一个进程组，进程组是一个或多个进程集合，他们相互关联，共同完成一个实体任务，每个进程组都有一个进程组长，默认进程组 ID 与进程组长 ID 相同。</p>
+</li>
+<li><p>权限保护：<code>super</code> 用户(<code>root</code>)可以发送信号给任意用户，普通用户是不能向系统用户发送信号的。 <code>kill -9 (root 用户的 pid)</code> 是不可以的。同样，普通用户也不能向其他普通用户发送信号，终止其进程。 只能向自己创建的进程发<br>送信号。普通用户基本规则是：发送者实际或有效用户 <code>ID</code> == 接收者实际或有效用户 ID</p>
+</li>
+<li><p><code>alarm</code> 函数</p>
+<ul>
+<li><code>unsigned int alarm(unsigned int seconds);</code> 返回 0 或剩余的秒数，无失败。 </li>
+<li>设置定时器(闹钟)。在指定 <code>seconds</code> 后，内核会给当前进程发送 <code>14）SIGALRM</code> 信号。进程收到该信号，默认动作终止。</li>
+<li>每个进程都有且只有唯一个定时器。</li>
+<li><code>alarm(0)</code>：取消定时器，返回就闹钟剩余秒数</li>
+<li>如果<code>fork</code>了 <code>alarm</code>好像只会让内核把信号发给子进程？？</li>
+</ul>
+</li>
+<li><p><code>setitimer</code> 函数（比alarm精细）</p>
+<ul>
+<li><code>int setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value);</code> </li>
+<li>日后补充<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">参数：</span><br><span class="line">  <span class="built_in">which</span>：	ITIMER_REAL： 采用自然计时。 ——&gt; SIGALRM</span><br><span class="line"></span><br><span class="line">    ITIMER_VIRTUAL: 采用用户空间计时  ---&gt; SIGVTALRM</span><br><span class="line"></span><br><span class="line">    ITIMER_PROF: 采用内核+用户空间计时 ---&gt; SIGPROF</span><br><span class="line">  </span><br><span class="line">  new_value：定时秒数</span><br><span class="line"></span><br><span class="line">              类型：struct itimerval &#123;</span><br><span class="line"></span><br><span class="line">                    struct timeval &#123;</span><br><span class="line">                      time_t      tv_sec;         /* seconds */</span><br><span class="line">                      suseconds_t tv_usec;        /* microseconds */</span><br><span class="line"></span><br><span class="line">                &#125;it_interval;---&gt; 周期定时秒数</span><br><span class="line"></span><br><span class="line">                      struct timeval &#123;</span><br><span class="line">                      time_t      tv_sec;         </span><br><span class="line">                      suseconds_t tv_usec;        </span><br><span class="line"></span><br><span class="line">                &#125;it_value;  ---&gt; 第一次定时秒数  </span><br><span class="line">                &#125;;</span><br><span class="line"></span><br><span class="line">  old_value：传出参数，上次定时剩余时间。</span><br><span class="line"></span><br><span class="line">  e.g.</span><br><span class="line">    struct itimerval new_t;	</span><br><span class="line">    struct itimerval old_t;	</span><br><span class="line"></span><br><span class="line">    new_t.it_interval.tv_sec = 0;</span><br><span class="line">    new_t.it_interval.tv_usec = 0;</span><br><span class="line">    new_t.it_value.tv_sec = 1;</span><br><span class="line">    new_t.it_value.tv_usec = 0;</span><br><span class="line"></span><br><span class="line">    int ret = setitimer(&amp;new_t, &amp;old_t);  定时1秒</span><br><span class="line"></span><br><span class="line">返回值：</span><br><span class="line">  成功： 0</span><br><span class="line"></span><br><span class="line">  失败： -1 errno</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>其他几个发信号函数：</p>
+<ul>
+<li><code>int raise(int sig);</code></li>
+<li><code>void abort(void);</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="信号屏蔽字操作函数"><a href="#信号屏蔽字操作函数" class="headerlink" title="信号屏蔽字操作函数"></a>信号屏蔽字操作函数</h2><ul>
+<li><p>信号集操作函数 </p>
+<ul>
+<li>内核通过读取未决信号集来判断信号是否应被处理。信号屏蔽字 mask 可以影响未决信号集。而我们可以在程序中自定义 set 来改变 mask。已达到屏蔽指定信号的目的。</li>
+</ul>
+</li>
+<li><p>修改自己预备的信号屏蔽字set</p>
+  <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="comment">//  修改自己的希望设置的信号屏蔽字</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sigemptyset</span><span class="params">(<span class="keyword">sigset_t</span> *<span class="built_in">set</span>)</span></span>; <span class="comment">//  信号屏蔽字啥也不屏蔽</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sigfillset</span><span class="params">(<span class="keyword">sigset_t</span> *<span class="built_in">set</span>)</span></span>;  <span class="comment">//  信号屏蔽字啥都屏蔽</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sigaddset</span><span class="params">(<span class="keyword">sigset_t</span> *<span class="built_in">set</span>, <span class="keyword">int</span> signum)</span></span>;   <span class="comment">//  信号屏蔽字屏蔽signum</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sigdelset</span><span class="params">(<span class="keyword">sigset_t</span> *<span class="built_in">set</span>, <span class="keyword">int</span> signum)</span></span>;   <span class="comment">//  信号屏蔽字解除屏蔽signum</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  看这个信号集set（一般是未决信号集）里面 是否有signum信号（看signum信号是否没被处理）</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sigismember</span><span class="params">(<span class="keyword">const</span> <span class="keyword">sigset_t</span> *<span class="built_in">set</span>, <span class="keyword">int</span> signum)</span></span>;</span><br></pre></td></tr></table></figure></li>
+<li><p><code>sigprocmask</code>。修改<code>PCB</code>中的信号屏蔽字<code>mask</code></p>
+<ul>
+<li>用来<strong>屏蔽信号、解除屏蔽</strong>。其本质，读取或修改进程的信号屏蔽字(PCB 中)</li>
+<li>严格注意，屏蔽信号：只是将信号处理延后执行(延至解除屏蔽)；而忽略表示将信号丢处理。</li>
+<li><code>int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);</code> <ul>
+<li>成功：0；</li>
+<li>失败：-1，设置 <code>errno</code></li>
+</ul>
+</li>
+<li>参数：<ul>
+<li><code>set</code>：传入自己预先准备好的信号屏蔽字。是一个位图，<code>set</code> 中哪位置 1，就表示当前进程屏蔽/解除哪个信号。</li>
+<li><code>oldset</code>：传出参数，保存旧的信号屏蔽集。</li>
+<li><code>how</code> 参数取值： 假设当前的信号屏蔽字为 <code>mask</code><ul>
+<li><code>SIG_BLOCK</code>: 当 <code>how</code> 设置为此值，<code>set</code> 表示需要屏蔽的信号。相当于 <code>mask = mask|set</code></li>
+<li><code>SIG_UNBLOCK</code>: 当 <code>how</code> 设置为此，<code>set</code> 表示需要解除屏蔽的信号。相当于 <code>mask = mask &amp; ~set</code></li>
+<li><code>SIG_SETMASK</code>: 当 <code>how</code> 设置为此，<code>set</code> 表示用于替代原始屏蔽及的新屏蔽集。相当于 <code>mask = set</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>若，调用 <code>sigprocmask</code> 解除了对当前若干个信号的阻塞，则在 <code>sigprocmask</code> 返回前，至少将其中一个信号递达。</li>
+</ul>
+</li>
+<li><p><code>sigpending</code></p>
+<ul>
+<li><code>int sigpending(sigset_t *set);</code></li>
+<li>读取当前未决信号集合 </li>
+</ul>
+</li>
+<li><p>例子：当前进程屏蔽<code>SIGINT</code>以及<code>SIGQUIT</code>，观察未决信号集变化</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* SYNOPSIS</span></span><br><span class="line"><span class="comment">      #include &lt;signal.h&gt;</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">      int sigemptyset(sigset_t *set);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">      int sigfillset(sigset_t *set);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">      int sigaddset(sigset_t *set, int signum);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">      int sigdelset(sigset_t *set, int signum);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">      int sigismember(const sigset_t *set, int signum);</span></span><br><span class="line"><span class="comment">sigset_t</span></span><br><span class="line"><span class="comment">struct</span></span><br><span class="line"><span class="comment">&#123;</span></span><br><span class="line"><span class="comment">  unsigned long int __val[_SIGSET_NWORDS];</span></span><br><span class="line"><span class="comment">&#125;</span></span><br><span class="line"><span class="comment">* */</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">print_pending_set</span><span class="params">(<span class="keyword">sigset_t</span> *pending_set)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;=<span class="number">31</span>;++i)	<span class="comment">//  看前31种信号</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span>(sigismember(pending_set,i))	</span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">&quot;1&quot;</span>);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">&quot;0&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">sigset_t</span></span><br><span class="line"><span class="comment">信号屏蔽字操作函数</span></span><br><span class="line"><span class="comment">sigemptyset</span></span><br><span class="line"><span class="comment">sigaddset</span></span><br><span class="line"><span class="comment">sigprocmask</span></span><br><span class="line"><span class="comment">sigpending</span></span><br><span class="line"><span class="comment">sigismember</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  set 我们希望制造的信号屏蔽字</span></span><br><span class="line">  <span class="keyword">sigset_t</span> <span class="built_in">set</span>;	</span><br><span class="line">  <span class="keyword">sigset_t</span> oldset;</span><br><span class="line">  sigemptyset(&amp;<span class="built_in">set</span>);	<span class="comment">//  清0</span></span><br><span class="line">  sigaddset(&amp;<span class="built_in">set</span>,SIGINT);	<span class="comment">//  屏蔽 SIGINT</span></span><br><span class="line">  sigaddset(&amp;<span class="built_in">set</span>,SIGQUIT);<span class="comment">//  屏蔽 SIGQUIT</span></span><br><span class="line">  <span class="comment">//  这些信号被加入了set，而后set又被添加进PCB的信号屏蔽字，因此如果之后内核对这个进程发出了SIGINT 和 SIGQUIT信号，内核不会处理。因此未决信号集中会出现这两个信号</span></span><br><span class="line">  <span class="keyword">int</span> ret = sigprocmask(SIG_BLOCK,&amp;<span class="built_in">set</span>,&amp;oldset);	<span class="comment">//  SIG_BLOCK 向PCB中的信号屏蔽字加入set</span></span><br><span class="line">  <span class="keyword">if</span>(ret==<span class="number">-1</span>) sys_err(<span class="string">&quot;sigprocmask error&quot;</span>);</span><br><span class="line">  <span class="keyword">sigset_t</span> pending_set;	<span class="comment">//  未决信号集</span></span><br><span class="line">  <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">  &#123;</span><br><span class="line">    sigpending(&amp;pending_set);	<span class="comment">// 读取当前进程的未决信号集</span></span><br><span class="line">    print_pending_set(&amp;pending_set);</span><br><span class="line">    sleep(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./sig_shc.out </span><br><span class="line"><span class="number">0000000000000000000000000000000</span></span><br><span class="line"><span class="number">0000000000000000000000000000000</span></span><br><span class="line">^C0100000000000000000000000000000 ctrl + c  SIGINT</span><br><span class="line"><span class="number">0100000000000000000000000000000</span></span><br><span class="line">^\<span class="number">0110000000000000000000000000000</span> ctrl + \  SIGQUI</span><br><span class="line"><span class="number">0110000000000000000000000000000</span></span><br><span class="line">^Z                                 ctrl + z SIGTSTP</span><br><span class="line">[<span class="number">4</span>]+  已停止               ./sig_shc.out</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="捕捉"><a href="#捕捉" class="headerlink" title="捕捉"></a>捕捉</h2><h3 id="内核实现捕捉过程"><a href="#内核实现捕捉过程" class="headerlink" title="内核实现捕捉过程"></a>内核实现捕捉过程</h3><p><img src="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-12-01-09-40-14.png"></p>
+<ul>
+<li><code>signal signaction</code> 注册。捕捉的动作不是他完成的<h3 id="signal"><a href="#signal" class="headerlink" title="signal"></a>signal</h3></li>
+<li><code>sighandler_t signal(int signum, sighandler_t handler);</code><ul>
+<li><code>signum：</code>要捕捉信号</li>
+<li><code>handler：</code>相应处理函数</li>
+<li><code>return：</code>上一个处理函数</li>
+</ul>
+</li>
+<li><code>typedef void (*sighandler_t)(int)</code><ul>
+<li>先看<code>sighandler_t</code> ：是一个指针变量。并且是函数指针，指向返回类型为void 参数为int的一个函数。</li>
+<li><code>typedef</code>：前面有一个<code>typedef</code>，就将这个指针变量定义成一个指针类型而不再是一个变量，类型的名字就叫<code>sighandler_t</code>，返回void 参数int。</li>
+</ul>
+</li>
+</ul>
+<h3 id="signaction"><a href="#signaction" class="headerlink" title="signaction"></a>signaction</h3><ul>
+<li><code>int sigaction(int signum,const struct sigaction *act,struct sigaction *oldact);</code></li>
+<li><code>sigaction</code>结构体<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">The sigaction structure is defined as something like:</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sigaction</span> &#123;</span></span><br><span class="line">    <span class="keyword">void</span>     (*sa_handler)(<span class="keyword">int</span>);</span><br><span class="line">    <span class="keyword">void</span>     (*sa_sigaction)(<span class="keyword">int</span>, <span class="keyword">siginfo_t</span> *, <span class="keyword">void</span> *); abandon</span><br><span class="line">    <span class="keyword">sigset_t</span>   sa_mask;           一般为<span class="number">0</span>   用来设置捕捉信号期间的信号屏蔽字   </span><br><span class="line">    <span class="keyword">int</span>        sa_flags;          一般为<span class="number">0</span>   默认屏蔽当前捕捉信号</span><br><span class="line">    <span class="keyword">void</span>     (*sa_restorer)(<span class="keyword">void</span>);  abandon</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li>使用<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">SYNOPSIS</span></span><br><span class="line"><span class="comment">#include &lt;signal.h&gt;</span></span><br><span class="line"><span class="comment">signal + action </span></span><br><span class="line"><span class="comment">注册捕捉信号的函数</span></span><br><span class="line"><span class="comment">int sigaction(int signum, const struct sigaction *act,</span></span><br><span class="line"><span class="comment">                struct sigaction *oldact);</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">struct sigaction &#123;</span></span><br><span class="line"><span class="comment">    void     (*sa_handler)(int);</span></span><br><span class="line"><span class="comment">    void     (*sa_sigaction)(int, siginfo_t *, void *); // abandon</span></span><br><span class="line"><span class="comment">    sigset_t   sa_mask;</span></span><br><span class="line"><span class="comment">    int        sa_flags;</span></span><br><span class="line"><span class="comment">    void     (*sa_restorer)(void);  // abandon</span></span><br><span class="line"><span class="comment">&#125;;</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  回调函数</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">catch</span><span class="params">(<span class="keyword">int</span> signo)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// printf(&quot;kkkkkkk\n&quot;);</span></span><br><span class="line">    <span class="keyword">if</span>(signo==SIGQUIT)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;catch SIGQUI\n&quot;</span>);</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(signo==SIGINT)</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;catch SIGINT\n&quot;</span>);</span><br><span class="line">    sleep(<span class="number">10</span>);</span><br><span class="line">    <span class="keyword">return</span> ;</span><br><span class="line">&#125;   </span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sigaction</span> <span class="title">act</span>,<span class="title">oldact</span>;</span></span><br><span class="line">    <span class="comment">//  准备act</span></span><br><span class="line">    act.sa_handler = <span class="keyword">catch</span>;    <span class="comment">// 回调函数</span></span><br><span class="line">    act.sa_flags = <span class="number">0</span>;  <span class="comment">// 设置默认属性, 本信号自动屏蔽</span></span><br><span class="line">    sigemptyset(&amp;act.sa_mask); <span class="comment">// 设置捕捉函数执行期间屏蔽字 一般为0</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  注册捕捉SIGQUIT信号</span></span><br><span class="line">    <span class="keyword">int</span> ret = sigaction(SIGQUIT,&amp;act,&amp;oldact);</span><br><span class="line">    <span class="keyword">if</span>(ret==<span class="number">-1</span>)&#123;perror(<span class="string">&quot;sigaction&quot;</span>); <span class="built_in">exit</span>(<span class="number">1</span>);&#125;</span><br><span class="line">    <span class="comment">//  注册捕捉SIGINT信号</span></span><br><span class="line">    sigaction(SIGINT,&amp;act,&amp;oldact);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>);    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./sigaction_shc.out </span><br><span class="line">^Ccatch SIGINT</span><br><span class="line">^\<span class="keyword">catch</span> SIGQUI</span><br><span class="line">^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^C^Ccatch SIGINT</span><br><span class="line">^\<span class="keyword">catch</span> SIGQUI</span><br><span class="line">^\^\^\^\^\^\^C^C^C^C^Ccatch SIGQUI</span><br><span class="line"><span class="keyword">catch</span> SIGINT</span><br><span class="line">^Ccatch SIGINT</span><br><span class="line">^\<span class="keyword">catch</span> SIGQUI</span><br><span class="line">^Z</span><br><span class="line">[<span class="number">2</span>]+  已停止               ./sigaction_shc.out</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li><strong>信号捕捉特性：</strong><ul>
+<li>捕捉函数执行期间，信号屏蔽字 由 <code>PCB</code>控制块中的<code>mask --&gt; sigaction</code>结构体中的<code>sa_mask</code> , 捕捉函数执行结束。 恢复为<code>mask</code></li>
+<li>捕捉函数执行期间，本信号自动被屏蔽—<code>(sa_flags = 0)</code>.</li>
+<li>信号<strong>不支持排队</strong>，捕捉函数执行期间，被屏蔽信号多次发送，解除屏蔽后只处理一次。</li>
+</ul>
+</li>
+</ul>
+<h2 id="SIGCHLD"><a href="#SIGCHLD" class="headerlink" title="SIGCHLD"></a>SIGCHLD</h2><h3 id="产生"><a href="#产生" class="headerlink" title="产生"></a>产生</h3><ul>
+<li><p>子进程终止时</p>
+</li>
+<li><p>子进程接收到 <code>SIGSTOP</code> 信号停止时</p>
+</li>
+<li><p>子进程处在停止态，接受到 <code>SIGCONT</code> 后唤醒时</p>
+<h3 id="利用SIGCHLD回收子进程"><a href="#利用SIGCHLD回收子进程" class="headerlink" title="利用SIGCHLD回收子进程"></a>利用SIGCHLD回收子进程</h3></li>
+<li><p> 回收子进程常见方案，一定要会： 利用信号机制去回收子进程，防止使用execlp等而无法回收子线程的情况</p>
+</li>
+<li><p>思路：</p>
+<ul>
+<li> 在父进程中注册<code>SIGCHLD</code>信号，回调函数里负责循环回收死掉的子进程。</li>
+</ul>
+</li>
+<li><p>注意</p>
+<ul>
+<li>回收用<code>while</code>不用<code>if</code><ul>
+<li> 使用<code>while</code>，防止僵尸进程 如果使用<code>if</code>的话，在处理一个进程A死亡的<code>SIGHCLD</code>信号时，可能会有另几个进程B,C,D死亡也使得内核发送<code>SIGCHLD</code>信号，这时<code>SIGCHLD</code>信号已经被屏蔽，所以进程B,C,D的<code>SIGCHLD</code>信号在未决信号集中只有一次（信号不支持排队）。所以之后如果用if也只能处理掉BCD中的一个进程，所以会出现僵尸进程。</li>
+</ul>
+</li>
+<li>改进<ul>
+<li> 如果在父进程还没有注册这个信号的处理函数时，子进程就全部死亡，之后就是注册了也不会有<code>SIGCHLD</code>去激活这个函数，那么就不会起到回收子进程的作用，怎么办？</li>
+<li> 在注册之前，屏蔽<code>（SIG_BLOCK)SIGCHLD</code>，使得如果有<code>SIGCHLD</code>产生，那么就一直不处理，留在未决信号集中，等到注册完毕，解除<code>(SIG_UNBLOCK)</code>对<code>SIGCHLD</code>的屏蔽即可。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>一些问题</p>
+<ul>
+<li> <code>wait waitpid</code>阻塞等待时会让出cpu资源么？</li>
+<li> 那么在这里这样看是不是阻塞要比waitpid非阻塞好？waitpid不会阻塞，会一直while循环，不让出cpu资源。</li>
+</ul>
+</li>
+<li><p>代码</p>
+<ul>
+<li><p>无注释</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//  回收子进程比较好的方案，一定要会！！： 利用信号机制去回收子进程，防止使用execlp而无法回收子线程的情况</span></span><br><span class="line"><span class="comment">//  利用的信号：SIGCHLD</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">catch</span><span class="params">(<span class="keyword">int</span> signo)</span>   </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> wpid;</span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    <span class="comment">// while((wpid=wait(&amp;status)))</span></span><br><span class="line">    <span class="comment">// while((wpid=waitpid(-1,&amp;status,0)!=-1))</span></span><br><span class="line">    <span class="keyword">while</span>((wpid=waitpid(<span class="number">-1</span>,&amp;status,WNOHANG))!=<span class="number">-1</span>)   </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>(wpid==<span class="number">0</span>) <span class="keyword">continue</span>;</span><br><span class="line">        <span class="keyword">if</span>(WIFEXITED(status))</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;child %d exit with %d\n&quot;</span>,wpid,WEXITSTATUS(status));</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(WIFSIGNALED(status))</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;child %d killed with %d\n&quot;</span>,wpid,WTERMSIG(status));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> pid;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>( ;i&lt;<span class="number">10</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>((pid=fork())==<span class="number">0</span>) </span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  设置PCB中的mask屏蔽字屏蔽SIGCHLD</span></span><br><span class="line">    <span class="keyword">sigset_t</span> <span class="built_in">set</span>;</span><br><span class="line">    sigemptyset(&amp;<span class="built_in">set</span>);</span><br><span class="line">    sigaddset(&amp;<span class="built_in">set</span>,SIGCHLD);</span><br><span class="line">    sigprocmask(SIG_BLOCK,&amp;<span class="built_in">set</span>,<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(i==<span class="number">10</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        sleep(<span class="number">10</span>);</span><br><span class="line">        <span class="comment">//  在进行主函数逻辑之前</span></span><br><span class="line">        <span class="comment">//  注册信号处理函数 来 处理捕捉信号</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  准备act</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sigaction</span> <span class="title">act</span>;</span></span><br><span class="line">        act.sa_handler = <span class="keyword">catch</span>;    </span><br><span class="line">        act.sa_flags = <span class="number">0</span>;  </span><br><span class="line">        sigemptyset(&amp;act.sa_mask); </span><br><span class="line">        </span><br><span class="line">        <span class="comment">//注册捕捉信号的处理函数  </span></span><br><span class="line">        sigaction(SIGCHLD,&amp;act,<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//解除屏蔽</span></span><br><span class="line">        sigprocmask(SIG_UNBLOCK,&amp;<span class="built_in">set</span>,<span class="literal">NULL</span>);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  模拟后序逻辑</span></span><br><span class="line">        <span class="keyword">while</span>(<span class="number">1</span>);      </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;i am child id = %d\n&quot;</span>,getpid());</span><br><span class="line">        <span class="keyword">return</span> i;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./signal_to_catch_child.out </span><br><span class="line">i am child id = 8585</span><br><span class="line">i am child id = 8586</span><br><span class="line">i am child id = 8589</span><br><span class="line">i am child id = 8588</span><br><span class="line">i am child id = 8587</span><br><span class="line">i am child id = 8590</span><br><span class="line">i am child id = 8593</span><br><span class="line">i am child id = 8591</span><br><span class="line">i am child id = 8594</span><br><span class="line">i am child id = 8592</span><br><span class="line">child 8585 <span class="built_in">exit</span> with 0</span><br><span class="line">child 8586 <span class="built_in">exit</span> with 1</span><br><span class="line">child 8587 <span class="built_in">exit</span> with 2</span><br><span class="line">child 8588 <span class="built_in">exit</span> with 3</span><br><span class="line">child 8589 <span class="built_in">exit</span> with 4</span><br><span class="line">child 8590 <span class="built_in">exit</span> with 5</span><br><span class="line">child 8591 <span class="built_in">exit</span> with 6</span><br><span class="line">child 8592 <span class="built_in">exit</span> with 7</span><br><span class="line">child 8593 <span class="built_in">exit</span> with 8</span><br><span class="line">child 8594 <span class="built_in">exit</span> with 9</span><br><span class="line">^C</span><br></pre></td></tr></table></figure></li>
+<li><p>注释</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">//  回收子进程比较好的方案，一定要会！！： 利用信号机制去回收子进程，防止使用execlp而无法回收子线程的情况</span></span><br><span class="line"><span class="comment">//  利用的信号：SIGCHLD</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">catch</span><span class="params">(<span class="keyword">int</span> signo)</span>   <span class="comment">//  signo 当前处理的信号</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> wpid;</span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    <span class="comment">// while((wpid=wait(&amp;status)))</span></span><br><span class="line">    <span class="comment">// while((wpid=waitpid(-1,&amp;status,0)!=-1))</span></span><br><span class="line">    <span class="keyword">while</span>((wpid=waitpid(<span class="number">-1</span>,&amp;status,WNOHANG))!=<span class="number">-1</span>)   <span class="comment">//  使用while，防止僵尸进程 如果使用if的话，在处理一个进程A死亡的SIGHCLD信号时，可能会有另几个进程B,C,D死亡也使得内核发送SIGCHLD信号，这时SIGCHLD信号已经被屏蔽，所以进程B,C,D的SIGCHLD信号在未决信号集中只有一次（信号不支持排队）。所以之后如果用if也只能处理掉BCD中的一个进程，所以会出现僵尸进程。</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>(wpid==<span class="number">0</span>) <span class="keyword">continue</span>;</span><br><span class="line">        <span class="keyword">if</span>(WIFEXITED(status))</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;child %d exit with %d\n&quot;</span>,wpid,WEXITSTATUS(status));</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(WIFSIGNALED(status))</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;child %d killed with %d\n&quot;</span>,wpid,WTERMSIG(status));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> ;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> pid;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>( ;i&lt;<span class="number">10</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>((pid=fork())==<span class="number">0</span>) </span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  设置PCB中的mask屏蔽字屏蔽SIGCHLD</span></span><br><span class="line">    <span class="keyword">sigset_t</span> <span class="built_in">set</span>;</span><br><span class="line">    sigemptyset(&amp;<span class="built_in">set</span>);</span><br><span class="line">    sigaddset(&amp;<span class="built_in">set</span>,SIGCHLD);</span><br><span class="line">    sigprocmask(SIG_BLOCK,&amp;<span class="built_in">set</span>,<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(i==<span class="number">10</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        sleep(<span class="number">10</span>);</span><br><span class="line">        <span class="comment">//  在进行主函数逻辑之前</span></span><br><span class="line">        <span class="comment">//  注册信号处理函数 来 处理捕捉信号</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  准备act</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sigaction</span> <span class="title">act</span>;</span></span><br><span class="line">        act.sa_handler = <span class="keyword">catch</span>;    <span class="comment">//  设置处理函数</span></span><br><span class="line">        act.sa_flags = <span class="number">0</span>;  <span class="comment">//  默认属性 屏蔽当前捕捉信号</span></span><br><span class="line">        sigemptyset(&amp;act.sa_mask); <span class="comment">//  设置处理信号期间屏蔽字</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">//注册捕捉信号的处理函数  </span></span><br><span class="line">        sigaction(SIGCHLD,&amp;act,<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//解除屏蔽</span></span><br><span class="line">        sigprocmask(SIG_UNBLOCK,&amp;<span class="built_in">set</span>,<span class="literal">NULL</span>);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  模拟后序逻辑</span></span><br><span class="line">        <span class="keyword">while</span>(<span class="number">1</span>);      </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;i am child id = %d\n&quot;</span>,getpid());</span><br><span class="line">        <span class="keyword">return</span> i;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  改进</span></span><br><span class="line"><span class="comment">//  如果在父进程还没有注册这个信号的处理函数时，子进程就全部死亡，之后就是注册了也不会有SIGCHLD去激活这个函数，那么就不会起到回收子进程的作用，怎么办？</span></span><br><span class="line"><span class="comment">//  在注册之前，屏蔽调SIGCHLD，使得如果有SIGCHLD产生，那么就一直不处理，留在未决信号集中，等到注册完毕，解除(sigdel)对SIGCHLD的屏蔽即可。</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  一些问题</span></span><br><span class="line"><span class="comment">//  wait waitpid阻塞等待时会让出cpu资源么？</span></span><br><span class="line"><span class="comment">//  那么在这里这样看是不是阻塞要比waitpid非阻塞好？waitpid不会阻塞，会一直while循环</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>如果不先屏蔽<code>SIGCHLD</code>，那么结果如下。只有父进程死亡后，整个地址空间都会被销毁，僵尸子进程才没了。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./signal_to_catch_child2.out</span><br><span class="line">i am child id = 8875</span><br><span class="line">i am child id = 8876</span><br><span class="line">i am child id = 8878</span><br><span class="line">i am child id = 8879</span><br><span class="line">i am child id = 8877</span><br><span class="line">i am child id = 8880</span><br><span class="line">i am child id = 8883</span><br><span class="line">i am child id = 8881</span><br><span class="line">i am child id = 8884</span><br><span class="line">i am child id = 8882</span><br><span class="line"></span><br><span class="line">----------</span><br><span class="line">ps ajx</span><br><span class="line">Z：僵尸。defunct：僵尸</span><br><span class="line">  8371   8874   8874   8371 pts/1      8874 R+    1000   0:42 ./signal_to_catch_child2.out</span><br><span class="line">  8874   8875   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8876   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8877   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8878   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8879   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8880   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8881   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8882   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8883   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line">  8874   8884   8874   8371 pts/1      8874 Z+    1000   0:00 [signal_to_catch] &lt;defunct&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li><p><code>SIGCHLD</code> 信号注意问题</p>
+<ul>
+<li>子进程继承父进程的信号屏蔽字和信号处理动作，但子进程没有继承未决信号集 <code>pending。</code></li>
+<li>注意注册信号捕捉函数的位置。</li>
+<li>应该在 <code>fork</code> 之前，阻塞 <code>SIGCHLD</code> 信号。注册完捕捉函数后解除阻塞。</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>子进程结束 对status的如何处理</p>
+</blockquote>
+<ul>
+<li><code>pid_t waitpid(pid_t pid, int *status, int options)</code></li>
+<li><code>options</code>：<ul>
+<li><code>WNOHANG</code>：没有子进程结束，立即返回</li>
+<li><code>WUNTRACED</code>：如果子进程由于被停止产生的 <code>SIGCHLD</code>，<code>waitpid</code> 则立即返回</li>
+<li><code>WCONTINUED</code>：如果子进程由于被 <code>SIGCONT</code> 唤醒而产生的 <code>SIGCHLD，waitpid</code> 则立即返回</li>
+</ul>
+</li>
+<li><code>status：</code><ul>
+<li><code>WIFEXITED(status)</code>：子进程正常 <code>exit</code> 终止，返回真</li>
+<li><code>WEXITSTATUS(status)</code>：返回子进程正常退出值</li>
+<li><code>WIFSIGNALED(status)</code>：子进程被信号终止，返回真</li>
+<li><code>WTERMSIG(status)</code>：返回终止子进程的信号值</li>
+<li><code>WIFSTOPPED(status)</code>：子进程被停止，返回真</li>
+<li><code>WSTOPSIG(status)</code>：返回停止子进程的信号值</li>
+<li><code>WIFCONTINUED(status)</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="了解：中断系统调用"><a href="#了解：中断系统调用" class="headerlink" title="了解：中断系统调用"></a>了解：中断系统调用</h2><ul>
+<li><p>系统调用可分为两类：慢速系统调用和其他系统调用。</p>
+<ul>
+<li>慢速系统调用：可能会使进程永远阻塞的一类。如果在阻塞期间收到一个信号，该系统调用就被中断,不再继续执行(早期)；也可以设定系统调用是否重启。如，<code>read、write、pause、wait...</code></li>
+<li>其他系统调用：<code>getpid、getppid、fork...</code></li>
+</ul>
+</li>
+<li><p>结合 <code>pause</code>，回顾慢速系统调用：</p>
+<ul>
+<li>慢速系统调用被中断的相关行为，实际上就是 <code>pause</code> 的行为： 如，<code>read</code></li>
+<li>① 想中断 <code>pause</code>，信号不能被屏蔽。</li>
+<li>② 信号的处理方式必须是捕捉 (默认、忽略都不可以)</li>
+<li>③ 中断后返回-1， 设置 <code>errno</code> 为 <code>EINTR</code>(表“被信号中断”)</li>
+<li>可修改 <code>sa_flags</code> 参数来设置被信号中断后系统调用是否重<ul>
+<li><code>SA_INTERRURT</code> 不重启。 <code>SA_RESTART</code> 重启。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>扩展了解：<br><code>sa_flags</code> 还有很多可选参数，适用于不同情况。如：捕捉到信号后，在执行捕捉函数期间，不希望自动阻塞该<br>信号，可将 <code>sa_flags</code> 设置为 <code>SA_NODEFER</code>，除非 <code>sa_mask</code> 中包含该信号</p>
+</li>
+</ul>
+<h2 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h2><ul>
+<li>一些问题<ul>
+<li> <code>wait</code> <code>waitpid</code>阻塞等待时会让出<code>cpu</code>资源么？</li>
+<li> 那么在这里这样看是不是阻塞要比<code>waitpid</code>非阻塞好？<code>waitpid</code>不会阻塞，会一直<code>while</code>循环，不让出<code>cpu</code>资源</li>
+</ul>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Linux-进程(1)</title>
     <url>/2021/11/25/Linux-%E8%BF%9B%E7%A8%8B/</url>
     <content><![CDATA[<p>Linux进程</p>
@@ -568,22 +859,31 @@
 </li>
 </ul>
 <h2 id="wait-waitpid"><a href="#wait-waitpid" class="headerlink" title="wait/waitpid"></a><code>wait/waitpid</code></h2><h3 id="pid-t-wait-int-statloc"><a href="#pid-t-wait-int-statloc" class="headerlink" title="pid_t wait(int *statloc);"></a><code>pid_t wait(int *statloc);</code></h3><blockquote>
-<p>一个进程在终止时会关闭所有文件描述符，释放在用户空间分配的内存，但它的 PCB<br>还保留着，内核在其中保存了一些信息：如果是正常终止则保存着退出状态，如果是异常终<br>止则保存着导致该进程终止的信号是哪个。这个进程的父进程可以调用 wait 或 waitpid 获取<br>这些信息，然后彻底清除掉这个进程。我们知道一个进程的退出状态可以在 Shell 中用特殊<br>变量$?查看，因为 Shell 是它的父进程，当它终止时 Shell 调用 wait 或 waitpid 得到它的退出<br>状态同时彻底清除掉这个进程。      —黑马Linux讲义</p>
+<p>一个进程在终止时会关闭所有文件描述符，释放在用户空间分配的内存，但它的 PCB还保留着，内核在其中保存了一些信息：如果是正常终止则保存着退出状态，如果是异常终止则保存着导致该进程终止的信号是哪个。这个进程的父进程可以调用 wait 或 waitpid 获取这些信息，然后彻底清除掉这个进程。我们知道一个进程的退出状态可以在 Shell 中用特殊变量$?查看，因为 Shell 是它的父进程，当它终止时 Shell 调用 wait 或 waitpid 得到它的退出<br>状态同时彻底清除掉这个进程。      —黑马Linux讲义</p>
 </blockquote>
 <ul>
-<li><code>wait</code>函数作用<ul>
-<li>阻塞等待子进程退出</li>
+<li><p>在每个进程退出的时候，内核释放该进程所有的资源、包括打开的文件、占用的内存等。但是仍然为其保留一定的信息，这些信息主要主要指进程控制块PCB的信息（包括进程号、退出状态、运行时间等）。</p>
+</li>
+<li><p>父进程可以通过调用wait或waitpid得到它的退出状态同时彻底清除掉这个进程</p>
+</li>
+<li><p><code>wait</code>函数作用</p>
+<ul>
+<li>阻塞等待子进程退出。（这时候应该会让出<code>cpu</code>资源吧？？）</li>
 <li>回收子进程残留资源</li>
 <li>获取子进程结束状态(退出原因)。</li>
 </ul>
 </li>
-<li><code>waitpid</code>相较于<code>wait</code>可以选择是否阻塞，以及回收特定的某一个子进程</li>
-<li>一次 <code>wait</code> 或 <code>waitpid</code> 调用只能清理一个子进程</li>
+<li><p><code>waitpid</code>相较于<code>wait</code>可以选择是否阻塞，以及回收特定的某一个子进程</p>
+</li>
+<li><p>一次 <code>wait</code> 或 <code>waitpid</code> 调用只能清理一个子进程</p>
+</li>
 </ul>
 <blockquote>
 <p>当进程终止时，操作系统的隐式回收机制会：1.关闭所有文件描述符 2. 释放用户空间<br>分配的内存。内核的 PCB 仍存在。其中保存该进程的退出状态。(正常终止→退出值；异常<br>终止→终止信号)    —黑马Linux讲义</p>
 </blockquote>
 <ul>
+<li><p><code>int *statloc</code>：保存退出状态</p>
+</li>
 <li><p><code>return</code></p>
 <ul>
 <li>成功回收：返回回收的进程的<code>pid</code>号</li>
@@ -591,7 +891,7 @@
 </ul>
 </li>
 <li><p>宏函数判断终止原因。</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">WIFEXITED（status）宏判断为真 表示程序正常退出</span><br><span class="line">WEXITSTATUS(status)上一个宏判断为真 则返回状态值</span><br><span class="line">WIFSIGNALED(status) 宏判断为真 表示程序异常退出</span><br><span class="line">WTERMSIG(status) 上一个判断为真，则返回状态值</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">WIFEXITED（status）宏判断为真 表示程序正常退出</span><br><span class="line">WEXITSTATUS(status)上一个宏判断为真 则返回状态值  <span class="comment">//也就是在获取子进程最后return的值。</span></span><br><span class="line">WIFSIGNALED(status) 宏判断为真 表示程序异常退出</span><br><span class="line">WTERMSIG(status) 上一个判断为真，则返回状态值</span><br><span class="line">WIFSTOPPED(status)：子进程被停止，返回真</span><br><span class="line">WSTOPSIG(status)：返回停止子进程的信号值</span><br></pre></td></tr></table></figure>
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* str)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        perror(str);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">pid_t</span> target_pid;</span><br><span class="line">        <span class="keyword">for</span>(;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">                <span class="keyword">if</span>(pid==<span class="number">-1</span>)</span><br><span class="line">                        sys_err(<span class="string">&quot;forl error&quot;</span>);</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span>(pid&gt;<span class="number">0</span>)&#123;</span><br><span class="line">                        <span class="keyword">if</span>(i==<span class="number">2</span>)</span><br><span class="line">                                target_pid = pid; <span class="comment">//  注意用pid 不是getpid()</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span>(pid==<span class="number">0</span>)</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">int</span> statloc;    <span class="comment">//  接收进程退出状态</span></span><br><span class="line">                <span class="keyword">pid_t</span> wpid = waitpid(target_pid,&amp;statloc,<span class="number">0</span>);    <span class="comment">//  阻塞回收 成功：返回进程id，错误：返回-1（一般是子进程不存在）</span></span><br><span class="line">                </span><br><span class="line">                <span class="keyword">if</span>(wpid==<span class="number">-1</span>)</span><br><span class="line">                        sys_err(<span class="string">&quot;waitpid&quot;</span>);</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                        <span class="built_in">printf</span>(<span class="string">&quot;i am the parent process , wait for the child process id = %d\n&quot;</span>,wpid);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;i am the child process id = %d\n&quot;</span>,getpid());</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./waitpid_shc.out </span><br><span class="line">i am the child process id = <span class="number">4306</span></span><br><span class="line">i am the child process id = <span class="number">4307</span></span><br><span class="line">i am the child process id = <span class="number">4309</span></span><br><span class="line">i am the child process id = <span class="number">4310</span></span><br><span class="line">i am the child process id = <span class="number">4308</span></span><br><span class="line">i am the parent process , wait <span class="keyword">for</span> the child process id = <span class="number">4308</span>  <span class="comment">//  回收i=2进程</span></span><br></pre></td></tr></table></figure></li>
 </ul>
 <h3 id="pid-t-waitpid-pid-t-pid-int-statloc-int-options"><a href="#pid-t-waitpid-pid-t-pid-int-statloc-int-options" class="headerlink" title="pid_t waitpid(pid_t pid,int *statloc,int options);"></a><code>pid_t waitpid(pid_t pid,int *statloc,int options);</code></h3><ul>
@@ -600,7 +900,7 @@
 <li><code>pid_t pid</code><ul>
 <li><code>&gt;0 </code>指定进程号</li>
 <li><code>=-1</code> 回收任意子进程，相当于<code>wait</code>。<code>waitpid(-1,&amp;status,0) &lt;-&gt; wait(&amp;status);</code></li>
-<li><code>=0</code> 回收和当前调用waitpid的进程的一个组的所有子进程（一般同一进程fork出的子进程默认同一组）</li>
+<li><code>=0</code> 回收和当前调用<code>waitpid</code>的进程的一个组的所有子进程（一般同一进程<code>fork</code>出的子进程默认同一组）</li>
 <li><code>&lt;-1</code> 回收指定进程组的任意子进程</li>
 </ul>
 </li>
@@ -609,8 +909,10 @@
 </ul>
 </li>
 <li><code>options</code><ul>
-<li><code>WNOHANG</code> 非阻塞</li>
-<li>…</li>
+<li>0：阻塞</li>
+<li><code>WNOHANG</code>：非阻塞，没有子进程结束，立即返回</li>
+<li><code>WUNTRACED</code>：如果子进程由于被停止产生的 SIGCHLD，waitpid 则立即返回</li>
+<li><code>WCONTINUED</code>：如果子进程由于被 <code>SIGCONT</code> 唤醒而产生的 <code>SIGCHLD</code>，<code>waitpid</code> 则立即返回</li>
 </ul>
 </li>
 </ul>
@@ -618,7 +920,7 @@
 <li><p><code>return</code></p>
 <ul>
 <li>成功回收：返回回收的进程的<code>pid</code>号</li>
-<li>出错：调用<code>waitpid</code>的当前进程并没有任何子进程。则返回<code>-1</code>。</li>
+<li>出错：调用<code>waitpid</code>的当前进程并没有任何子进程。则返回<code>-1</code>。（有正在运行的子进程也叫有子进程）</li>
 <li>如果使用了<code>WNOHANG</code>非阻塞参数，且没有子进程已经终止、可以回收，那么就返回<code>0</code>.</li>
 </ul>
 </li>
@@ -664,15 +966,21 @@
 <li>数据从写端流入，读端流出</li>
 <li>管道缓冲区大小 4096<ul>
 <li><code>ulimit -a</code></li>
-<li><code>pipe size            (512 bytes, -p) 8</code><h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3></li>
+<li><code>pipe size            (512 bytes, -p) 8</code></li>
 </ul>
 </li>
+</ul>
+<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><ul>
 <li>环形队列</li>
-<li>内核缓冲区<h3 id="局限性"><a href="#局限性" class="headerlink" title="局限性"></a>局限性</h3></li>
+<li>内核缓冲区</li>
+</ul>
+<h3 id="局限性"><a href="#局限性" class="headerlink" title="局限性"></a>局限性</h3><ul>
 <li>优点：简单</li>
 <li>数据不能反复读</li>
 <li>单向通信（半双工）</li>
-<li>只能用于有公共祖先的进程间。（父子，兄弟）<h3 id="读写行为"><a href="#读写行为" class="headerlink" title="读写行为"></a>读写行为</h3></li>
+<li>只能用于有公共祖先的进程间。（父子，兄弟）</li>
+</ul>
+<h3 id="读写行为"><a href="#读写行为" class="headerlink" title="读写行为"></a>读写行为</h3><ul>
 <li>读管道<ul>
 <li>管道中有数据，<code>read</code>返回实际读到字节数</li>
 <li>管道中无数据<ul>
@@ -686,11 +994,13 @@
 <li>管道无读端，异常。<code>SIGPIPE</code>信号</li>
 <li>管道有读端<ul>
 <li>未满，直接写，返回写入字节个数</li>
-<li>已满，阻塞等待<code>read</code>把数据读走。<h3 id="int-pipe-int-pipefd-2"><a href="#int-pipe-int-pipefd-2" class="headerlink" title="int pipe(int pipefd[2]);"></a><code>int pipe(int pipefd[2]);</code></h3></li>
+<li>已满，阻塞等待<code>read</code>把数据读走。</li>
 </ul>
 </li>
 </ul>
 </li>
+</ul>
+<h3 id="int-pipe-int-pipefd-2"><a href="#int-pipe-int-pipefd-2" class="headerlink" title="int pipe(int pipefd[2]);"></a><code>int pipe(int pipefd[2]);</code></h3><ul>
 <li><code>return</code><ul>
 <li><code>r/w</code> 两个文件描述符。无需 <code>open</code>，但需手动 <code>close</code>。</li>
 <li><code>fd[0] &lt;-&gt; read , fd[1] &lt;-&gt; write</code></li>
@@ -861,8 +1171,8 @@
 <li><p>使用<code>mmap</code>进行父子关系进程通信代码。</p>
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> var = <span class="number">100</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> *p;</span><br><span class="line">    <span class="keyword">pid_t</span> pid;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> fd;</span><br><span class="line">    fd = open(<span class="string">&quot;temp&quot;</span>, O_RDWR|O_CREAT|O_TRUNC, <span class="number">0644</span>);</span><br><span class="line">    <span class="keyword">if</span>(fd &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        perror(<span class="string">&quot;open error&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    ftruncate(fd, <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//p = (int *)mmap(NULL, 4, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);</span></span><br><span class="line">    p = (<span class="keyword">int</span> *)mmap(<span class="literal">NULL</span>, <span class="number">4</span>, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span>(p == MAP_FAILED)&#123;		<span class="comment">//注意:不是p == NULL</span></span><br><span class="line">        perror(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    close(fd);					<span class="comment">//映射区建立完毕,即可关闭文件</span></span><br><span class="line"></span><br><span class="line">    pid = fork();				<span class="comment">//创建子进程</span></span><br><span class="line">    <span class="keyword">if</span>(pid == <span class="number">0</span>)&#123;</span><br><span class="line">      *p = <span class="number">7000</span>;               <span class="comment">// 写共享内存</span></span><br><span class="line">        var = <span class="number">1000</span>;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;child, *p = %d, var = %d\n&quot;</span>, *p, var);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        sleep(<span class="number">1</span>);</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;parent, *p = %d, var = %d\n&quot;</span>, *p, var);     <span class="comment">// 读共享内存</span></span><br><span class="line">        wait(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> ret = munmap(p, <span class="number">4</span>);				<span class="comment">//释放映射区</span></span><br><span class="line">        <span class="keyword">if</span> (ret == <span class="number">-1</span>) &#123;</span><br><span class="line">            perror(<span class="string">&quot;munmap error&quot;</span>);</span><br><span class="line">            <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 <li><p>使用<code>mmap</code>进行非血缘关系进程通信代码。</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ tree .</span><br><span class="line">.</span><br><span class="line">├── include</span><br><span class="line">│   ├── student.h</span><br><span class="line">│   └── sys_err.h</span><br><span class="line">└── src</span><br><span class="line">    ├── mmap_shc.c</span><br><span class="line">    ├── mmap_shc.out</span><br><span class="line">    ├── mmap_shc_read.c</span><br><span class="line">    ├── mmap_shc_read.out</span><br><span class="line">    ├── mmap_shc_write.c</span><br><span class="line">    ├── mmap_shc_write.out</span><br><span class="line">    ├── sys_err.c</span><br><span class="line"><span class="comment">//命令</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ gcc mmap_shc_read.c sys_err.c -o mmap_shc_raed.out -Iinclude -Wall</span><br><span class="line"></span><br><span class="line"><span class="comment">// 整体结构及头文件</span></span><br><span class="line"><span class="comment">// sys_err.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// sys_err.c</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <ul>
+<li>结构<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ tree .</span><br><span class="line">.</span><br><span class="line">├── include</span><br><span class="line">│   ├── student.h</span><br><span class="line">│   └── sys_err.h</span><br><span class="line">└── src</span><br><span class="line">    ├── mmap_shc.c</span><br><span class="line">    ├── mmap_shc.out</span><br><span class="line">    ├── mmap_shc_read.c</span><br><span class="line">    ├── mmap_shc_read.out</span><br><span class="line">    ├── mmap_shc_write.c</span><br><span class="line">    ├── mmap_shc_write.out</span><br><span class="line">    ├── sys_err.c</span><br><span class="line"><span class="comment">//命令</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ gcc mmap_shc_read.c sys_err.c -o mmap_shc_raed.out -Iinclude -Wall</span><br><span class="line"></span><br><span class="line"><span class="comment">// 整体结构及头文件</span></span><br><span class="line"><span class="comment">// sys_err.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// sys_err.c</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 <li>写<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/student.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> fd = open(argv[<span class="number">1</span>],O_RDWR|O_TRUNC|O_CREAT,<span class="number">0664</span>);</span><br><span class="line">    ftruncate(fd,<span class="keyword">sizeof</span> (struct student));</span><br><span class="line">    <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END);</span><br><span class="line"></span><br><span class="line">    unlink(argv[<span class="number">1</span>]);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  建立存储映射区，p指向那那段地方</span></span><br><span class="line">    <span class="comment">//                         存储映射区首地址    映射区长度   对存储映射区权限   是否反应到真实磁盘上 fd 起始偏移量  </span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">p</span> =</span> (struct student*)mmap(<span class="literal">NULL</span>,len,PROT_WRITE|PROT_READ,MAP_SHARED,fd,<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span>(p==MAP_FAILED) sys_err(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  建立完映射区后即可关闭文件</span></span><br><span class="line">    close(fd);  <span class="comment">//  之后就是通过p对内存做事情 不需要文件描述符了 因此关闭</span></span><br><span class="line">    </span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> <span class="title">student</span> =</span> &#123;<span class="number">1</span>,<span class="string">&quot;shc&quot;</span>&#125;;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memcpy</span>(p,&amp;student,<span class="keyword">sizeof</span> student);</span><br><span class="line">        ++student.id;</span><br><span class="line">        usleep(<span class="number">1000000</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    munmap(p,<span class="keyword">sizeof</span> student); <span class="comment">//  释放映射区</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 <li>读<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/student.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> fd = open(argv[<span class="number">1</span>],O_RDWR);</span><br><span class="line">    <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END);</span><br><span class="line"></span><br><span class="line">    unlink(argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="comment">//  建立</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">p</span> =</span> (struct student *)mmap(<span class="literal">NULL</span>,len,PROT_READ|PROT_WRITE,MAP_SHARED,fd,<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span>(p==MAP_FAILED) sys_err(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    close(fd);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d %s\n&quot;</span>,p-&gt;id,p-&gt;name);</span><br><span class="line">        usleep(<span class="number">2000000</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  释放</span></span><br><span class="line">    munmap(p,<span class="keyword">sizeof</span> student);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;        </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./mmap_shc_write.out temp</span><br><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./mmap_shc_read.out temp</span><br><span class="line">22 shc</span><br><span class="line">24 shc</span><br><span class="line">26 shc</span><br><span class="line">...</span><br></pre></td></tr></table></figure></li>
@@ -950,6 +1260,11 @@
       </tags>
   </entry>
   <entry>
+    <title></title>
+    <url>/2021/11/14/static-library-And-shared-object/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
     <title>test</title>
     <url>/2021/11/04/test/</url>
     <content><![CDATA[<p>这是摘要</p>
@@ -968,11 +1283,6 @@
       <tags>
         <tag>Blog_test</tag>
       </tags>
-  </entry>
-  <entry>
-    <title></title>
-    <url>/2021/11/14/static-library-And-shared-object/</url>
-    <content><![CDATA[]]></content>
   </entry>
   <entry>
     <title>test02</title>

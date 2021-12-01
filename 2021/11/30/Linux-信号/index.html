@@ -20,31 +20,37 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="小窝">
-<meta property="og:type" content="website">
-<meta property="og:title" content="不落辰">
-<meta property="og:url" content="http://example.com/index.html">
+  <meta name="description" content="信号概述 特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送 信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉 每个进程收到的所有信号，都是由内核负责发送的，内核处理。 递达：递送并且到达进程。 未决：产生和递达之间的状态。主要由于阻塞(屏蔽)导致该状态。 产生信号:   按键产生，如：Ctrl+c、Ctrl+z、Ct">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux-信号">
+<meta property="og:url" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/index.html">
 <meta property="og:site_name" content="不落辰">
-<meta property="og:description" content="小窝">
+<meta property="og:description" content="信号概述 特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送 信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉 每个进程收到的所有信号，都是由内核负责发送的，内核处理。 递达：递送并且到达进程。 未决：产生和递达之间的状态。主要由于阻塞(屏蔽)导致该状态。 产生信号:   按键产生，如：Ctrl+c、Ctrl+z、Ct">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-43-32.png">
+<meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-45-07.png">
+<meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-12-01-09-40-14.png">
+<meta property="article:published_time" content="2021-11-30T10:43:22.000Z">
+<meta property="article:modified_time" content="2021-12-01T15:52:06.344Z">
 <meta property="article:author" content="Cstardust">
-<meta property="article:tag" content="C++,Linux">
+<meta property="article:tag" content="Linux">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-43-32.png">
 
-<link rel="canonical" href="http://example.com/">
+<link rel="canonical" href="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>不落辰</title>
+  <title>Linux-信号 | 不落辰</title>
   
 
 
@@ -196,9 +202,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
+
+    
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -214,10 +221,9 @@
       <meta itemprop="name" content="不落辰">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/" class="post-title-link" itemprop="url">Linux-信号</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          Linux-信号
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -237,6 +243,13 @@
               </span>
 
           
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
 
         </div>
       </header>
@@ -247,7 +260,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+        <h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
 <li>特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送</li>
 <li>信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉</li>
 <li>每个进程收到的所有信号，都是由内核负责发送的，内核处理。</li>
@@ -531,951 +544,34 @@
 </li>
 </ul>
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
+          <div class="post-tags">
+              <a href="/tags/Linux/" rel="tag"># Linux</a>
+          </div>
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/" class="post-title-link" itemprop="url">Linux-进程2</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-28 16:32:59" itemprop="dateCreated datePublished" datetime="2021-11-28T16:32:59+08:00">2021-11-28</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-01 09:28:47" itemprop="dateModified" datetime="2021-12-01T09:28:47+08:00">2021-12-01</time>
-              </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="进程通信"><a href="#进程通信" class="headerlink" title="进程通信"></a>进程通信</h1><h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><ul>
-<li>半双工<ul>
-<li>半双工通信是指可以双向流动，但不能同时。</li>
-</ul>
-</li>
-<li><strong>常见<code>IPC</code>方法</strong><ul>
-<li>管道（无名）<code>pipe：</code>血缘</li>
-<li>管道（有名）<code>fifo：</code>非血缘<ul>
-<li>管道：内核借助消息队列实现，因此数据只能读一次</li>
-</ul>
-</li>
-<li>信号</li>
-<li><code>mmap</code>（存储映射<code>I/O</code>）：非血缘<ul>
-<li>速度快，数据可以反复读取。</li>
-</ul>
-</li>
-<li>本地套接字：稳定</li>
-</ul>
-</li>
-</ul>
-<h2 id="管道"><a href="#管道" class="headerlink" title="管道"></a>管道</h2><h3 id="特征"><a href="#特征" class="headerlink" title="特征"></a>特征</h3><ul>
-<li>伪文件（不占磁盘空间）</li>
-<li>两个文件描述符<code>（r/w）</code></li>
-<li>数据从写端流入，读端流出</li>
-<li>管道缓冲区大小 4096<ul>
-<li><code>ulimit -a</code></li>
-<li><code>pipe size            (512 bytes, -p) 8</code></li>
-</ul>
-</li>
-</ul>
-<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><ul>
-<li>环形队列</li>
-<li>内核缓冲区</li>
-</ul>
-<h3 id="局限性"><a href="#局限性" class="headerlink" title="局限性"></a>局限性</h3><ul>
-<li>优点：简单</li>
-<li>数据不能反复读</li>
-<li>单向通信（半双工）</li>
-<li>只能用于有公共祖先的进程间。（父子，兄弟）</li>
-</ul>
-<h3 id="读写行为"><a href="#读写行为" class="headerlink" title="读写行为"></a>读写行为</h3><ul>
-<li>读管道<ul>
-<li>管道中有数据，<code>read</code>返回实际读到字节数</li>
-<li>管道中无数据<ul>
-<li>有写端，则<code>read</code>阻塞等待写端写入</li>
-<li>无写端，<code>read</code>返回0（读到文件尾）。</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>写管道<ul>
-<li>管道无读端，异常。<code>SIGPIPE</code>信号</li>
-<li>管道有读端<ul>
-<li>未满，直接写，返回写入字节个数</li>
-<li>已满，阻塞等待<code>read</code>把数据读走。</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h3 id="int-pipe-int-pipefd-2"><a href="#int-pipe-int-pipefd-2" class="headerlink" title="int pipe(int pipefd[2]);"></a><code>int pipe(int pipefd[2]);</code></h3><ul>
-<li><code>return</code><ul>
-<li><code>r/w</code> 两个文件描述符。无需 <code>open</code>，但需手动 <code>close</code>。</li>
-<li><code>fd[0] &lt;-&gt; read , fd[1] &lt;-&gt; write</code></li>
-<li>向管道文件读写数据其实是在读写内核缓冲区</li>
-<li>成功0，失败-1，设置erron</li>
-</ul>
-</li>
-<li>使用<ul>
-<li>父进程<code>pipe</code>，得管道，以及<code>fd[0],fd[1]</code></li>
-<li>父进程<code>fork</code>，子进程复制父进程文件描述表，共享文件描述符关联的文件结构体，故子进程也有<code>fd[0],fd[1]</code>指向相应文件。（自己猜的，不知道对错）</li>
-<li>父进程关闭读，进行写；子进程关闭写，进行读。管道环形队列实现，保证数据单线流动。</li>
-</ul>
-</li>
-<li>问题<ul>
-<li>读时共享，写时复制。所以不会父进程读端的关闭不会造成子进程读端的关闭。同理，子进程写端的关闭也不会造成父进程写端的关闭。故不会发生错误。</li>
-<li><blockquote>
-<p>子进程复制父进程的数据段，BSS段，代码段，堆空间，栈空间，文件描述符，但是对于文件描述符关联的内核文件表项（即struct file结构体）则是采用共享的方式</p>
-</blockquote>
-</li>
-</ul>
-</li>
-</ul>
-<p><img src="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/2021-11-29-13-41-57.png"><br><img src="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/2021-11-29-13-21-24.png"></p>
-<ul>
-<li>基本用法（父子）（兄弟同理）<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> fd[<span class="number">2</span>];</span><br><span class="line">        <span class="built_in">pipe</span>(fd);</span><br><span class="line">        <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">        <span class="keyword">if</span>(pid&gt;<span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">0</span>]);   <span class="comment">//  关闭 父读</span></span><br><span class="line">                <span class="built_in">write</span>(fd[<span class="number">1</span>],<span class="string">&quot;hello\n&quot;</span>,<span class="keyword">sizeof</span> <span class="string">&quot;hello\n&quot;</span>);</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">1</span>]);   <span class="comment">//  关闭 父写</span></span><br><span class="line">                <span class="built_in">waitpid</span>(pid,<span class="literal">NULL</span>,<span class="number">0</span>);    <span class="comment">//  阻塞回收子进程      </span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(pid==<span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">char</span> buf[<span class="number">256</span>];</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">1</span>]);   <span class="comment">//  关闭 子写</span></span><br><span class="line">                <span class="built_in">read</span>(fd[<span class="number">0</span>],buf,<span class="keyword">sizeof</span> buf);</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">0</span>]);   <span class="comment">//  关闭 子读</span></span><br><span class="line">                <span class="built_in">write</span>(STDOUT_FILENO,buf,<span class="built_in">strlen</span>(buf));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./pipe_1.out </span><br><span class="line">hello</span><br></pre></td></tr></table></figure></li>
-</ul>
-<ul>
-<li>父子进程实现<code>ls | wc -l</code>，xd同理（记得关闭不适用管道的进程的r/w端）<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">char</span> *err)</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 父进程实现 ls ；子进程利用父进程ls的结果使用wc命令；子进程命令结果输送到终端</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> fd[<span class="number">2</span>];</span><br><span class="line">        <span class="built_in">pipe</span>(fd);</span><br><span class="line">        <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">        <span class="keyword">if</span>(pid==<span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">0</span>]);   <span class="comment">//   父进程关闭读段,但是子进程的读端没有关闭，使得数据单向流动</span></span><br><span class="line">                <span class="built_in">dup2</span>(fd[<span class="number">1</span>],STDOUT_FILENO);      <span class="comment">//  向终端的输出stdout 重定向 到管道的写端fd[1]</span></span><br><span class="line">                <span class="built_in">execlp</span>(<span class="string">&quot;ls&quot;</span>,<span class="string">&quot;ls&quot;</span>,<span class="string">&quot;-ahl&quot;</span>,<span class="literal">NULL</span>);  <span class="comment">//  execlp(可执行文件名字,命令参数,NULL);       这里依靠execlp 执行程序结束后隐式的关闭副进程写</span></span><br><span class="line">端，下同理</span><br><span class="line">                <span class="comment">//  execlp后面的代码只有在execlp失败了才会走到 所以不用wait了</span></span><br><span class="line">                <span class="built_in">sys_err</span>(<span class="string">&quot;exclp error&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(pid&gt;<span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">close</span>(fd[<span class="number">1</span>]);   <span class="comment">//   关闭子进程写端</span></span><br><span class="line">                <span class="built_in">dup2</span>(fd[<span class="number">0</span>],STDIN_FILENO);       <span class="comment">//  从终端读入stdin 重定向为 从管道读端读入fd[0]</span></span><br><span class="line">                <span class="built_in">execlp</span>(<span class="string">&quot;wc&quot;</span>,<span class="string">&quot;wc&quot;</span>,<span class="string">&quot;-l&quot;</span>,<span class="literal">NULL</span>);    <span class="comment">//   execlp</span></span><br><span class="line">                <span class="built_in">sys_err</span>(<span class="string">&quot;execlp error&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//   简记 dup2(a,b) 将文件描述符a拷贝给b        之后对b做的事情就相当于对a做的</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./pipe_shc.out </span><br><span class="line"><span class="number">22</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="有名管道FIFO"><a href="#有名管道FIFO" class="headerlink" title="有名管道FIFO"></a>有名管道FIFO</h2><ul>
-<li><p><code>FIFO</code> 常被称为命名管道，以区分管道<code>(pipe)</code>。管道<code>(pipe)</code>只能用于“有血缘关系”的进程间。但通过 <code>FIFO</code>，不相关的进程也能交换数据。</p>
-</li>
-<li><p><code>FIFO </code>是 <code>Linux</code> 基础文件类型中的一种。但，<code>FIFO</code> 文件在磁盘上没有数据块（所以没有大小），仅仅用来标识内核中一条通道。各进程可以打开这个文件进行 <code>read/write</code>，实际上是在读写内核通道，这样就实现了进程间通信。</p>
-</li>
-<li><p>真有意思，<code>fifo</code>作为文件系统中的一种文件，内容居然存在于内存。使用<code>fifo</code>的进程退出后，<code>fifo</code>文件将继续保存在文件系统中以便后续使用。</p>
-</li>
-<li><p>创建</p>
-<ul>
-<li>命令：<code>mkfifo</code></li>
-<li>函数：<code>int mkfifo(const char *pathname, mode_t mode);</code></li>
-</ul>
-</li>
-<li><p>打开</p>
-<ul>
-<li>读端：<code>int fd1 = open(&quot;./fifo2&quot;,O_RDONLY);</code></li>
-<li>写端：<code>int fd1 = open(&quot;./fifo2&quot;,O_WRONLY);</code></li>
-</ul>
-</li>
-<li><p>注意</p>
-<ul>
-<li>以<code>O_RDONLY</code>且没有<code>O_NONBLOCK</code>打开一个<code>fifo</code>时，会阻塞等待指导有一个进程对<code>fifo</code>执行写打开。</li>
-<li>所以当一个进程需要对<code>fifo</code>写读时，一般使用<code>O_RDWR</code></li>
-<li>迷惑：程序里用<code>mkfifo</code>创建一个管道时，对管道的默认权限好像不可以写。</li>
-<li>似乎不是重点？日后用到再补充。<br><img src="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/2021-11-29-15-49-03.png"></li>
-</ul>
-</li>
-<li><p><code>fifo_shc1</code>写，<code>fifo_shc2</code>读</p>
-<ul>
-<li><p><code>fifo_shc1</code></p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="comment">//  这个权限很迷，貌似不可以写</span></span><br><span class="line"><span class="comment">//      int fd1 = mkfifo(&quot;./fifo2&quot;,0664);</span></span><br><span class="line">        <span class="keyword">int</span> fd1 = open(<span class="string">&quot;./fifo2&quot;</span>,O_RDWR);</span><br><span class="line">        <span class="keyword">int</span> fd2 = open(<span class="string">&quot;./waitpid_shc.c&quot;</span>,O_RDONLY);</span><br><span class="line">        <span class="keyword">char</span> buf[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">int</span> len = read(fd2,buf,<span class="keyword">sizeof</span> buf);</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>,len);</span><br><span class="line">                write(fd1,<span class="string">&quot;hhhhhhhh&quot;</span>,<span class="built_in">strlen</span>(<span class="string">&quot;hhhhhhhh&quot;</span>));</span><br><span class="line">                <span class="comment">//  只有第一次读的时候有len!=0 一次数据就读完了。需要用lseek移动文件指针。</span></span><br><span class="line">                <span class="keyword">if</span>(len) </span><br><span class="line">                &#123;</span><br><span class="line">                        write(fd1,buf,len);</span><br><span class="line">                        write(STDOUT_FILENO,buf,len);</span><br><span class="line">                &#125;</span><br><span class="line">                sleep(<span class="number">2</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        close(fd1);</span><br><span class="line">        close(fd2);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li><p><code>fifo_shc2</code></p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;SADSADADSADASDS\n&quot;</span>);</span><br><span class="line">        <span class="keyword">int</span> fd1 = open(<span class="string">&quot;/home/shc/code/revier/fifo2&quot;</span>,O_RDWR);</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;KKKK\n&quot;</span>);</span><br><span class="line">        <span class="keyword">if</span>(fd1==<span class="number">-1</span>)&#123;</span><br><span class="line">                perror(<span class="string">&quot;open wrong&quot;</span>);</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;???\n&quot;</span>);</span><br><span class="line">        <span class="keyword">char</span> buf[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;??\n&quot;</span>);</span><br><span class="line">                <span class="keyword">int</span> len = read(fd1,buf,<span class="keyword">sizeof</span> buf);</span><br><span class="line">                write(STDOUT_FILENO,buf,len);</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>,len);</span><br><span class="line">                sleep(<span class="number">3</span>);</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">        close(fd1);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
-<li><p>结果</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">SADSADADSADASDS</span><br><span class="line">KKKK</span><br><span class="line">???</span><br><span class="line">??</span><br><span class="line">hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh56</span><br><span class="line">??</span><br><span class="line">hhhhhhhh8</span><br><span class="line">??</span><br><span class="line"><span class="comment">#include&lt;unistd.h&gt;</span></span><br><span class="line"><span class="comment">#include&lt;sys/wait.h&gt;</span></span><br><span class="line">...若干文件内容 只读了一次就读完了</span><br><span class="line">hhhhhhhh783</span><br><span class="line">??</span><br><span class="line">hhhhhhhh8</span><br><span class="line">??</span><br><span class="line">hhhhhhhhhhhhhhhh16</span><br><span class="line">??</span><br><span class="line">hhhhhhhh8</span><br><span class="line">??</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<h2 id="存储映射I-O-mmap"><a href="#存储映射I-O-mmap" class="headerlink" title="存储映射I/O mmap"></a><code>存储映射I/O mmap</code></h2><h3 id="void-mmap-void-addr-size-t-length-int-prot-int-flags-int-fd-off-t-offset"><a href="#void-mmap-void-addr-size-t-length-int-prot-int-flags-int-fd-off-t-offset" class="headerlink" title="void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);"></a><code>void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);</code></h3><ul>
-<li><p>存储映射（<code>memory-mapped I/O</code>）能将一个磁盘文件映射到存储空间的一个缓冲区上，于是，当从缓冲区读取数据时，就相当于读文件中的相应字节。与此类似，将数据写入缓冲区时，相应字节就自动写入文件。这样，就可以在不用<code>read，write</code>的情况下，执行<code>I/O</code>。（<code>mmap</code>将文件映射到用户区，所以可以使用C库函数，在用户区进行读写，不必进入内核，因而省去了使用<code>read/write</code>）</p>
-</li>
-<li><p>所以用mmap好处：可以用对指针进行操作的库函数；且是我知道的所有这些进程间通信方式中最快的。</p>
-</li>
-<li><p>父子进程共享</p>
-<ul>
-<li> <code>mmap</code>映射区</li>
-<li>文件描述符（打开的文件结构体）</li>
-</ul>
-</li>
-<li><p>上图！<br><img src="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/2021-11-29-22-54-41.png"></p>
-</li>
-<li><p><code>void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);</code></p>
-<ul>
-<li><code>addr</code>：指定映射存储区的起始地址。通常NULL，系统自动分配</li>
-<li><code>length</code>：映射的字节数，即指定存储映射区大小。&lt;=文件实际大小</li>
-<li><code>prot</code>：映射存储区的读写属性<ul>
-<li><code>PROT_READ</code>：映射区可读</li>
-<li><code>PROT_WRITE</code>：映射区可写</li>
-<li><code>PROT_EXEC</code>：映射区可执行</li>
-<li><code>PROT_NON</code>E：映射区不可访问</li>
-</ul>
-</li>
-<li><code>flags</code>：标注映射存储区的属性。<ul>
-<li><code>MAP_SHARED</code>：对存储映射区的修改会反应到物理磁盘上</li>
-<li><code>MAP_PRIVATE</code></li>
-<li><code>MAP_ANONYMOUS / MAP_ANON</code>：匿名</li>
-</ul>
-</li>
-<li><code>fd</code>：用于创建存储映射区的文件的文件描述符</li>
-<li><code>offset</code>：要映射字节在文件中的起始偏移量。应是4K的整数倍，一般为0。</li>
-</ul>
-</li>
-<li><p><code>return</code></p>
-<ul>
-<li>成功：映射区的首地址</li>
-<li>失败：<code>return MAP_FAILED(void*(-1);   + errno</code></li>
-</ul>
-</li>
-<li><p><strong>注意</strong>（黑马）</p>
-<ul>
-<li> 用于创建映射区的文件（<code>fd</code>）大小为 0，实际指定非0大小创建映射区<code>（length）</code>，出 “总线错误 <code>SIGBUS</code>”。</li>
-<li> 用于创建映射区的文件<code>（fd）</code>大小为 0，实际制定0大小创建映射区<code>（length）</code>， 出 “无效参数 <code>Invalid</code>”。</li>
-<li> 用于创建存储映射区的文件读写属性为，只读<code>（open时的mode）</code>。存储映射区属性<code>（prot）</code>为 读、写<code>（PROT_READ|PROT_WRITE）</code>。 出 “无效参数”</li>
-<li> 创建映射区的过程中，隐含着一次对映射文件的读操作。因此<code>mmap</code>创建映射区，必定需要<code>read</code>权限。</li>
-<li> 当访问权限<code>（flags）</code>指定为 “共享”<code>MAP_SHARED</code>是， <code>mmap</code>的<code>（prot）</code>读写权限，应该 <code>&lt;=</code>文件的open权限。只写不行。</li>
-<li> 映射区的释放与文件关闭无关。只要映射建立成功，文件可以立即关闭。文件描述符<code>fd</code>，在<code>mmap</code>创建存储映射区完成即可关闭。后续访问文件，用地址（即mmap返回的）指针访问。</li>
-<li><code> offset</code> 必须是 <code>4096</code>的整数倍。（<code>MMU</code> 映射的最小单位 <code>4k</code> ）</li>
-<li> 对申请的映射区内存，不能越界访问</li>
-<li> <code>munmap</code>用于释放的 址，必须是<code>mmap</code>申请返回的地址。</li>
-<li> 映射区访问权限<code>flags</code>为 “私有”<code>MAP_PRIVATE</code>, 对内存所做的所有修改，只在内存有效，不会反应到物理磁盘</li>
-<li> 映射区访问权限<code>flags</code>为 “私有”<code>MAP_PRIVATE</code>, 只需要<code>open</code>文件时，有读权限，用于创建映射区即可。</li>
-<li><code> munmap</code> 传入的地址一定是 <code>mmap</code> 的返回地址。坚决杜绝指针<code>++</code>操作</li>
-<li> <code>mmap</code> 创建映射区出错概率非常高，一定要检查返回值，确保映射区建立成功再进行后续操作。</li>
-</ul>
-</li>
-<li><p><code>mmap</code>保险调用</p>
-<ul>
-<li><code>fd = open(&quot; &quot;,O_RDWR);</code></li>
-<li><code>mmap(NULL,文件大小,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);</code></li>
-</ul>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">SYNOPSIS</span></span><br><span class="line"><span class="comment">      #include &lt;sys/mman.h&gt;</span></span><br><span class="line"><span class="comment">自理:</span></span><br><span class="line"><span class="comment">    通过mmap映射 可以不进行read write，只用地址指针就对磁盘文件进行读写I/O操作。</span></span><br><span class="line"><span class="comment">    mmap将文件映射到用户区，所以可以使用C库函数，在用户区进行读写，不必进入内核，因而省去了使用read/write</span></span><br><span class="line"><span class="comment">      void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);</span></span><br><span class="line"><span class="comment">      int munmap(void *addr, size_t length);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* str)</span></span>&#123;perror(str); <span class="built_in">exit</span>(<span class="number">1</span>);&#125;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> fd = open(<span class="string">&quot;./test_mmap3.txt&quot;</span>,O_RDONLY|O_CREAT|O_TRUNC,<span class="number">0664</span>);</span><br><span class="line">    <span class="keyword">if</span>(fd==<span class="number">-1</span>) sys_err(<span class="string">&quot;open erorr&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    ftruncate(fd,<span class="number">100</span>);  <span class="comment">//  需要写权限。</span></span><br><span class="line">    <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END); <span class="comment">//  返回从文件起始到 SEEK_END再向后便宜0字节的大小，即文件大小</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  建立存储映射区</span></span><br><span class="line">    <span class="keyword">char</span> *p = mmap(<span class="literal">NULL</span>,len,PROT_READ|PROT_WRITE,MAP_SHARED,fd,<span class="number">0</span>); </span><br><span class="line">    <span class="keyword">if</span>(p==MAP_FAILED)   sys_err(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line"></span><br><span class="line">    close(fd);  <span class="comment">//  建立完之后即可关闭文件描述符！</span></span><br><span class="line">    </span><br><span class="line">    <span class="built_in">strcpy</span>(p,<span class="string">&quot;hello void *mmap(void* addr , size_t length,int prot,int flags,int fd,off_t offset);\n&quot;</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;--------------%s-----------------\n&quot;</span>,p);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  释放</span></span><br><span class="line">    <span class="keyword">int</span> ret = munmap(p,len);  </span><br><span class="line">    <span class="keyword">if</span>(ret==<span class="number">-1</span>) sys_err(<span class="string">&quot;munmap error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 文件扩容100字节</span></span><br><span class="line"><span class="comment">// lseek(fd,99,SEEK_END);   //  将文件指针从SEEK_END向后移动9个字节</span></span><br><span class="line"><span class="comment">// write(fd,&quot;\0&quot;,1);   //  再写一个 </span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul>
-<li><p>父子进程使用 <code>mmap</code> 进程间通信：</p>
-<ul>
-<li>父进程 先 创建映射区。 <code>open (O_RDWR)</code> <code>mmap(MAP_SHARED)</code>;</li>
-<li>指定 <code>MAP_SHARED</code> 权限</li>
-<li><code>fork()</code> 创建子进程。</li>
-<li>一个进程读， 另外一个进程写。</li>
-</ul>
-</li>
-<li><p>无血缘关系进程间 <code>mmap</code> 通信（<strong>重点</strong>）                  </p>
-<ul>
-<li>两个进程 打开同一个文件，创建映射区。</li>
-<li>指定<code>flags</code> 为 <code>MAP_SHARED。</code></li>
-<li>一个进程写入，另外一个进程读出。</li>
-<li>不同于<code>fifo</code>，<code>mmap</code>存储映射区中的数据可以重复读取。</li>
-</ul>
-</li>
-<li><p>匿名映射<code>flags</code>：只能用于血缘关系进程间通信。</p>
-<ul>
-<li>即不需要创建临时文件</li>
-<li><code>Linux</code>下<ul>
-<li><code>int *p = (int *)mmap(NULL,大小, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);</code><ul>
-<li><code>length</code>：任意</li>
-<li><code>flags：MAP_ANONYMOUS/MAP_ANON</code></li>
-<li><code>fd</code>：-1</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><code>Unix</code>下<ul>
-<li><code>fd = open(&quot;/dev/zero&quot;, O_RDWR);</code></li>
-<li><code> p = mmap(NULL, size, PROT_READ|PROT_WRITE, MMAP_SHARED, fd, 0);</code></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>使用<code>mmap</code>进行父子关系进程通信代码。</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> var = <span class="number">100</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> *p;</span><br><span class="line">    <span class="keyword">pid_t</span> pid;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> fd;</span><br><span class="line">    fd = open(<span class="string">&quot;temp&quot;</span>, O_RDWR|O_CREAT|O_TRUNC, <span class="number">0644</span>);</span><br><span class="line">    <span class="keyword">if</span>(fd &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        perror(<span class="string">&quot;open error&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    ftruncate(fd, <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//p = (int *)mmap(NULL, 4, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);</span></span><br><span class="line">    p = (<span class="keyword">int</span> *)mmap(<span class="literal">NULL</span>, <span class="number">4</span>, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span>(p == MAP_FAILED)&#123;		<span class="comment">//注意:不是p == NULL</span></span><br><span class="line">        perror(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    close(fd);					<span class="comment">//映射区建立完毕,即可关闭文件</span></span><br><span class="line"></span><br><span class="line">    pid = fork();				<span class="comment">//创建子进程</span></span><br><span class="line">    <span class="keyword">if</span>(pid == <span class="number">0</span>)&#123;</span><br><span class="line">      *p = <span class="number">7000</span>;               <span class="comment">// 写共享内存</span></span><br><span class="line">        var = <span class="number">1000</span>;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;child, *p = %d, var = %d\n&quot;</span>, *p, var);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        sleep(<span class="number">1</span>);</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;parent, *p = %d, var = %d\n&quot;</span>, *p, var);     <span class="comment">// 读共享内存</span></span><br><span class="line">        wait(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> ret = munmap(p, <span class="number">4</span>);				<span class="comment">//释放映射区</span></span><br><span class="line">        <span class="keyword">if</span> (ret == <span class="number">-1</span>) &#123;</span><br><span class="line">            perror(<span class="string">&quot;munmap error&quot;</span>);</span><br><span class="line">            <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li><p>使用<code>mmap</code>进行非血缘关系进程通信代码。</p>
-<ul>
-<li>结构<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ tree .</span><br><span class="line">.</span><br><span class="line">├── include</span><br><span class="line">│   ├── student.h</span><br><span class="line">│   └── sys_err.h</span><br><span class="line">└── src</span><br><span class="line">    ├── mmap_shc.c</span><br><span class="line">    ├── mmap_shc.out</span><br><span class="line">    ├── mmap_shc_read.c</span><br><span class="line">    ├── mmap_shc_read.out</span><br><span class="line">    ├── mmap_shc_write.c</span><br><span class="line">    ├── mmap_shc_write.out</span><br><span class="line">    ├── sys_err.c</span><br><span class="line"><span class="comment">//命令</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ gcc mmap_shc_read.c sys_err.c -o mmap_shc_raed.out -Iinclude -Wall</span><br><span class="line"></span><br><span class="line"><span class="comment">// 整体结构及头文件</span></span><br><span class="line"><span class="comment">// sys_err.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// sys_err.c</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *name)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(name);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li>写<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/student.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> fd = open(argv[<span class="number">1</span>],O_RDWR|O_TRUNC|O_CREAT,<span class="number">0664</span>);</span><br><span class="line">    ftruncate(fd,<span class="keyword">sizeof</span> (struct student));</span><br><span class="line">    <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END);</span><br><span class="line"></span><br><span class="line">    unlink(argv[<span class="number">1</span>]);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  建立存储映射区，p指向那那段地方</span></span><br><span class="line">    <span class="comment">//                         存储映射区首地址    映射区长度   对存储映射区权限   是否反应到真实磁盘上 fd 起始偏移量  </span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">p</span> =</span> (struct student*)mmap(<span class="literal">NULL</span>,len,PROT_WRITE|PROT_READ,MAP_SHARED,fd,<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span>(p==MAP_FAILED) sys_err(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  建立完映射区后即可关闭文件</span></span><br><span class="line">    close(fd);  <span class="comment">//  之后就是通过p对内存做事情 不需要文件描述符了 因此关闭</span></span><br><span class="line">    </span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> <span class="title">student</span> =</span> &#123;<span class="number">1</span>,<span class="string">&quot;shc&quot;</span>&#125;;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memcpy</span>(p,&amp;student,<span class="keyword">sizeof</span> student);</span><br><span class="line">        ++student.id;</span><br><span class="line">        usleep(<span class="number">1000000</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    munmap(p,<span class="keyword">sizeof</span> student); <span class="comment">//  释放映射区</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li>读<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/student.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;../include/sys_err.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc,<span class="keyword">char</span> *argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> fd = open(argv[<span class="number">1</span>],O_RDWR);</span><br><span class="line">    <span class="keyword">int</span> len = lseek(fd,<span class="number">0</span>,SEEK_END);</span><br><span class="line"></span><br><span class="line">    unlink(argv[<span class="number">1</span>]);</span><br><span class="line">    <span class="comment">//  建立</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">student</span> *<span class="title">p</span> =</span> (struct student *)mmap(<span class="literal">NULL</span>,len,PROT_READ|PROT_WRITE,MAP_SHARED,fd,<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span>(p==MAP_FAILED) sys_err(<span class="string">&quot;mmap error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    close(fd);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d %s\n&quot;</span>,p-&gt;id,p-&gt;name);</span><br><span class="line">        usleep(<span class="number">2000000</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  释放</span></span><br><span class="line">    munmap(p,<span class="keyword">sizeof</span> student);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;        </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./mmap_shc_write.out temp</span><br><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./mmap_shc_read.out temp</span><br><span class="line">22 shc</span><br><span class="line">24 shc</span><br><span class="line">26 shc</span><br><span class="line">...</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li><p>匿名映射代码</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">懒得写了，下次一定</span><br></pre></td></tr></table></figure></li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/25/Linux-%E8%BF%9B%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/25/Linux-%E8%BF%9B%E7%A8%8B/" class="post-title-link" itemprop="url">Linux-进程(1)</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-25 20:22:47" itemprop="dateCreated datePublished" datetime="2021-11-25T20:22:47+08:00">2021-11-25</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-01 13:33:09" itemprop="dateModified" datetime="2021-12-01T13:33:09+08:00">2021-12-01</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>Linux进程</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/11/25/Linux-%E8%BF%9B%E7%A8%8B/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
-    </div>
 
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/14/static-library-And-shared-object/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/14/static-library-And-shared-object/" class="post-title-link" itemprop="url">未命名</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-11-14 00:09:59 / 修改时间：00:23:52" itemprop="dateCreated datePublished" datetime="2021-11-14T00:09:59+08:00">2021-11-14</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/05/Linux-IO/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/05/Linux-IO/" class="post-title-link" itemprop="url">Linux I/O</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-05 22:08:14" itemprop="dateCreated datePublished" datetime="2021-11-05T22:08:14+08:00">2021-11-05</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-11-24 19:49:00" itemprop="dateModified" datetime="2021-11-24T19:49:00+08:00">2021-11-24</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>Unix I/O</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/11/05/Linux-IO/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/" rel="prev" title="Linux-进程2">
+      <i class="fa fa-chevron-left"></i> Linux-进程2
+    </a></div>
+      <div class="post-nav-item"></div>
     </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
+    
   </article>
   
   
   
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/05/Linux%E5%91%BD%E4%BB%A4%E5%B8%B8%E8%AF%86/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/05/Linux%E5%91%BD%E4%BB%A4%E5%B8%B8%E8%AF%86/" class="post-title-link" itemprop="url">Linux命令常识</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-05 20:38:45" itemprop="dateCreated datePublished" datetime="2021-11-05T20:38:45+08:00">2021-11-05</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-11-06 19:49:00" itemprop="dateModified" datetime="2021-11-06T19:49:00+08:00">2021-11-06</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <ul>
-<li><code>od -c 文件</code><ul>
-<li><code>od</code> 观察文件实际内容</li>
-<li><code>-c</code>以字符方式打印文件内容</li>
-</ul>
-</li>
-<li><code>ln -s</code><ul>
-<li>创建软链接，又称符号链接。建议采用绝对路径。</li>
-<li><code>shc@shc-virtual-machine:~/code/revier$ ln -s test02.txt ./soft_test02</code></li>
-</ul>
-</li>
-<li><code>ln</code> <ul>
-<li>创建硬链接。</li>
-<li><code>shc@shc-virtual-machine:~/code/revier$ ln test01.txt ./test01_hard</code></li>
-</ul>
-</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/04/ReStart/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/04/ReStart/" class="post-title-link" itemprop="url">ReStart</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-04 22:08:14" itemprop="dateCreated datePublished" datetime="2021-11-04T22:08:14+08:00">2021-11-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-11-05 15:16:22" itemprop="dateModified" datetime="2021-11-05T15:16:22+08:00">2021-11-05</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E7%A2%8E%E7%A2%8E%E5%BF%B5/" itemprop="url" rel="index"><span itemprop="name">碎碎念</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
-<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
-<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
-<li>什么环境都没得了，幸好笔记还都在</li>
-<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
-<li>继续记录吧。</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/04/test02/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/04/test02/" class="post-title-link" itemprop="url">test02</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-11-04 20:30:39 / 修改时间：22:02:44" itemprop="dateCreated datePublished" datetime="2021-11-04T20:30:39+08:00">2021-11-04</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Blog-test/" itemprop="url" rel="index"><span itemprop="name">Blog_test</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>如何插入图片</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/11/04/test02/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/04/test/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/04/test/" class="post-title-link" itemprop="url">test</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-11-04 19:26:43 / 修改时间：19:49:00" itemprop="dateCreated datePublished" datetime="2021-11-04T19:26:43+08:00">2021-11-04</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Blog-test/" itemprop="url" rel="index"><span itemprop="name">Blog_test</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>这是摘要</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/11/04/test/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/03/hello-world/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/11/03/hello-world/" class="post-title-link" itemprop="url">Hello World</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2021-11-03 19:00:57" itemprop="dateCreated datePublished" datetime="2021-11-03T19:00:57+08:00">2021-11-03</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-11-04 22:02:03" itemprop="dateModified" datetime="2021-11-04T22:02:03+08:00">2021-11-04</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Blog-test/" itemprop="url" rel="index"><span itemprop="name">Blog_test</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>!</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/11/03/hello-world/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-
-  
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
-  </nav>
 
 
 
@@ -1527,6 +623,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.</span> <span class="nav-text">信号</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E8%A6%81%E7%B4%A0"><span class="nav-number">1.2.</span> <span class="nav-text">信号要素</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%98%BB%E5%A1%9E%E4%BF%A1%E5%8F%B7%E9%9B%86%EF%BC%88%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%EF%BC%89%EF%BC%9B%E6%9C%AA%E5%86%B3%E4%BF%A1%E5%8F%B7%E9%9B%86"><span class="nav-number">1.3.</span> <span class="nav-text">阻塞信号集（信号屏蔽字）；未决信号集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.4.</span> <span class="nav-text">产生信号</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.</span> <span class="nav-text">信号屏蔽字操作函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8D%95%E6%8D%89"><span class="nav-number">1.6.</span> <span class="nav-text">捕捉</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%AE%9E%E7%8E%B0%E6%8D%95%E6%8D%89%E8%BF%87%E7%A8%8B"><span class="nav-number">1.6.1.</span> <span class="nav-text">内核实现捕捉过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signal"><span class="nav-number">1.6.2.</span> <span class="nav-text">signal</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signaction"><span class="nav-number">1.6.3.</span> <span class="nav-text">signaction</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SIGCHLD"><span class="nav-number">1.7.</span> <span class="nav-text">SIGCHLD</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F"><span class="nav-number">1.7.1.</span> <span class="nav-text">产生</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8SIGCHLD%E5%9B%9E%E6%94%B6%E5%AD%90%E8%BF%9B%E7%A8%8B"><span class="nav-number">1.7.2.</span> <span class="nav-text">利用SIGCHLD回收子进程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%86%E8%A7%A3%EF%BC%9A%E4%B8%AD%E6%96%AD%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-number">1.8.</span> <span class="nav-text">了解：中断系统调用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">1.9.</span> <span class="nav-text">一些问题</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
