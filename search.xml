@@ -1,6 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>BUG</title>
+    <url>/2021/09/04/C-Bug/</url>
+    <content><![CDATA[<h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
+<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
+<ul>
+<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
+<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
+<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
+<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
+<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
+<li>(宏的定义域只局限于一个文件) </li>
+<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
+</ul>
+</li>
+<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
+<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
+<li>这段引自博客,链接我真没找到。。</li>
+</ul>
+</li>
+</ul>
+<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
+<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
+<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
+</ul>
+</li>
+<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
+<li><a href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
+</ul>
+<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
+<li>若定义在<code>.cpp</code>文件则会<ul>
+<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
+<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
+</ul>
+</li>
+<li><ol>
+<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
+</ol>
+</li>
+<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
+</ul>
+<h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
+<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
+<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
+<li>或者取消把他内联的想法。交给编译器，听他的。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
+<li>两个头文件相互包含</li>
+<li>若在B的头文件中：<ul>
+<li><ol>
+<li><strong>使用<code>A对象</code>或<code>A对象</code>作为返回值的则要<code>include A.h</code></strong></li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
+</ol>
+</li>
+<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
+<li><ol start="3">
+<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
+<p><code>There is no matching member for call to &#39;find&#39;</code></p>
+<ul>
+<li><strong>原因</strong><ul>
+<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
+</ul>
+</li>
+<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
+<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
+<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
+</ul>
+</li>
+<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
+<li>图片来自<a href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/C-Bug/2021-11-24-09-12-38.png"></li>
+</ul>
+<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
+<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
+<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
+<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li>运行结果<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
+<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
+<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
+<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
+<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
+<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
+<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
+<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
+</ul>
+]]></content>
+      <categories>
+        <category>BUG</category>
+      </categories>
+      <tags>
+        <tag>BUG</tag>
+        <tag>小白血泪史</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Linux I/O</title>
     <url>/2021/11/05/Linux-IO/</url>
     <content><![CDATA[<p>Unix I/O</p>
@@ -227,133 +354,6 @@
       </categories>
       <tags>
         <tag>Linux</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>BUG</title>
-    <url>/2021/09/04/C-Bug/</url>
-    <content><![CDATA[<h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
-<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
-<ul>
-<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
-<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
-<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
-<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
-<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
-<li>(宏的定义域只局限于一个文件) </li>
-<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
-</ul>
-</li>
-<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
-<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
-<li>这段引自博客,链接我真没找到。。</li>
-</ul>
-</li>
-</ul>
-<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
-<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
-<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
-</ul>
-</li>
-<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
-<li><a href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
-</ul>
-<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
-<li>若定义在<code>.cpp</code>文件则会<ul>
-<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
-<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
-</ul>
-</li>
-<li><ol>
-<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
-</ol>
-</li>
-<li><ol start="2">
-<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
-</ol>
-</li>
-<li><ol start="3">
-<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
-</ol>
-</li>
-<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
-</ul>
-<h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
-<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
-<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
-<li>或者取消把他内联的想法。交给编译器，听他的。</li>
-</ul>
-</li>
-</ul>
-<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
-<li>两个头文件相互包含</li>
-<li>若在B的头文件中：<ul>
-<li><ol>
-<li><strong>使用<code>A对象</code>或<code>A对象</code>作为返回值的则要<code>include A.h</code></strong></li>
-</ol>
-</li>
-<li><ol start="2">
-<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
-</ol>
-</li>
-<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
-<li><ol start="3">
-<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
-</ol>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
-<p><code>There is no matching member for call to &#39;find&#39;</code></p>
-<ul>
-<li><strong>原因</strong><ul>
-<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
-</ul>
-</li>
-<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
-<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
-<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
-</ul>
-</li>
-<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
-<li>图片来自<a href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/C-Bug/2021-11-24-09-12-38.png"></li>
-</ul>
-<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
-<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
-<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
-<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-<li>运行结果<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-</ul>
-<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
-
-
-<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
-<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
-<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
-<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
-<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
-<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
-<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
-<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
-</ul>
-]]></content>
-      <categories>
-        <category>BUG</category>
-      </categories>
-      <tags>
-        <tag>BUG</tag>
-        <tag>小白血泪史</tag>
       </tags>
   </entry>
   <entry>
@@ -919,12 +919,13 @@
 <span id="more"></span>
 
 <h2 id="性质"><a href="#性质" class="headerlink" title="性质"></a>性质</h2><ul>
-<li><p>线程间共享</p>
-<ul>
+<li>线程间共享<ul>
 <li>bss。全局变量？、</li>
 </ul>
 </li>
-<li><h2 id="线程间不共享"><a href="#线程间不共享" class="headerlink" title="线程间不共享"></a>线程间不共享</h2><h2 id="控制原语"><a href="#控制原语" class="headerlink" title="控制原语"></a>控制原语</h2><h3 id="线程创建"><a href="#线程创建" class="headerlink" title="线程创建"></a>线程创建</h3><h4 id="pthread-ceate"><a href="#pthread-ceate" class="headerlink" title="pthread_ceate"></a><code>pthread_ceate</code></h4></li>
+<li>线程间不共享</li>
+</ul>
+<h2 id="控制原语"><a href="#控制原语" class="headerlink" title="控制原语"></a>控制原语</h2><h3 id="线程创建"><a href="#线程创建" class="headerlink" title="线程创建"></a>线程创建</h3><h4 id="pthread-ceate"><a href="#pthread-ceate" class="headerlink" title="pthread_ceate"></a><code>pthread_ceate</code></h4><ul>
 <li><p><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></p>
 </li>
 <li><p><code>pthread_t *thread</code>：传出参数，表新创建的子线程 id</p>
@@ -976,8 +977,9 @@
 <ul>
 <li><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></li>
 <li>最后一个参数是传给新线程函数体<code>start_routine</code>的参数</li>
-<li>注意<code>arg</code>可能会在主线程中发生改变。<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 不可以 int* -&gt; void* -&gt; int* -&gt;提取int</span></span><br><span class="line"><span class="comment">//  因为传进i的地址 i会在主线城中改变</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* err)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  32位 int 4 Byte  指针 4 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  64位 int 4 Byte  指针 8 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> * <span class="title">thread_function</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;   </span><br><span class="line">    <span class="keyword">int</span> i = (<span class="keyword">int</span>)arg;</span><br><span class="line">    <span class="comment">// int i = *((int*)arg);    wrong！</span></span><br><span class="line">    sleep(i);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;i am the %dth thread , pid = %d , tid = %lu\n&quot;</span>,i,getpid(),pthread_self());  <span class="comment">//pthread_self 返回当前线程ID</span></span><br><span class="line">    <span class="keyword">return</span> ((<span class="keyword">void</span>*)<span class="number">0</span>);  <span class="comment">//  这就是线程的退出码吧</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pthread_t</span> tid;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>(;i!=<span class="number">5</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 不可以 int* -&gt; void* -&gt; int 因为传进i的地址 i会在主线城中改变</span></span><br><span class="line">        <span class="keyword">int</span> ret = pthread_create(&amp;tid,<span class="literal">NULL</span>,thread_function,(<span class="keyword">void</span>*)i);   </span><br><span class="line">        <span class="keyword">if</span>( ret!=<span class="number">0</span>)</span><br><span class="line">            sys_err(<span class="string">&quot;pthread error&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    sleep(<span class="number">20</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Main : i  = %d , pid = %d , tid = %ld\n&quot;</span>,i,getpid(),pthread_self());</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 正解</span></span><br><span class="line">i am the <span class="number">0</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684367210240</span></span><br><span class="line">i am the <span class="number">1</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684358817536</span></span><br><span class="line">i am the <span class="number">2</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684350424832</span></span><br><span class="line">i am the <span class="number">3</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684342032128</span></span><br><span class="line">i am the <span class="number">4</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684333639424</span></span><br><span class="line">Main : i  = <span class="number">5</span> , pid = <span class="number">4916</span> , tid = <span class="number">140684375734080</span></span><br></pre></td></tr></table></figure>
-<h3 id="线程终止"><a href="#线程终止" class="headerlink" title="线程终止"></a>线程终止</h3></li>
+<li>注意<code>arg</code>可能会在主线程中发生改变。<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 不可以 int* -&gt; void* -&gt; int* -&gt;提取int</span></span><br><span class="line"><span class="comment">//  因为传进i的地址 i会在主线城中改变</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* err)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  32位 int 4 Byte  指针 4 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  64位 int 4 Byte  指针 8 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> * <span class="title">thread_function</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;   </span><br><span class="line">    <span class="keyword">int</span> i = (<span class="keyword">int</span>)arg;</span><br><span class="line">    <span class="comment">// int i = *((int*)arg);    wrong！</span></span><br><span class="line">    sleep(i);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;i am the %dth thread , pid = %d , tid = %lu\n&quot;</span>,i,getpid(),pthread_self());  <span class="comment">//pthread_self 返回当前线程ID</span></span><br><span class="line">    <span class="keyword">return</span> ((<span class="keyword">void</span>*)<span class="number">0</span>);  <span class="comment">//  这就是线程的退出码吧</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pthread_t</span> tid;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>(;i!=<span class="number">5</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 不可以 int* -&gt; void* -&gt; int 因为传进i的地址 i会在主线城中改变</span></span><br><span class="line">        <span class="keyword">int</span> ret = pthread_create(&amp;tid,<span class="literal">NULL</span>,thread_function,(<span class="keyword">void</span>*)i);   </span><br><span class="line">        <span class="keyword">if</span>( ret!=<span class="number">0</span>)</span><br><span class="line">            sys_err(<span class="string">&quot;pthread error&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    sleep(<span class="number">20</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Main : i  = %d , pid = %d , tid = %ld\n&quot;</span>,i,getpid(),pthread_self());</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 正解</span></span><br><span class="line">i am the <span class="number">0</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684367210240</span></span><br><span class="line">i am the <span class="number">1</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684358817536</span></span><br><span class="line">i am the <span class="number">2</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684350424832</span></span><br><span class="line">i am the <span class="number">3</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684342032128</span></span><br><span class="line">i am the <span class="number">4</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684333639424</span></span><br><span class="line">Main : i  = <span class="number">5</span> , pid = <span class="number">4916</span> , tid = <span class="number">140684375734080</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="线程终止"><a href="#线程终止" class="headerlink" title="线程终止"></a>线程终止</h3><ul>
 <li>进程中的任意线程调用<code>exit</code>，那么整个进程都会终止。即，如果默认的动作是终止线程，那么发送到线程的信号就会终止整个进程</li>
 <li>单个线程退出方式<ul>
 <li>线程可以简单的从启动例程中返回，返回值是线程的退出码</li>
@@ -991,7 +993,19 @@
 <li><code>pthread_exit</code> 或者 <code>return</code> 返回的指针所指向的内存单元必须是全局的或者是用 <code>malloc</code> 分配的，不能在线程函数的栈上分配，因为当其它线程得到这个返回指针时线程函数已经退出了。</li>
 </ul>
 <h4 id="int-pthread-join-pthread-t-thread-void-rval-ptr"><a href="#int-pthread-join-pthread-t-thread-void-rval-ptr" class="headerlink" title="int pthread_join(pthread_t thread, void **rval_ptr);"></a><code>int pthread_join(pthread_t thread, void **rval_ptr);</code></h4><ul>
-<li>```<br>对比记忆：<br>进程中：main 返回值、exit 参数–&gt;int；等待子进程结束 wait 函数参数–&gt;int *<br>线程中：线程主函数返回值、pthread_exit–&gt;void *；等待线程结束 pthread_join 函数参数–&gt;void **<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">- 调用线程将一直阻塞，直到指定线程调用`pthread_exit`、从启动例程中返回或者被取消。</span><br><span class="line">  - 如果调用`pthread_exit`，那么`rval_ptr`就包含`pthread_exit`送入的参数。</span><br><span class="line">  - 如果线程简单的从它的启动例程返回，`rval_ptr`就包含返回码。</span><br><span class="line">  - 如果线程被取消，由`rval_ptr`指定的内存单元就设置为`PTHREAD_CANCELED`</span><br><span class="line">- 如果对线程返回值不感兴趣，`rval_ptr`就设置为`NULL`</span><br><span class="line">- 还可以通过`pthread_join`设置线程分离。</span><br><span class="line">- 线程中不存在父子关系，只有新线程和主线程之分。任何一个线程得到另一个线程的`pid`之后都可以去`join`</span><br><span class="line">- 代码</span><br><span class="line">```c</span><br><span class="line">#include&lt;unistd.h&gt; </span><br><span class="line">#include&lt;pthread.h&gt; </span><br><span class="line">#include&lt;string.h&gt; </span><br><span class="line">#include&lt;stdlib.h&gt;</span><br><span class="line">#include&lt;stdio.h&gt;</span><br><span class="line">void sys_err(const char *err,const int ret)&#123;</span><br><span class="line">        fprintf(stderr, &quot;%s error: %s\n&quot;, err,strerror(ret));</span><br><span class="line">        exit(1);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct foo</span><br><span class="line">&#123; </span><br><span class="line">        int a; </span><br><span class="line">        char name[256]; </span><br><span class="line">&#125;;       </span><br><span class="line"> </span><br><span class="line">void* tfn1(void *arg) </span><br><span class="line">&#123; </span><br><span class="line">        struct foo *pf = malloc(sizeof(struct foo)); </span><br><span class="line">        pf-&gt;a = 1; </span><br><span class="line">        strcpy(pf-&gt;name,&quot;shc&quot;); </span><br><span class="line">        return (void*) pf; </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">void* tfn2(void *arg) </span><br><span class="line">&#123; </span><br><span class="line">        struct foo *pf = malloc(sizeof(struct foo)); </span><br><span class="line">        pf-&gt;a = 2; </span><br><span class="line">        strcpy(pf-&gt;name,&quot;ssp&quot;); </span><br><span class="line">        pthread_exit((void*)pf); </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">int main() </span><br><span class="line">&#123; </span><br><span class="line">        pthread_t tid1,tid2; </span><br><span class="line">        int err = pthread_create(&amp;tid1,NULL,tfn1,NULL); </span><br><span class="line">        if(err!=0)  </span><br><span class="line">                sys_err(&quot;pthread_create&quot;,err); </span><br><span class="line">        err = pthread_create(&amp;tid2,NULL,tfn2,NULL);      </span><br><span class="line">         </span><br><span class="line">        void *pret1,*pret2; </span><br><span class="line">        err = pthread_join(tid1,&amp;pret1);        // &amp;pret1 即为 void ** pthread_join改变pret1的内容，即改变了pret1的指向。 </span><br><span class="line">        if(err!=0) </span><br><span class="line">                sys_err(&quot;pthread_join&quot;,err); </span><br><span class="line">        err = pthread_join(tid2,&amp;pret2); </span><br><span class="line">         </span><br><span class="line">        printf(&quot;%d %s\n&quot;,((struct foo*)pret1)-&gt;a,((struct foo*)pret1)-&gt;name); </span><br><span class="line">                 </span><br><span class="line">        printf(&quot;%d %s\n&quot;,((struct foo*)pret2)-&gt;a,((struct foo*)pret2)-&gt;name);    </span><br><span class="line"> </span><br><span class="line">        return 0; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>对比记忆<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">进程中：main 返回值、exit 参数--&gt;int；等待子进程结束 wait 函数参数--&gt;int *</span><br><span class="line">线程中：线程主函数返回值、pthread_exit--&gt;void *；等待线程结束 pthread_join 函数参数--&gt;void **</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>调用线程将一直阻塞，直到指定线程调用<code>pthread_exit</code>、从启动例程中返回或者被取消。<ul>
+<li>如果调用<code>pthread_exit</code>，那么<code>rval_ptr</code>就包含<code>pthread_exit</code>送入的参数。</li>
+<li>如果线程简单的从它的启动例程返回，<code>rval_ptr</code>就包含返回码。</li>
+<li>如果线程被取消，由<code>rval_ptr</code>指定的内存单元就设置为<code>PTHREAD_CANCELED</code></li>
+</ul>
+</li>
+<li>如果对线程返回值不感兴趣，<code>rval_ptr</code>就设置为<code>NULL</code></li>
+<li>还可以通过<code>pthread_join</code>设置线程分离。</li>
+<li>线程中不存在父子关系，只有新线程和主线程之分。任何一个线程得到另一个线程的<code>pid</code>之后都可以去<code>join</code></li>
+<li>代码<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pthread.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *err,<span class="keyword">const</span> <span class="keyword">int</span> ret)</span></span>&#123;</span><br><span class="line">        <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;%s error: %s\n&quot;</span>, err,strerror(ret));</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">foo</span></span></span><br><span class="line"><span class="class">&#123;</span> </span><br><span class="line">        <span class="keyword">int</span> a; </span><br><span class="line">        <span class="keyword">char</span> name[<span class="number">256</span>]; </span><br><span class="line">&#125;;       </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">void</span>* <span class="title">tfn1</span><span class="params">(<span class="keyword">void</span> *arg)</span> </span></span><br><span class="line"><span class="function"></span>&#123; </span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">foo</span> *<span class="title">pf</span> =</span> <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(struct foo)); </span><br><span class="line">        pf-&gt;a = <span class="number">1</span>; </span><br><span class="line">        <span class="built_in">strcpy</span>(pf-&gt;name,<span class="string">&quot;shc&quot;</span>); </span><br><span class="line">        <span class="keyword">return</span> (<span class="keyword">void</span>*) pf; </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">void</span>* <span class="title">tfn2</span><span class="params">(<span class="keyword">void</span> *arg)</span> </span></span><br><span class="line"><span class="function"></span>&#123; </span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">foo</span> *<span class="title">pf</span> =</span> <span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(struct foo)); </span><br><span class="line">        pf-&gt;a = <span class="number">2</span>; </span><br><span class="line">        <span class="built_in">strcpy</span>(pf-&gt;name,<span class="string">&quot;ssp&quot;</span>); </span><br><span class="line">        pthread_exit((<span class="keyword">void</span>*)pf); </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span></span><br><span class="line"><span class="function"></span>&#123; </span><br><span class="line">        <span class="keyword">pthread_t</span> tid1,tid2; </span><br><span class="line">        <span class="keyword">int</span> err = pthread_create(&amp;tid1,<span class="literal">NULL</span>,tfn1,<span class="literal">NULL</span>); </span><br><span class="line">        <span class="keyword">if</span>(err!=<span class="number">0</span>)  </span><br><span class="line">                sys_err(<span class="string">&quot;pthread_create&quot;</span>,err); </span><br><span class="line">        err = pthread_create(&amp;tid2,<span class="literal">NULL</span>,tfn2,<span class="literal">NULL</span>);      </span><br><span class="line">         </span><br><span class="line">        <span class="keyword">void</span> *pret1,*pret2; </span><br><span class="line">        err = pthread_join(tid1,&amp;pret1);        <span class="comment">// &amp;pret1 即为 void ** pthread_join改变pret1的内容，即改变了pret1的指向。 </span></span><br><span class="line">        <span class="keyword">if</span>(err!=<span class="number">0</span>) </span><br><span class="line">                sys_err(<span class="string">&quot;pthread_join&quot;</span>,err); </span><br><span class="line">        err = pthread_join(tid2,&amp;pret2); </span><br><span class="line">         </span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d %s\n&quot;</span>,((struct foo*)pret1)-&gt;a,((struct foo*)pret1)-&gt;name); </span><br><span class="line">                 </span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d %s\n&quot;</span>,((struct foo*)pret2)-&gt;a,((struct foo*)pret2)-&gt;name);    </span><br><span class="line"> </span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 </ul>
 <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./pthread_join_shc.out </span><br><span class="line">1 shc</span><br><span class="line">2 ssp</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
@@ -1625,6 +1639,24 @@
       </tags>
   </entry>
   <entry>
+    <title>ReStart</title>
+    <url>/2021/11/04/ReStart/</url>
+    <content><![CDATA[<p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
+<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
+<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
+<li>什么环境都没得了，幸好笔记还都在</li>
+<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
+<li>继续记录吧。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>碎碎念</category>
+      </categories>
+      <tags>
+        <tag>碎碎念</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hello World</title>
     <url>/2021/11/03/hello-world/</url>
     <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>!</p>
@@ -1652,21 +1684,28 @@
       </tags>
   </entry>
   <entry>
-    <title>ReStart</title>
-    <url>/2021/11/04/ReStart/</url>
-    <content><![CDATA[<p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
-<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
-<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
-<li>什么环境都没得了，幸好笔记还都在</li>
-<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
-<li>继续记录吧。</li>
-</ul>
+    <title></title>
+    <url>/2021/11/14/static-library-And-shared-object/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>test</title>
+    <url>/2021/11/04/test/</url>
+    <content><![CDATA[<p>这是摘要</p>
+<span id="more"></span>
+<p>以下是正文</p>
+<h1 id="标题1"><a href="#标题1" class="headerlink" title="标题1"></a>标题1</h1><p>1</p>
+<h2 id="子标题1"><a href="#子标题1" class="headerlink" title="子标题1"></a>子标题1</h2><p>1.1</p>
+<h3 id="子子标题1"><a href="#子子标题1" class="headerlink" title="子子标题1"></a>子子标题1</h3><p>1.1.1</p>
+<h1 id="标题2"><a href="#标题2" class="headerlink" title="标题2"></a>标题2</h1><p>2</p>
+<h2 id="子标题2"><a href="#子标题2" class="headerlink" title="子标题2"></a>子标题2</h2><p>2.2</p>
+<h3 id="子子标题2"><a href="#子子标题2" class="headerlink" title="子子标题2"></a>子子标题2</h3><p>2.2.2</p>
 ]]></content>
       <categories>
-        <category>碎碎念</category>
+        <category>Blog_test</category>
       </categories>
       <tags>
-        <tag>碎碎念</tag>
+        <tag>Blog_test</tag>
       </tags>
   </entry>
   <entry>
@@ -1700,30 +1739,5 @@
       <tags>
         <tag>Blog_test</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>test</title>
-    <url>/2021/11/04/test/</url>
-    <content><![CDATA[<p>这是摘要</p>
-<span id="more"></span>
-<p>以下是正文</p>
-<h1 id="标题1"><a href="#标题1" class="headerlink" title="标题1"></a>标题1</h1><p>1</p>
-<h2 id="子标题1"><a href="#子标题1" class="headerlink" title="子标题1"></a>子标题1</h2><p>1.1</p>
-<h3 id="子子标题1"><a href="#子子标题1" class="headerlink" title="子子标题1"></a>子子标题1</h3><p>1.1.1</p>
-<h1 id="标题2"><a href="#标题2" class="headerlink" title="标题2"></a>标题2</h1><p>2</p>
-<h2 id="子标题2"><a href="#子标题2" class="headerlink" title="子标题2"></a>子标题2</h2><p>2.2</p>
-<h3 id="子子标题2"><a href="#子子标题2" class="headerlink" title="子子标题2"></a>子子标题2</h3><p>2.2.2</p>
-]]></content>
-      <categories>
-        <category>Blog_test</category>
-      </categories>
-      <tags>
-        <tag>Blog_test</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title></title>
-    <url>/2021/11/14/static-library-And-shared-object/</url>
-    <content><![CDATA[]]></content>
   </entry>
 </search>
