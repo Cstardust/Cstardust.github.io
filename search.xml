@@ -1,138 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>BUG</title>
-    <url>/2021/09/04/C-Bug/</url>
-    <content><![CDATA[<h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
-<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
-<ul>
-<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
-<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
-<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
-<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
-<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
-<li>(宏的定义域只局限于一个文件) </li>
-<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
-</ul>
-</li>
-<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
-<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
-<li>这段引自博客,链接我真没找到。。</li>
-</ul>
-</li>
-</ul>
-<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
-<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
-<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
-</ul>
-</li>
-<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
-<li><a href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
-</ul>
-<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
-<li>若定义在<code>.cpp</code>文件则会<ul>
-<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
-<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
-</ul>
-</li>
-<li><ol>
-<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
-</ol>
-</li>
-<li><ol start="2">
-<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
-</ol>
-</li>
-<li><ol start="3">
-<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
-</ol>
-</li>
-<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
-</ul>
-<h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
-<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
-<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
-<li>或者取消把他内联的想法。交给编译器，听他的。</li>
-</ul>
-</li>
-</ul>
-<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
-<li>两个头文件相互包含</li>
-<li>若在B的头文件中：<ul>
-<li><ol>
-<li><strong>使用<code>A对象</code>或<code>A对象</code>作为返回值的则要<code>include A.h</code></strong></li>
-</ol>
-</li>
-<li><ol start="2">
-<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
-</ol>
-</li>
-<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
-<li><ol start="3">
-<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
-</ol>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
-<p><code>There is no matching member for call to &#39;find&#39;</code></p>
-<ul>
-<li><strong>原因</strong><ul>
-<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
-</ul>
-</li>
-<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
-<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
-<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
-</ul>
-</li>
-<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
-<li>图片来自<a href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/C-Bug/2021-11-24-09-12-38.png"></li>
-</ul>
-<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
-<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
-<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
-<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-<li>运行结果<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-</ul>
-<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
-
-
-<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
-<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
-<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
-<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
-<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
-<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
-<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
-<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
-</ul>
-]]></content>
-      <categories>
-        <category>BUG</category>
-      </categories>
-      <tags>
-        <tag>BUG</tag>
-        <tag>小白血泪史</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Linux I/O</title>
     <url>/2021/11/05/Linux-IO/</url>
     <content><![CDATA[<p>Unix I/O</p>
 <span id="more"></span>
 
+
+<ul>
+<li>参考 APUE，牛客以及黑马讲义</li>
+</ul>
 <h1 id="Unix基础知识"><a href="#Unix基础知识" class="headerlink" title="Unix基础知识"></a>Unix基础知识</h1><ul>
 <li><p><strong>系统调用</strong></p>
 <ul>
@@ -353,9 +230,155 @@
       </tags>
   </entry>
   <entry>
+    <title>BUG</title>
+    <url>/2021/09/04/C-Bug/</url>
+    <content><![CDATA[<h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
+<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
+<ul>
+<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
+<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
+<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
+<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
+<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
+<li>(宏的定义域只局限于一个文件) </li>
+<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
+</ul>
+</li>
+<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
+<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
+<li>这段引自博客,链接我真没找到。。</li>
+</ul>
+</li>
+</ul>
+<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
+<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
+<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
+</ul>
+</li>
+<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
+<li><a href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
+</ul>
+<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
+<li>若定义在<code>.cpp</code>文件则会<ul>
+<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
+<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
+</ul>
+</li>
+<li><ol>
+<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
+</ol>
+</li>
+<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
+</ul>
+<h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
+<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
+<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
+<li>或者取消把他内联的想法。交给编译器，听他的。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
+<li>两个头文件相互包含</li>
+<li>若在B的头文件中：<ul>
+<li><ol>
+<li><strong>使用<code>A对象</code>或<code>A对象</code>作为返回值的则要<code>include A.h</code></strong></li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
+</ol>
+</li>
+<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
+<li><ol start="3">
+<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
+<p><code>There is no matching member for call to &#39;find&#39;</code></p>
+<ul>
+<li><strong>原因</strong><ul>
+<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
+</ul>
+</li>
+<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
+<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
+<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
+</ul>
+</li>
+<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
+<li>图片来自<a href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/C-Bug/2021-11-24-09-12-38.png"></li>
+</ul>
+<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
+<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
+<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
+<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li>运行结果<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
+<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
+<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
+<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
+<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
+<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
+<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
+<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
+</ul>
+]]></content>
+      <categories>
+        <category>BUG</category>
+      </categories>
+      <tags>
+        <tag>BUG</tag>
+        <tag>小白血泪史</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux-三级映射</title>
+    <url>/2021/12/03/Linux-%E4%B8%89%E7%BA%A7%E6%98%A0%E5%B0%84/</url>
+    <content><![CDATA[<p>Linux三级映射（未完）</p>
+<span id="more"></span>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Linux-信号</title>
     <url>/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/</url>
-    <content><![CDATA[<h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+    <content><![CDATA[<p>Linux信号</p>
+<span id="more"></span>
+
+<ul>
+<li>参考 APUE，牛客以及黑马讲义</li>
+</ul>
+<h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
 <li>特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送</li>
 <li>信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉</li>
 <li>每个进程收到的所有信号，都是由内核负责发送的，内核处理。</li>
@@ -369,10 +392,17 @@
 <li> 命令产生，如：<code>kill</code> 命令</li>
 </ul>
 </li>
-<li>信号的处理方式:<ul>
-<li> 执行默认动作</li>
-<li> 忽略(丢弃)</li>
-<li> 捕捉(调用户处理函数)<h2 id="信号要素"><a href="#信号要素" class="headerlink" title="信号要素"></a>信号要素</h2></li>
+<li><strong>信号的处理方式:</strong><ul>
+<li><strong>执行默认动作</strong><ul>
+<li><code>Term：</code>终止进程</li>
+<li> <code>Ign：</code> 忽略信号 (默认即时对该种信号忽略操作)</li>
+<li> <code>Core</code>：终止进程，生成 Core 文件。(查验进程死亡原因， 用于 <code>gdb</code> 调试)</li>
+<li> <code>Stop：</code>停止（暂停）进程</li>
+<li> <code>Cont</code>：继续运行进程</li>
+</ul>
+</li>
+<li><strong>忽略(丢弃)</strong></li>
+<li> <strong>捕捉(调用户处理函数)</strong><h2 id="信号要素"><a href="#信号要素" class="headerlink" title="信号要素"></a>信号要素</h2></li>
 </ul>
 </li>
 <li><strong>信号4要素</strong><ul>
@@ -392,7 +422,7 @@
 <li> 1~31常规信号  </li>
 <li> <code>9 SIGKILL ; 19 SIGSTOP</code> 信号，不允许忽略和捕捉，只能执行默认动作。甚至不能将其设置为阻塞。</li>
 <li> 只有每个信号所对应的事件发生了，该信号才会被递送(但不一定递达)<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ <span class="built_in">kill</span> -l</span><br><span class="line"> 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP</span><br><span class="line"> 2) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1</span><br><span class="line">1)  SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM</span><br><span class="line">2)  SIGSTKFLT	17) SIGCHLD	18) SIGCONT	19) SIGSTOP	20) SIGTSTP</span><br><span class="line">3)  SIGTTIN	22) SIGTTOU	23) SIGURG	24) SIGXCPU	25) SIGXFSZ</span><br><span class="line">4)  SIGVTALRM	27) SIGPROF	28) SIGWINCH	29) SIGIO	30) SIGPWR</span><br><span class="line">5)  SIGSYS	34) SIGRTMIN	35) SIGRTMIN+1	36) SIGRTMIN+2	37) SIGRTMIN+3</span><br><span class="line">6)  SIGRTMIN+4	39) SIGRTMIN+5	40) SIGRTMIN+6	41) SIGRTMIN+7	42) SIGRTMIN+8</span><br><span class="line">7)  SIGRTMIN+9	44) SIGRTMIN+10	45) SIGRTMIN+11	46) SIGRTMIN+12	47) SIGRTMIN+13</span><br><span class="line">8)  SIGRTMIN+14	49) SIGRTMIN+15	50) SIGRTMAX-14	51) SIGRTMAX-13	52) SIGRTMAX-12</span><br><span class="line">9)  SIGRTMAX-11	54) SIGRTMAX-10	55) SIGRTMAX-9	56) SIGRTMAX-8	57) SIGRTMAX-7</span><br><span class="line">10) SIGRTMAX-6	59) SIGRTMAX-5	60) SIGRTMAX-4	61) SIGRTMAX-3	62) SIGRTMAX-2</span><br><span class="line">11) SIGRTMAX-1	64) SIGRTMAX	</span><br></pre></td></tr></table></figure></li>
-<li>常规信号的编号，名称，对应事件，默认处理动作。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="number">1</span>) SIGHUP: 当用户退出 shell 时，由该 shell 启动的所有进程将收到这个信号，默认动作为终止进程</span><br><span class="line"><span class="number">2</span>) SIGINT：当用户按下了&lt;Ctrl+C&gt;组合键时，用户终端向正在运行中的由该终端启动的程序发出此信号。默认动</span><br><span class="line">作为终止进程。</span><br><span class="line"><span class="number">3</span>) SIGQUIT：当用户按下&lt;ctrl+\&gt;组合键时产生该信号，用户终端向正在运行中的由该终端启动的程序发出些信</span><br><span class="line">号。默认动作为终止进程。</span><br><span class="line"><span class="number">4</span>) SIGILL：CPU 检测到某进程执行了非法指令。默认动作为终止进程并产生 core 文件</span><br><span class="line"><span class="number">5</span>) SIGTRAP：该信号由断点指令或其他 trap 指令产生。默认动作为终止里程 并产生 core 文件。</span><br><span class="line"><span class="number">6</span>) SIGABRT: 调用 abort 函数时产生该信号。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">7</span>) SIGBUS：非法访问内存地址，包括内存对齐出错，默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">8</span>) SIGFPE：在发生致命的运算错误时发出。不仅包括浮点运算错误，还包括溢出及除数为 <span class="number">0</span> 等所有的算法错误。</span><br><span class="line">默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">9</span>) SIGKILL：无条件终止进程。本信号不能被忽略，处理和阻塞。默认动作为终止进程。它向系统管理员提供了</span><br><span class="line">可以杀死任何进程的方法。</span><br><span class="line"><span class="number">10</span>) SIGUSE1：用户定义 的信号。即程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">11</span>) SIGSEGV：指示进程进行了无效内存访问。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">12</span>) SIGUSR2：另外一个用户自定义信号，程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">13</span>) SIGPIPE：Broken pipe 向一个没有读端的管道写数据。默认动作为终止进程。</span><br><span class="line">北京市昌平区建材城西路金燕龙办公楼一层 电话：<span class="number">400</span><span class="number">-618</span><span class="number">-9090</span></span><br><span class="line"><span class="number">14</span>) SIGALRM: 定时器超时，超时的时间 由系统调用 alarm 设置。默认动作为终止进程。</span><br><span class="line"><span class="number">15</span>) SIGTERM：程序结束信号，与 SIGKILL 不同的是，该信号可以被阻塞和终止。通常用来要示程序正常退出。</span><br><span class="line">执行 shell 命令 Kill 时，缺省产生这个信号。默认动作为终止进程。</span><br><span class="line"><span class="number">16</span>) SIGSTKFLT：Linux 早期版本出现的信号，现仍保留向后兼容。默认动作为终止进程。</span><br><span class="line"><span class="number">17</span>) SIGCHLD：子进程状态发生变化时，父进程会收到这个信号。默认动作为忽略这个信号。</span><br><span class="line"><span class="number">18</span>) SIGCONT：如果进程已停止，则使其继续运行。默认动作为继续/忽略。</span><br><span class="line"><span class="number">19</span>) SIGSTOP：停止进程的执行。信号不能被忽略，处理和阻塞。默认动作为暂停进程。</span><br><span class="line"><span class="number">20</span>) SIGTSTP：停止终端交互进程的运行。按下&lt;ctrl+z&gt;组合键时发出这个信号。默认动作为暂停进程。</span><br><span class="line"><span class="number">21</span>) SIGTTIN：后台进程读终端控制台。默认动作为暂停进程。</span><br><span class="line"><span class="number">22</span>) SIGTTOU: 该信号类似于 SIGTTIN，在后台进程要向终端输出数据时发生。默认动作为暂停进程。</span><br><span class="line"><span class="number">23</span>) SIGURG：套接字上有紧急数据时，向当前正在运行的进程发出些信号，报告有紧急数据到达。如网络带外</span><br><span class="line">数据到达，默认动作为忽略该信号。</span><br><span class="line"><span class="number">24</span>) SIGXCPU：进程执行时间超过了分配给该进程的 CPU 时间 ，系统产生该信号并发送给该进程。默认动作为</span><br><span class="line">终止进程。</span><br><span class="line"><span class="number">25</span>) SIGXFSZ：超过文件的最大长度设置。默认动作为终止进程。</span><br><span class="line"><span class="number">26</span>) SIGVTALRM：虚拟时钟超时时产生该信号。类似于 SIGALRM，但是该信号只计算该进程占用 CPU 的使用时</span><br><span class="line">间。默认动作为终止进程。</span><br><span class="line"><span class="number">27</span>) SGIPROF：类似于 SIGVTALRM，它不公包括该进程占用 CPU 时间还包括执行系统调用时间。默认动作为终止</span><br><span class="line">进程。</span><br><span class="line"><span class="number">28</span>) SIGWINCH：窗口变化大小时发出。默认动作为忽略该信号。</span><br><span class="line"><span class="number">29</span>) SIGIO：此信号向进程指示发出了一个异步 IO 事件。默认动作为忽略。</span><br><span class="line"><span class="number">30</span>) SIGPWR：关机。默认动作为终止进程。</span><br><span class="line"><span class="number">31</span>) SIGSYS：无效的系统调用。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">34</span>) SIGRTMIN ～ (<span class="number">64</span>) SIGRTMAX：LINUX 的实时信号，它们没有固定的含义（可以由用户自定义）。所有的实时</span><br><span class="line">信号的默认动作都为终止进程。</span><br></pre></td></tr></table></figure></li>
+<li>常规信号的编号，名称，对应事件，默认处理动作。<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line"><span class="number">1</span>) SIGHUP: 当用户退出 shell 时，由该 shell 启动的所有进程将收到这个信号，默认动作为终止进程</span><br><span class="line"><span class="number">2</span>) SIGINT：当用户按下了&lt;Ctrl+C&gt;组合键时，用户终端向正在运行中的由该终端启动的程序发出此信号。默认动作为终止进程。</span><br><span class="line"><span class="number">3</span>) SIGQUIT：当用户按下&lt;ctrl+\&gt;组合键时产生该信号，用户终端向正在运行中的由该终端启动的程序发出些信号。默认动作为终止进程。</span><br><span class="line"><span class="number">4</span>) SIGILL：CPU 检测到某进程执行了非法指令。默认动作为终止进程并产生 core 文件</span><br><span class="line"><span class="number">5</span>) SIGTRAP：该信号由断点指令或其他 trap 指令产生。默认动作为终止里程 并产生 core 文件。</span><br><span class="line"><span class="number">6</span>) SIGABRT: 调用 abort 函数时产生该信号。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">7</span>) SIGBUS：非法访问内存地址，包括内存对齐出错，默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">8</span>) SIGFPE：在发生致命的运算错误时发出。不仅包括浮点运算错误，还包括溢出及除数为 <span class="number">0</span> 等所有的算法错误。</span><br><span class="line">默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">9</span>) SIGKILL：无条件终止进程。本信号不能被忽略，处理和阻塞。默认动作为终止进程。它向系统管理员提供了</span><br><span class="line">可以杀死任何进程的方法。</span><br><span class="line"><span class="number">10</span>) SIGUSE1：用户定义 的信号。即程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">11</span>) SIGSEGV：指示进程进行了无效内存访问。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">12</span>) SIGUSR2：另外一个用户自定义信号，程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">13</span>) SIGPIPE：Broken pipe 向一个没有读端的管道写数据。默认动作为终止进程。</span><br><span class="line">北京市昌平区建材城西路金燕龙办公楼一层 电话：<span class="number">400</span><span class="number">-618</span><span class="number">-9090</span></span><br><span class="line"><span class="number">14</span>) SIGALRM: 定时器超时，超时的时间 由系统调用 alarm 设置。默认动作为终止进程。</span><br><span class="line"><span class="number">15</span>) SIGTERM：程序结束信号，与 SIGKILL 不同的是，该信号可以被阻塞和终止。通常用来要示程序正常退出。</span><br><span class="line">执行 shell 命令 Kill 时，缺省产生这个信号。默认动作为终止进程。</span><br><span class="line"><span class="number">16</span>) SIGSTKFLT：Linux 早期版本出现的信号，现仍保留向后兼容。默认动作为终止进程。</span><br><span class="line"><span class="number">17</span>) SIGCHLD：子进程状态发生变化时，父进程会收到这个信号。默认动作为忽略这个信号。</span><br><span class="line"><span class="number">18</span>) SIGCONT：如果进程已停止，则使其继续运行。默认动作为继续/忽略。</span><br><span class="line"><span class="number">19</span>) SIGSTOP：停止进程的执行。信号不能被忽略，处理和阻塞。默认动作为暂停进程。</span><br><span class="line"><span class="number">20</span>) SIGTSTP：停止终端交互进程的运行。按下&lt;ctrl+z&gt;组合键时发出这个信号。默认动作为暂停进程。</span><br><span class="line"><span class="number">21</span>) SIGTTIN：后台进程读终端控制台。默认动作为暂停进程。</span><br><span class="line"><span class="number">22</span>) SIGTTOU: 该信号类似于 SIGTTIN，在后台进程要向终端输出数据时发生。默认动作为暂停进程。</span><br><span class="line"><span class="number">23</span>) SIGURG：套接字上有紧急数据时，向当前正在运行的进程发出些信号，报告有紧急数据到达。如网络带外</span><br><span class="line">数据到达，默认动作为忽略该信号。</span><br><span class="line"><span class="number">24</span>) SIGXCPU：进程执行时间超过了分配给该进程的 CPU 时间 ，系统产生该信号并发送给该进程。默认动作为</span><br><span class="line">终止进程。</span><br><span class="line"><span class="number">25</span>) SIGXFSZ：超过文件的最大长度设置。默认动作为终止进程。</span><br><span class="line"><span class="number">26</span>) SIGVTALRM：虚拟时钟超时时产生该信号。类似于 SIGALRM，但是该信号只计算该进程占用 CPU 的使用时</span><br><span class="line">间。默认动作为终止进程。</span><br><span class="line"><span class="number">27</span>) SGIPROF：类似于 SIGVTALRM，它不公包括该进程占用 CPU 时间还包括执行系统调用时间。默认动作为终止</span><br><span class="line">进程。</span><br><span class="line"><span class="number">28</span>) SIGWINCH：窗口变化大小时发出。默认动作为忽略该信号。</span><br><span class="line"><span class="number">29</span>) SIGIO：此信号向进程指示发出了一个异步 IO 事件。默认动作为忽略。</span><br><span class="line"><span class="number">30</span>) SIGPWR：关机。默认动作为终止进程。</span><br><span class="line"><span class="number">31</span>) SIGSYS：无效的系统调用。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">34</span>) SIGRTMIN ～ (<span class="number">64</span>) SIGRTMAX：LINUX 的实时信号，它们没有固定的含义（可以由用户自定义）。所有的实时</span><br><span class="line">信号的默认动作都为终止进程。</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="阻塞信号集（信号屏蔽字）；未决信号集"><a href="#阻塞信号集（信号屏蔽字）；未决信号集" class="headerlink" title="阻塞信号集（信号屏蔽字）；未决信号集"></a>阻塞信号集（信号屏蔽字）；未决信号集</h2><ul>
 <li><p>阻塞信号集(信号屏蔽字)</p>
@@ -416,7 +446,7 @@
 <li><p>按键</p>
 <ul>
 <li><code>Ctrl+c : SIGINT</code>。终端、中断。<code>interrupt</code></li>
-<li><code>Ctrl+z : SIGTSTP</code>。暂停、停止。<code>terminal</code></li>
+<li><code>Ctrl+z : SIGTSTP</code>。暂停、停止。<code>terminal stop</code></li>
 <li><code>Ctrl+\ : SIGQUIT</code></li>
 </ul>
 </li>
@@ -511,7 +541,9 @@
 </ul>
 <h2 id="捕捉"><a href="#捕捉" class="headerlink" title="捕捉"></a>捕捉</h2><h3 id="内核实现捕捉过程"><a href="#内核实现捕捉过程" class="headerlink" title="内核实现捕捉过程"></a>内核实现捕捉过程</h3><p><img src="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-12-01-09-40-14.png"></p>
 <ul>
-<li><code>signal signaction</code> 注册。捕捉的动作不是他完成的<h3 id="signal"><a href="#signal" class="headerlink" title="signal"></a>signal</h3></li>
+<li><code>signal signaction</code> 注册。捕捉的动作不是他完成的</li>
+</ul>
+<h3 id="signal"><a href="#signal" class="headerlink" title="signal"></a>signal</h3><ul>
 <li><code>sighandler_t signal(int signum, sighandler_t handler);</code><ul>
 <li><code>signum：</code>要捕捉信号</li>
 <li><code>handler：</code>相应处理函数</li>
@@ -544,7 +576,12 @@
 <h3 id="利用SIGCHLD回收子进程"><a href="#利用SIGCHLD回收子进程" class="headerlink" title="利用SIGCHLD回收子进程"></a>利用SIGCHLD回收子进程</h3></li>
 <li><p> 回收子进程常见方案，一定要会： 利用信号机制去回收子进程，防止使用execlp等而无法回收子线程的情况</p>
 </li>
-<li><p>思路：</p>
+<li><p><strong>思路1：</strong></p>
+<ul>
+<li> 直接设置<code>signal(SIGCHLD,SIG_IGN)</code>忽略这个信号即可。系统就懂了我们不需要残留的信息，直接释放残留资源。</li>
+</ul>
+</li>
+<li><p><strong>思路2：</strong></p>
 <ul>
 <li> 在父进程中注册<code>SIGCHLD</code>信号，回调函数里负责循环回收死掉的子进程。</li>
 </ul>
@@ -587,8 +624,9 @@
 </ul>
 </li>
 </ul>
-<blockquote>
-<p>子进程结束 对status的如何处理</p>
+<ul>
+<li><blockquote>
+<p><strong>子进程结束 对status的如何处理</strong></p>
 </blockquote>
 <ul>
 <li><code>pid_t waitpid(pid_t pid, int *status, int options)</code></li>
@@ -606,6 +644,8 @@
 <li><code>WIFSTOPPED(status)</code>：子进程被停止，返回真</li>
 <li><code>WSTOPSIG(status)</code>：返回停止子进程的信号值</li>
 <li><code>WIFCONTINUED(status)</code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -630,6 +670,8 @@
 </li>
 <li><p>扩展了解：<br><code>sa_flags</code> 还有很多可选参数，适用于不同情况。如：捕捉到信号后，在执行捕捉函数期间，不希望自动阻塞该<br>信号，可将 <code>sa_flags</code> 设置为 <code>SA_NODEFER</code>，除非 <code>sa_mask</code> 中包含该信号</p>
 </li>
+<li><p>以上了解摘自牛客讲义,APUE上也有，好多，有时间再看吧</p>
+</li>
 </ul>
 <h2 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h2><ul>
 <li>一些问题<ul>
@@ -637,8 +679,324 @@
 <li> 那么在这里这样看是不是阻塞要比<code>waitpid</code>非阻塞好？<code>waitpid</code>不会阻塞，会一直<code>while</code>循环，不让出<code>cpu</code>资源</li>
 </ul>
 </li>
+<li><code>wait(NULL)</code>与<code>signal(SIGCHLD,SIG_IGN)</code>区别？<ul>
+<li>我认为，前者可以保证子进程一定会运行完再进行主进程，后者子进程不一定运行完，父进程就结束了。</li>
+</ul>
+</li>
+</ul>
+<h2 id="关于SIG-ING处理SIGCHLD不会造成僵尸"><a href="#关于SIG-ING处理SIGCHLD不会造成僵尸" class="headerlink" title="关于SIG_ING处理SIGCHLD不会造成僵尸"></a>关于SIG_ING处理SIGCHLD不会造成僵尸</h2><ul>
+<li><code>SIGCHLD</code>默认处理方式是忽略，但是我们还是要显示写出来<code>signal(SIGCHLD,SIG_IGN)</code>才可以</li>
+<li>所以那在处理死去的进程时，如果不需要获取这个死去进程的信息，就不需要<code>wait</code>。直接<code>signal(SIGCHLD，SIG_IGN)</code>就可以让这个死去的子进程被释放残留资源从而不变成僵尸进程</li>
+<li><code>wait notes</code>  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">specifies that if the disposition of SIGCHLD is set to SIG_IGN or the SA_NOCLDWAIT flag is set for SIGCHLD [signal(SIGCHLD,SIG_IGN)](see</span><br><span class="line">    sigaction(2)), then children that terminate do not become zombies and a call to wait() or  waitpid()  will  block  until  all</span><br><span class="line">    children  have terminated, and then fail with errno set to ECHILD. </span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line">	<span class="keyword">for</span>( i=<span class="number">0</span>;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">		<span class="keyword">if</span>(pid==<span class="number">0</span>) <span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	signal(SIGCHLD,SIG_IGN);</span><br><span class="line">	<span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot; i am parent \n&quot;</span>);</span><br><span class="line">		sleep(<span class="number">20</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;i am %d child\n&quot;</span>,i);</span><br><span class="line">		sleep(i);</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;%d die\n&quot;</span>,i);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">ps ajx也没有僵尸进程</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./test01_wait.out </span><br><span class="line">i am <span class="number">0</span> child</span><br><span class="line">i am <span class="number">1</span> child</span><br><span class="line"> i am parent </span><br><span class="line">i am <span class="number">2</span> child</span><br><span class="line">i am <span class="number">3</span> child</span><br><span class="line">i am <span class="number">4</span> child</span><br><span class="line"><span class="number">0</span> die</span><br><span class="line"><span class="number">1</span> die</span><br><span class="line"><span class="number">2</span> die</span><br><span class="line"><span class="number">3</span> die</span><br><span class="line"><span class="number">4</span> die</span><br></pre></td></tr></table></figure></li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux-守护进程</title>
+    <url>/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/</url>
+    <content><![CDATA[<p>Linux守护进程</p>
+<span id="more"></span>
+
+<ul>
+<li>参考APUE、<a href="https://www.cnblogs.com/ybf-yyj/p/9104412.html">博客园</a></li>
+</ul>
+<h2 id="相关命令"><a href="#相关命令" class="headerlink" title="相关命令"></a>相关命令</h2><ul>
+<li>&amp;<ul>
+<li><code>./a.out &amp;</code> ：释放对终端的占用。在后台运行</li>
+</ul>
+</li>
+<li>jobs<ul>
+<li>列出在后台运行的进程：<code>running stopped terminated</code>。jobs -l可以列出pid</li>
+</ul>
+</li>
+<li>ctrl + z  挂起<ul>
+<li>用户终端向正在运行中的由该终端启动的程序发出SIGTSTP信号。默认动作为暂停进程（并未结束）。并将该进程放到后台。（停止终端交互进程的运行。）</li>
+</ul>
+</li>
+<li>bg<ul>
+<li>启动在后台暂停的运行，并使得其在后台运行。</li>
+<li>如果后台中有多个命令，可以用bg %jobnumber将选中的命令调出，%jobnumber是通过jobs命令查到的后台正在执行的命令的序号(不是pid)</li>
+<li>将任务转移到后台运行：先ctrl + z；再bg，这样进程就被移到后台运行，终端还能继续接受命令。</li>
+</ul>
+</li>
+<li>fg<ul>
+<li>将在后台暂停/运行的进程，调到前台来，使其占据终端。</li>
+</ul>
+</li>
+<li>ctrl + c 终止<ul>
+<li>用户终端向正在运行中的由该终端启动的程序发出SIGINT信号。默认动作为终止进程。</li>
+</ul>
+</li>
+<li>ctrl + \ 退出<ul>
+<li>用户终端向正在运行中的由该终端启动的程序发出SIGQUIT。默认动作为终止进程。</li>
+</ul>
+</li>
+<li>ctrl + d<ul>
+<li>输入文件结束符EOF</li>
+</ul>
+</li>
+<li>pstree<ul>
+<li>查看进程树</li>
+</ul>
+</li>
+<li>概念：当前任务<ul>
+<li>如果后台的任务号有2个，[1],[2]；如果当第一个后台任务顺利执行完毕，第二个后台任务还在执行中时，当前任务便会自动变成后台任务号码“[2]” 的后台任务。所以可以得出一点，即当前任务是会变动的。当用户输入“fg”、“bg”和“stop”等命令时，如果不加任何引号，则所变动的均是当前任务</li>
+</ul>
+</li>
+<li>参考<a href="https://www.cnblogs.com/ybf-yyj/p/9104412.html">博客园</a></li>
+</ul>
+<h2 id="进程组与会话"><a href="#进程组与会话" class="headerlink" title="进程组与会话"></a>进程组与会话</h2><ul>
+<li>进程组是一堆相关进程的集合；会话是一堆相关进程组的集合。</li>
+</ul>
+<h2 id="进程组"><a href="#进程组" class="headerlink" title="进程组"></a>进程组</h2><ul>
+<li>进程组是一个或者多个进程的集合。通常他们在同一作业中结合起来。</li>
+<li>同一进程组的各进程接收来自同一终端的各种信号。每个进程组有位移的进程组ID。函数<code>pid_t getpgrp(void);</code>可以返回调用进程的进程组ID。</li>
+<li>每个进程组有一个组长进程。<strong>进程组ID等于其组长进程的进程ID</strong></li>
+<li>进程组组长可以创建一个进程组、创建该组中的进程，然后终止。只要进程组中有一个进程存在，那么这个进程组就存在，与组长进程是否终止无关。</li>
+<li>进程调用setpgid可以加入一个现有的进程组或者创建一个新进程组。<ul>
+<li><code>int setpgid(pid_t pid,pid_t pgid)</code></li>
+<li>该函数将pid进程的进程组号设置为pgid，如果pid=pgid，则该pid进程成为组长进程。如果pid=0，即为getpid()；pgid-0，即为pid作为进程组pgid。</li>
+<li>成功0，失败-1。</li>
+</ul>
+</li>
+<li>一个进程只能为他或者他的子进程设置组进程pgid。在它的子进程调用exec后，他就不再更改子进程的进程组ID<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ps ajx</span><br><span class="line">  PPID    PID   PGID    SID TTY       TPGID STAT   UID   TIME COMMAND</span><br><span class="line">     <span class="number">0</span>      <span class="number">1</span>      <span class="number">1</span>      <span class="number">1</span> ?            <span class="number">-1</span> Ss       <span class="number">0</span>   <span class="number">0</span>:<span class="number">03</span> /sbin/init splash</span><br><span class="line"></span><br><span class="line">PPID：是程序的父进程号。</span><br><span class="line"></span><br><span class="line">PID：进程的唯一标识。如果一个进程含有多个线程，所有线程调用 getpid 函数会返回相同的值。</span><br><span class="line"></span><br><span class="line">PGID：进程组 ID。每个进程都会有进程组 ID，表示该进程所属的进程组。默认情况下新创建的进程会继承父进程的进程组 ID。</span><br><span class="line"></span><br><span class="line">SID：会话 ID。每个进程也都有会话 ID。默认情况下，新创建的进程会继承父进程的会话 ID。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="会话"><a href="#会话" class="headerlink" title="会话"></a>会话</h2><ul>
+<li>会话是一个或者多个进程组的集合。<br><img src="/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-09-28.png"></li>
+<li><code>pid_t setsid(void);</code><ul>
+<li>如果调用此函数的进程不是一个进程组组长，那么此函数创建一个新会话。<ul>
+<li>该进程会变成新会话的会话首进程（会话首进程是创建该会话的进程）。此时，该进程是新会话中的唯一进程。</li>
+<li>该进程成为一个新进程组的组长进程。新进程组ID是该调用进程的进程ID</li>
+<li>该进程没有控制终端。如果在调用setsid之前改进昵称有一个控制终端，那么这种联系也被切断。<ul>
+<li>即会话首进程不占有控制终端。只有会话中的前台进程组才占有终端。！</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>如果该调用进程是一个进程组组长，则此函数返回出错。</li>
+<li>所以通常先fork，使其父进程终止，而子进程继续，因为子进程继承父进程的进程组ID，而其进程ID是新分配的，两者不可能相等，这就保证了子进程不是一个进程组组长。</li>
+</ul>
+</li>
+<li>Single UNIX 没有类似于进程组ID的会话ID，由于会话首进程是具有唯一进程ID的单个进程，所以可以将会话首进程的进程ID视为会话ID。</li>
+<li>SVR4引入会话ID。<ul>
+<li><code>pid_t getsid(pid_t pid);</code></li>
+<li>返回pid进程的会话首进程的进程组ID。pid=0，则返回调用进程的。</li>
+<li>若pid不属于调用者所在会话，那么就不能得到会话ID。</li>
+</ul>
+</li>
+<li>尽量避免使用“会话ID”，而是称其为“会话首进程的进程组ID”。会话首进程总是一个进程组的组长进程，素以两者等价。</li>
+</ul>
+<h2 id="控制终端"><a href="#控制终端" class="headerlink" title="控制终端"></a>控制终端</h2><ul>
+<li>一般情况下 session 和终端是一对一的关系，当我们打开多个终端窗口时，实际上就创建了多个 session。</li>
+<li><code>./a.out &amp;</code>。表示将命令放入后台执行。这样该命令对应的进程组即为后台进程组。</li>
+<li>shell 中可以存在多个进程组，无论是前台进程组还是后台进程组，它们或多或少存在一定的联系，为了更好地控制这些进程组（或者称为作业），系统引入了会话的概念。</li>
+<li><strong>会话（Session）的意义在于将很多的工作集中在一个终端，选取其中一个作为前台来直接接收终端的输入及信号，其他的工作则放在后台执行。</strong></li>
+<li>以上几点参考<a href="https://rongweihe.github.io/">博客.io</a><br><img src="/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-31-39.png"></li>
+<li>一个会话可以有一个控制终端（ controlling terminal）。这通常是我们在其上登录的终端设备（终端登录情况）或伪终端设备（网络登录情况）。</li>
+<li>建立与控制终端连接的会话首进程，被称之为控制进程（controlling process）。</li>
+<li><strong>一个会话的几个进程组可被分成一个前台进程组（foreground process group）以及一个或几个后台进程组（background process group）。</strong><ul>
+<li>在任意时刻，可能同时存在多个后台进程组，但是不管什么时候都只能有一个前台进程组。</li>
+</ul>
+</li>
+<li>如果一个会话有一个控制终端，则它有一个前台进程组，其他进程组则为后台进程组。</li>
+<li>无论何时键入中断键（常常是DELETE或Ctrl - C）或退出键（常常是Ctrl - \），就会造成将中断信号或退出信号<strong>送至前台进程组的所有进程。</strong><ul>
+<li><strong>只有在前台进程组中进程才能在控制终端读取输入</strong>。当用户在终端输入信号生成终端字符（如 ctrl+c、ctrl+z、ctr+\等）时，对应的信号只会发送给前台进程组。从前台进程组的输出也会显示在控制终端上。</li>
+</ul>
+</li>
+<li>如果终端界面检测到调制解调器已经脱开连接，则将挂断信号送至控制进程（会话首进程。）</li>
+</ul>
+<h2 id="作业控制"><a href="#作业控制" class="headerlink" title="作业控制"></a>作业控制</h2><ul>
+<li>作业：几个进程的集合，通常是一个进程管道<ul>
+<li><code>vim main.c</code><ul>
+<li>在前台起到了只有一个进程组成的作业。</li>
+</ul>
+</li>
+<li><code>pr *.c | lpr &amp;       。      make all &amp;</code><ul>
+<li>在后台启动两个作业。后台运行。</li>
+<li>使用管道，让多个进程互相配合完成一项工作，这一组进程属于同一个进程组</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>以后补充。</li>
+</ul>
+<h2 id="守护（daemon）进程"><a href="#守护（daemon）进程" class="headerlink" title="守护（daemon）进程"></a>守护（daemon）进程</h2><ul>
+<li>系统引导装入时启动，系统关闭时终止。</li>
+<li>由于无控制终端，所以说是在后台运行的。</li>
+</ul>
+<ul>
+<li>创建守护进程<ul>
+<li>关键<ul>
+<li>创建会话Session</li>
+</ul>
+</li>
+<li>流程<ul>
+<li>fork之后，父进程exit。<ul>
+<li>进程组组长不能创建会话</li>
+</ul>
+</li>
+<li>setsid子进程创建会话。<ul>
+<li><code>pid_t setsid()</code></li>
+<li>子进程成为新的会话的首进程</li>
+<li>子进程成为一个新进程组的组长</li>
+<li>子进程脱离控制终端，在后台运行</li>
+</ul>
+</li>
+<li>chdir更改工作目录<ul>
+<li><code>int chdir(const char *path);</code></li>
+<li>root用户才有权限</li>
+</ul>
+</li>
+<li>umask设置文件权限掩码<ul>
+<li><code>mode_t umask(mode_t mask);</code></li>
+<li>将文件模式创建屏蔽字设置为一个已知值。（通常为0）。由继承得来的文件模式创建屏蔽字可能会被设置为拒绝某些权限。</li>
+</ul>
+</li>
+<li>关闭非必要文件描述符<ul>
+<li>继承的打开文件不会用到，浪费系统资源，无法卸载</li>
+</ul>
+</li>
+<li>某些进程打开/dev/null 赋值给 stdin ，stdout ，stderr。<ul>
+<li><blockquote>
+<p>任何一个试图读取标准输入、写标准输出或标准错误的库例程都不会产生任何效果。因为守护进程不予终端设备相关联，所以其输出无处显示，也无处从交互式用户那里接收输入。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>即使守护进程是从交互式会话启动的，但是守护进程是在后台运行的，所以登录会话的终止不会影响守护进程。如果其他用户在同一终端设备上登录，我们不希望再该终端上见到守护进程的输出，用户也不期望他们在终端上的输入被守护进程读取。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>APUE</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>开始执行守护进程核心工作守护进程退出处理程序模型</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>问题？</strong><ul>
+<li>守护进程处理SIGCHLD信号。</li>
+<li><blockquote>
+<p>处理SIGCHLD信号<br>处理SIGCHLD信号并不是必须的。但对于某些进程，特别是服务器进程往往在请求到来时生成子进程处理请求。如果<strong>父进程不对残留信息进行处理</strong>，子进程将成为僵尸进程（zombie）从而占用系统资源。如果父进程wait子进程结束，将增加父进程的负担，影响服务器进程的并发性能。在Linux下可以简单地将SIGCHLD信号的操作设为SIG_IGN。</p>
+</blockquote>
+</li>
+<li><code>signal(SIGCHLD,SIG_IGN);</code></li>
+<li>SIG_IGN即我们不关心这个信号，系统也就懂了我们不关心它的死法。子进程死亡的话则直接释放资源即可。没死的话，也是忽略。</li>
+<li>详情见进程–<code>wait</code>和信号–<code>SIGCHLD</code></li>
+</ul>
+</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/stat.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *str)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    perror(str);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  1. fork，父进程exit。（为了创建会话）</span></span><br><span class="line">    <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">    <span class="keyword">if</span>(pid&gt;<span class="number">0</span>)   <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  2. setsid()创建会话。当前子进程成为会话首进程，接着成为新进程族的组长进程，并且没有控制终端</span></span><br><span class="line">    <span class="comment">//  为了满足dameon的”在后台运行” 。（由于会话首进程无控制终端，所以说是在后台运行的。）</span></span><br><span class="line">    pid = setsid();</span><br><span class="line">    <span class="keyword">if</span>(pid==<span class="number">-1</span>) </span><br><span class="line">        sys_err(<span class="string">&quot;pid error&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  3. 改变工作目录。防止被卸载。</span></span><br><span class="line">    <span class="comment">//  为了满足daemon进程的“系统引导装入时启动，系统关闭时终止。”</span></span><br><span class="line">    <span class="comment">//  sudo 只有根目录才有权限切换</span></span><br><span class="line">    <span class="comment">//  并且我实验当前虚拟机关机重启之后那个dameon进程就没了</span></span><br><span class="line">    <span class="comment">//  感觉因为守护进程在系统引导装入时启动，系统关闭时终止。</span></span><br><span class="line">    <span class="comment">//  而如果是一个用户远程登陆linux系统的话，那么这个用户退出登陆之后，不会影响这个daemon进程</span></span><br><span class="line">    <span class="keyword">int</span> ret = chdir(<span class="string">&quot;/root&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span>(ret==<span class="number">-1</span>)</span><br><span class="line">       sys_err(<span class="string">&quot;chdir error&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  4.  改变权限</span></span><br><span class="line">    umask(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  5.  关闭文件描述符</span></span><br><span class="line">    close(STDIN_FILENO);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  6.  打开null，重定向文件描述符号</span></span><br><span class="line">    <span class="keyword">int</span> fd = open(<span class="string">&quot;/dev/null&quot;</span>,O_RDWR);</span><br><span class="line">    <span class="keyword">if</span>(fd==<span class="number">-1</span>)</span><br><span class="line">        sys_err(<span class="string">&quot;open error&quot;</span>);</span><br><span class="line">    dup2(fd,STDOUT_FILENO);</span><br><span class="line">    dup2(fd,STDERR_FILENO);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>);   <span class="comment">//  模拟守护进程业务</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ sudo ./daemon_shc.out </span><br><span class="line">[sudo] shc 的密码： </span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ps ajx</span><br><span class="line">  <span class="number">1624</span>   <span class="number">2730</span>   <span class="number">2730</span>   <span class="number">2730</span> ?            <span class="number">-1</span> Rs       <span class="number">0</span>   <span class="number">0</span>:<span class="number">20</span> ./daemon_shc.out</span><br></pre></td></tr></table></figure>
+
+<h2 id="manpage阅读"><a href="#manpage阅读" class="headerlink" title="manpage阅读"></a>manpage阅读</h2><ul>
+<li>umask<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">NAME</span><br><span class="line">       <span class="built_in">umask</span> - <span class="built_in">set</span> file mode creation mask</span><br><span class="line"></span><br><span class="line">SYNOPSIS</span><br><span class="line">       <span class="comment">#include &lt;sys/types.h&gt;</span></span><br><span class="line">       <span class="comment">#include &lt;sys/stat.h&gt;</span></span><br><span class="line"></span><br><span class="line">       mode_t <span class="built_in">umask</span>(mode_t mask);</span><br><span class="line"></span><br><span class="line">DESCRIPTION</span><br><span class="line">       <span class="built_in">umask</span>() sets the calling process<span class="string">&#x27;s file mode creation mask (umask) to mask &amp; 0777 (i.e., only the file permission bits of mask are used), and returns the previous value of the mask.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       The  umask  is  used  by  open(2), mkdir(2), and other system calls that create files to modify the permissions placed on newly created files or directories.  Specifically, permissions in the</span></span><br><span class="line"><span class="string">       umask are turned off from the mode argument to open(2) and mkdir(2).</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       Alternatively, if the parent directory has a default ACL (see acl(5)), the umask is ignored, the default ACL is inherited, the permission bits are set based on the inherited ACL, and  permis‐</span></span><br><span class="line"><span class="string">       sion bits absent in the mode argument are turned off.  For example, the following default ACL is equivalent to a umask of 022:</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">           u::rwx,g::r-x,o::r-x</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       Combining the effect of this default ACL with a mode argument of 0666 (rw-rw-rw-), the resulting file permissions would be 0644 (rw-r--r--).</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       The constants that should be used to specify mask are described in inode(7).</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       The typical default value for the process umask is S_IWGRP | S_IWOTH (octal 022).  In the usual case where the mode argument to open(2) is specified as:</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">           S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       (octal 0666) when creating a new file, the permissions on the resulting file will be:</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">           S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       (because 0666 &amp; ~022 = 0644; i.e., rw-r--r--).</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">RETURN VALUE</span></span><br><span class="line"><span class="string">       This system call always succeeds and the previous value of the mask is returned.</span></span><br><span class="line"><span class="string"></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="进程补充"><a href="#进程补充" class="headerlink" title="进程补充"></a>进程补充</h2><ul>
+<li>进程是系统分配资源的最小单位。</li>
+<li><code>pstree</code>查看进程家族树<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemd─┬─ModemManager───2*[&#123;ModemManager&#125;]</span><br><span class="line">        ├─NetworkManager─┬─dhclient</span><br><span class="line">        │                └─2*[&#123;NetworkManager&#125;]</span><br><span class="line">        ├─VGAuthService</span><br><span class="line">        ├─accounts-daemon───2*[&#123;accounts-daemon&#125;]</span><br><span class="line">        ├─acpid</span><br><span class="line">        ├─avahi-daemon───avahi-daemon</span><br><span class="line">        ├─boltd───2*[&#123;boltd&#125;]</span><br><span class="line">        ├─colord───2*[&#123;colord&#125;]</span><br><span class="line">        ├─cron</span><br><span class="line">        ├─cups-browsed───2*[&#123;cups-browsed&#125;]</span><br><span class="line">        ├─cupsd</span><br><span class="line">        ├─dbus-daemon</span><br><span class="line">        ├─fwupd───4*[&#123;fwupd&#125;]</span><br><span class="line">        ├─gdm3─┬─gdm-session-wor─┬─gdm-wayland-ses─┬─gnome-session-b─┬─gnome-shell─┬─Xwayland───8*[&#123;Xwayland&#125;]</span><br><span class="line">        │      │                 │                 │                 │             ├─ibus-daemon─┬─ibus-dconf───3*[&#123;ibus-dconf&#125;]</span><br><span class="line">        ...</span><br></pre></td></tr></table></figure></li>
+</ul>
+]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Linux-线程</title>
+    <url>/2021/12/03/Linux-%E7%BA%BF%E7%A8%8B/</url>
+    <content><![CDATA[<p>Linux线程（未完）</p>
+<span id="more"></span>
+
+<h2 id="性质"><a href="#性质" class="headerlink" title="性质"></a>性质</h2><ul>
+<li><p>线程间共享</p>
+<ul>
+<li>bss。全局变量？、</li>
+</ul>
+</li>
+<li><h2 id="线程间不共享"><a href="#线程间不共享" class="headerlink" title="线程间不共享"></a>线程间不共享</h2><h2 id="控制原语"><a href="#控制原语" class="headerlink" title="控制原语"></a>控制原语</h2><h3 id="线程创建"><a href="#线程创建" class="headerlink" title="线程创建"></a>线程创建</h3><h4 id="pthread-ceate"><a href="#pthread-ceate" class="headerlink" title="pthread_ceate"></a><code>pthread_ceate</code></h4></li>
+<li><p><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></p>
+</li>
+<li><p><code>pthread_t *thread</code>：传出参数，表新创建的子线程 id</p>
+</li>
+<li><p><code>const pthread_attr_t *attr</code>：线程属性。传 NULL 表使用默认属性。</p>
+</li>
+<li><p><code>void *(*start_routine) (void *)</code>：新线程的线程体。</p>
+</li>
+<li><p><code>void *arg</code>：线程体的参数。没有的话，传<code>NULL</code></p>
+<ul>
+<li>如果有多个参数，需要将他们放入结构体，然后把结构体地址作为<code>arg</code>参数传入。</li>
+</ul>
+</li>
+<li><p>返回值：成功：0</p>
+</li>
+<li><p>失败：直接返回错误码，而非设置<code>errno</code></p>
+<h4 id="pthread-t-pthread-self-void"><a href="#pthread-t-pthread-self-void" class="headerlink" title="pthread_t pthread_self(void);"></a><code>pthread_t pthread_self(void);</code></h4></li>
+<li><p>获取线程<code>ID</code>。其作用对应进程中 <code>getpid()</code> 函数。</p>
+</li>
+<li><p>返回值：成功：0； </p>
+</li>
+<li><p>线程 <code>ID</code>：<code>pthread_t</code></p>
+<ul>
+<li><code>typedef unsigned long int pthread_t;</code></li>
+</ul>
+</li>
+<li><p>线程 <code>ID </code>是进程内部，识别标志。(不同进程的线程<code>ID</code>可能相同)</p>
+</li>
+<li><p>检查出错</p>
+<ul>
+<li><code>fprintf(stderr, &quot;xxx error: %s\n&quot;, strerror(ret));</code></li>
+</ul>
+</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">pthread_t</span> tid;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> *      int pthread_create(pthread_t *thread, const pthread_attr_t *attr,</span></span><br><span class="line"><span class="comment">                         void *(*start_routine) (void *), void *arg);</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">printids</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">pid_t</span> pid = getpid();</span><br><span class="line">        <span class="keyword">pthread_t</span> tid = pthread_self();</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%s\t%d\t%lu\n&quot;</span>,s,pid,tid);</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> *<span class="title">tfn</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        printids(<span class="string">&quot;new thread:&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span> ;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> err = pthread_create(&amp;tid,<span class="literal">NULL</span>,tfn,<span class="literal">NULL</span>);</span><br><span class="line">        <span class="keyword">if</span>(err!=<span class="number">0</span>)</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        sleep(<span class="number">1</span>);</span><br><span class="line">        printids(<span class="string">&quot;main thread&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./pthread_create_shc.out </span><br><span class="line"><span class="keyword">new</span> thread:	<span class="number">3892</span>	<span class="number">139853047412480</span></span><br><span class="line">main thread	<span class="number">3892</span>	<span class="number">139853055936320</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>处理主线程和新线程之间关系</li>
+<li>主线程休眠，防止新线程还没机会运行整个进程就结束了。</li>
+<li>新线程获取<code>ID</code><ul>
+<li>通过<code>pthread_self()</code>来获取自己的线程ID，</li>
+<li>或者从线程的启动例程中以参数形式接收。</li>
+<li>而不是利用<code>pthread_create</code>的第一个参数从共享内存（全局变量<code>tid</code>）读取。<ul>
+<li>因为那样不安全。如果新线程在主线程的<code>pthread_create</code>返回前就运行了，那么读到的全局变量<code>tid</code>就是一个还没初始化的数。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></li>
+<li>最后一个参数是传给新线程函数体<code>start_routine</code>的参数</li>
+<li>注意<code>arg</code>可能会在主线程中发生改变。<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 不可以 int* -&gt; void* -&gt; int* -&gt;提取int</span></span><br><span class="line"><span class="comment">//  因为传进i的地址 i会在主线城中改变</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;pthread.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* err)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  32位 int 4 Byte  指针 4 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  64位 int 4 Byte  指针 8 Byte</span></span><br><span class="line"><span class="comment">//     int -&gt; *  ok 不会丢失数据</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> * <span class="title">thread_function</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;   </span><br><span class="line">    <span class="keyword">int</span> i = (<span class="keyword">int</span>)arg;</span><br><span class="line">    <span class="comment">// int i = *((int*)arg);    wrong！</span></span><br><span class="line">    sleep(i);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;i am the %dth thread , pid = %d , tid = %lu\n&quot;</span>,i,getpid(),pthread_self());  <span class="comment">//pthread_self 返回当前线程ID</span></span><br><span class="line">    <span class="keyword">return</span> ((<span class="keyword">void</span>*)<span class="number">0</span>);  <span class="comment">//  这就是线程的退出码吧</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pthread_t</span> tid;</span><br><span class="line">    <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>(;i!=<span class="number">5</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 不可以 int* -&gt; void* -&gt; int 因为传进i的地址 i会在主线城中改变</span></span><br><span class="line">        <span class="keyword">int</span> ret = pthread_create(&amp;tid,<span class="literal">NULL</span>,thread_function,(<span class="keyword">void</span>*)i);   </span><br><span class="line">        <span class="keyword">if</span>( ret!=<span class="number">0</span>)</span><br><span class="line">            sys_err(<span class="string">&quot;pthread error&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    sleep(<span class="number">20</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Main : i  = %d , pid = %d , tid = %ld\n&quot;</span>,i,getpid(),pthread_self());</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 正解</span></span><br><span class="line">i am the <span class="number">0</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684367210240</span></span><br><span class="line">i am the <span class="number">1</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684358817536</span></span><br><span class="line">i am the <span class="number">2</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684350424832</span></span><br><span class="line">i am the <span class="number">3</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684342032128</span></span><br><span class="line">i am the <span class="number">4</span>th thread , pid = <span class="number">4916</span> , tid = <span class="number">140684333639424</span></span><br><span class="line">Main : i  = <span class="number">5</span> , pid = <span class="number">4916</span> , tid = <span class="number">140684375734080</span></span><br></pre></td></tr></table></figure>
+<h3 id="线程终止"><a href="#线程终止" class="headerlink" title="线程终止"></a>线程终止</h3></li>
+<li>进程中的任意线程调用<code>exit</code>，那么整个进程都会终止。即，如果默认的动作是终止线程，那么发送到线程的信号就会终止整个进程</li>
+<li>单个线程退出方式<ul>
+<li>线程可以简单的从启动例程中返回，返回值是线程的退出码</li>
+<li>线程可以被同一进程的其他线程取消</li>
+<li>线程调用<code>pthread_exit</code></li>
+</ul>
+</li>
+</ul>
+<h4 id="void-pthread-exit-void-rval-ptr"><a href="#void-pthread-exit-void-rval-ptr" class="headerlink" title="void pthread_exit(void *rval_ptr)"></a><code>void pthread_exit(void *rval_ptr)</code></h4><ul>
+<li><code>rval_ptr</code>：表示线程退出状态，通常传 <code>NULL</code></li>
+<li><code>pthread_exit</code> 或者 <code>return</code> 返回的指针所指向的内存单元必须是全局的或者是用 <code>malloc</code> 分配的，不能在线程函数的栈上分配，因为当其它线程得到这个返回指针时线程函数已经退出了。</li>
+</ul>
+<h4 id="int-pthread-join-pthread-t-thread-void-rval-ptr"><a href="#int-pthread-join-pthread-t-thread-void-rval-ptr" class="headerlink" title="int pthread_join(pthread_t thread, void **rval_ptr);"></a><code>int pthread_join(pthread_t thread, void **rval_ptr);</code></h4><ul>
+<li>```<br>对比记忆：<br>进程中：main 返回值、exit 参数–&gt;int；等待子进程结束 wait 函数参数–&gt;int *<br>线程中：线程主函数返回值、pthread_exit–&gt;void *；等待线程结束 pthread_join 函数参数–&gt;void **<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">- 调用线程将一直阻塞，直到指定线程调用`pthread_exit`、从启动例程中返回或者被取消。</span><br><span class="line">  - 如果调用`pthread_exit`，那么`rval_ptr`就包含`pthread_exit`送入的参数。</span><br><span class="line">  - 如果线程简单的从它的启动例程返回，`rval_ptr`就包含返回码。</span><br><span class="line">  - 如果线程被取消，由`rval_ptr`指定的内存单元就设置为`PTHREAD_CANCELED`</span><br><span class="line">- 如果对线程返回值不感兴趣，`rval_ptr`就设置为`NULL`</span><br><span class="line">- 还可以通过`pthread_join`设置线程分离。</span><br><span class="line">- 线程中不存在父子关系，只有新线程和主线程之分。任何一个线程得到另一个线程的`pid`之后都可以去`join`</span><br><span class="line">- 代码</span><br><span class="line">```c</span><br><span class="line">#include&lt;unistd.h&gt; </span><br><span class="line">#include&lt;pthread.h&gt; </span><br><span class="line">#include&lt;string.h&gt; </span><br><span class="line">#include&lt;stdlib.h&gt;</span><br><span class="line">#include&lt;stdio.h&gt;</span><br><span class="line">void sys_err(const char *err,const int ret)&#123;</span><br><span class="line">        fprintf(stderr, &quot;%s error: %s\n&quot;, err,strerror(ret));</span><br><span class="line">        exit(1);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct foo</span><br><span class="line">&#123; </span><br><span class="line">        int a; </span><br><span class="line">        char name[256]; </span><br><span class="line">&#125;;       </span><br><span class="line"> </span><br><span class="line">void* tfn1(void *arg) </span><br><span class="line">&#123; </span><br><span class="line">        struct foo *pf = malloc(sizeof(struct foo)); </span><br><span class="line">        pf-&gt;a = 1; </span><br><span class="line">        strcpy(pf-&gt;name,&quot;shc&quot;); </span><br><span class="line">        return (void*) pf; </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">void* tfn2(void *arg) </span><br><span class="line">&#123; </span><br><span class="line">        struct foo *pf = malloc(sizeof(struct foo)); </span><br><span class="line">        pf-&gt;a = 2; </span><br><span class="line">        strcpy(pf-&gt;name,&quot;ssp&quot;); </span><br><span class="line">        pthread_exit((void*)pf); </span><br><span class="line">&#125; </span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">int main() </span><br><span class="line">&#123; </span><br><span class="line">        pthread_t tid1,tid2; </span><br><span class="line">        int err = pthread_create(&amp;tid1,NULL,tfn1,NULL); </span><br><span class="line">        if(err!=0)  </span><br><span class="line">                sys_err(&quot;pthread_create&quot;,err); </span><br><span class="line">        err = pthread_create(&amp;tid2,NULL,tfn2,NULL);      </span><br><span class="line">         </span><br><span class="line">        void *pret1,*pret2; </span><br><span class="line">        err = pthread_join(tid1,&amp;pret1);        // &amp;pret1 即为 void ** pthread_join改变pret1的内容，即改变了pret1的指向。 </span><br><span class="line">        if(err!=0) </span><br><span class="line">                sys_err(&quot;pthread_join&quot;,err); </span><br><span class="line">        err = pthread_join(tid2,&amp;pret2); </span><br><span class="line">         </span><br><span class="line">        printf(&quot;%d %s\n&quot;,((struct foo*)pret1)-&gt;a,((struct foo*)pret1)-&gt;name); </span><br><span class="line">                 </span><br><span class="line">        printf(&quot;%d %s\n&quot;,((struct foo*)pret2)-&gt;a,((struct foo*)pret2)-&gt;name);    </span><br><span class="line"> </span><br><span class="line">        return 0; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ ./pthread_join_shc.out </span><br><span class="line">1 shc</span><br><span class="line">2 ssp</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
       <tags>
         <tag>Linux</tag>
       </tags>
@@ -649,6 +1007,10 @@
     <content><![CDATA[<p>Linux进程</p>
 <span id="more"></span>
 
+
+<ul>
+<li>参考 APUE，牛客以及黑马讲义</li>
+</ul>
 <h1 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h1><ul>
 <li>每个进程都会对应虚拟一个<strong>虚拟地址空间</strong><ul>
 <li><img src="/2021/11/25/Linux-%E8%BF%9B%E7%A8%8B/2021-11-28-11-11-45.png"></li>
@@ -835,15 +1197,28 @@
 <li>在一个进程终止时，内核逐渐检查所有活动进程，以判断它是否是正要终止进程的子进程，如果是，则该进程的父进程<code>ID</code>就更改为<code>1</code>（<code>init</code>的<code>pid</code>）。这种方法保证了每个进程有一个父进程</li>
 </ul>
 <h2 id="僵尸进程"><a href="#僵尸进程" class="headerlink" title="僵尸进程"></a>僵尸进程</h2><ul>
-<li>一个已经终止、但是其父进程尚未对其进行善后处理（获取终止子进程的有关信息，释放它仍占用的资源）。<ul>
-<li>进程终止</li>
-<li>内核区中残留着PCB</li>
-<li>父进程没有回收这个子进程</li>
+<li><p>进程终止时，用户区的内容就已经被释放。</p>
+</li>
+<li><p>子进程比父进程先终止，那么父进程如何在做相应检查时得到子进程的终止状态呢？如果子进程完全消失了，父进程在最终准备好检查子进程是否终止时是无法获取它的终止状态的。内核为每个终止子进程获取保存了一定量的信息，所以当终止进程的父进程调用wait或者waitpid是可以获取这些信息的。（信息包括进程ID，进程终止状态，以及进程使用CPU时间总量等）。<strong>内核</strong>可以释放终止进程所使用的所有存储区，关闭其所有打开文件。</p>
+</li>
+<li><p>一个已经终止、但是其父进程尚未对其进行善后处理（获取终止子进程的有关信息，释放它仍占用的资源）的进程成为僵尸进程。</p>
+</li>
+<li><p><strong>我认为</strong></p>
+</li>
+<li><p><strong>所以！死去进程之所以会有残留资源（信息），就是为了告诉父进程他是怎么死的。而我们对残留信息采用wait或者直接丢弃的做法，都代表我们已经不再使用该子进程，系统在这之后就会释放这些残留资源。</strong></p>
+</li>
+<li><p><strong>所以！wait的作用只是去获取子进程死亡的状态，释放资源的动作是由系统做的。</strong></p>
+</li>
+<li><p><code>ps</code>中僵尸进程打印为<code>z</code></p>
+</li>
+<li><p>僵尸进程解决方法：</p>
+<ul>
+<li><code>wait</code>而非<code>kill</code>，因为此进程已经死了。<ul>
+<li><code>wait</code>获取死去进程的信息后，系统知道这些进程对于用户来说已经彻底没有用了，于是乎释放那些信息。</li>
 </ul>
 </li>
-<li><code>ps</code>中僵尸进程打印为<code>z</code></li>
-<li>解决方法：<code>wait</code>而非<code>kill</code>，因为此进程已经死了。<ul>
-<li><code>wait</code>回收的是内核区残留的东西而不是用户区的东西，用户区的东西在进程终止时就被释放。</li>
+<li>杀死产生僵尸进程的父进程，这样这些僵尸进程就变成了孤儿进程，进而被init进程接管，进而被回收。</li>
+<li>在子进程死亡发送<code>SIGCHLD</code>信号时，直接采用<strong>忽略</strong>的做法。<code>signal(SIGCHLD,SIG_IGN)</code>。忽略这个信号，这也是一种代表了我们对子进程死亡的处理态度。我们不关心他的死法。而系统也懂了我们不关心，故直接释放资源。不会造成僵尸进程的诞生。</li>
 </ul>
 </li>
 </ul>
@@ -858,40 +1233,49 @@
 </ul>
 </li>
 </ul>
-<h2 id="wait-waitpid"><a href="#wait-waitpid" class="headerlink" title="wait/waitpid"></a><code>wait/waitpid</code></h2><h3 id="pid-t-wait-int-statloc"><a href="#pid-t-wait-int-statloc" class="headerlink" title="pid_t wait(int *statloc);"></a><code>pid_t wait(int *statloc);</code></h3><blockquote>
-<p>一个进程在终止时会关闭所有文件描述符，释放在用户空间分配的内存，但它的 PCB还保留着，内核在其中保存了一些信息：如果是正常终止则保存着退出状态，如果是异常终止则保存着导致该进程终止的信号是哪个。这个进程的父进程可以调用 wait 或 waitpid 获取这些信息，然后彻底清除掉这个进程。我们知道一个进程的退出状态可以在 Shell 中用特殊变量$?查看，因为 Shell 是它的父进程，当它终止时 Shell 调用 wait 或 waitpid 得到它的退出<br>状态同时彻底清除掉这个进程。      —黑马Linux讲义</p>
-</blockquote>
+<h2 id="wait-waitpid"><a href="#wait-waitpid" class="headerlink" title="wait/waitpid"></a><code>wait/waitpid</code></h2><h3 id="pid-t-wait-int-statloc"><a href="#pid-t-wait-int-statloc" class="headerlink" title="pid_t wait(int *statloc);"></a><code>pid_t wait(int *statloc);</code></h3><hr>
 <ul>
-<li><p>在每个进程退出的时候，内核释放该进程所有的资源、包括打开的文件、占用的内存等。但是仍然为其保留一定的信息，这些信息主要主要指进程控制块PCB的信息（包括进程号、退出状态、运行时间等）。</p>
-</li>
-<li><p>父进程可以通过调用wait或waitpid得到它的退出状态同时彻底清除掉这个进程</p>
-</li>
+<li>在每个进程退出的时候，内核释放该进程所有的资源、包括打开的文件、占用的内存等。但是仍然为其保留一定的信息，这些信息主要主要指进程控制块<code>PCB</code>的信息（包括进程号、退出状态、运行时间等）。我们需要对这些信息进行处理，以告知系统我们已经彻底结束对这个进程的利用。</li>
+</ul>
+<h3 id="纠错"><a href="#纠错" class="headerlink" title="纠错"></a><strong>纠错</strong></h3><ul>
 <li><p><code>wait</code>函数作用</p>
 <ul>
 <li>阻塞等待子进程退出。（这时候应该会让出<code>cpu</code>资源吧？？）</li>
-<li>回收子进程残留资源</li>
-<li>获取子进程结束状态(退出原因)。</li>
+<li>当一个子进程终止时，<code>wait</code>去获取整个终止子进程的终止信息，取得该子进程的终止状态则立即返回。</li>
+<li>如果他没有任何子进程，则立即出错返回。</li>
 </ul>
 </li>
-<li><p><code>waitpid</code>相较于<code>wait</code>可以选择是否阻塞，以及回收特定的某一个子进程</p>
+<li><p>当调用<code>wait</code>获取信息后，<strong>系统</strong>就会释放内核中的残留信息。（这些信息就是为了让<code>wait</code>去获取的，<code>wait</code>获取完之后，这些东西自然就可以释放掉）。</p>
 </li>
-<li><p>一次 <code>wait</code> 或 <code>waitpid</code> 调用只能清理一个子进程</p>
+<li><p><strong>所以释放残留资源这一步，不是wait函数做的，而是系统做的！！！</strong></p>
+<ul>
+<li><strong>那么多博客都tm以讹传讹。害死人。</strong></li>
+</ul>
+</li>
+<li><p><strong>看啊</strong></p>
+<ul>
+<li><code>description</code><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">**In the <span class="keyword">case</span> of a terminated child, performing a wait allows the system to release</span><br><span class="line">   the resources associated with the child; <span class="keyword">if</span> a wait is <span class="keyword">not</span> performed, then the terminated child remains in  a  <span class="string">&quot;zombie&quot;</span>  state**</span><br><span class="line">   (see NOTES below).</span><br></pre></td></tr></table></figure></li>
+<li><code>notes</code>  <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">specifies that if the disposition of SIGCHLD is set to SIG_IGN or the SA_NOCLDWAIT flag is set for SIGCHLD (see</span><br><span class="line">   sigaction(2)), then children that terminate do not become zombies and a call to wait() or  waitpid()  will  block  until  all</span><br><span class="line">   children  have terminated, and then fail with errno set to ECHILD. </span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>看manpage去</p>
 </li>
 </ul>
-<blockquote>
-<p>当进程终止时，操作系统的隐式回收机制会：1.关闭所有文件描述符 2. 释放用户空间<br>分配的内存。内核的 PCB 仍存在。其中保存该进程的退出状态。(正常终止→退出值；异常<br>终止→终止信号)    —黑马Linux讲义</p>
-</blockquote>
+<hr>
 <ul>
-<li><p><code>int *statloc</code>：保存退出状态</p>
-</li>
-<li><p><code>return</code></p>
-<ul>
+<li><code>pid_t wait(int *statloc);</code></li>
+<li><code>int *statloc</code>：保存退出状态。保存的就是子进程结束时return的值。</li>
+<li><code>return</code><ul>
 <li>成功回收：返回回收的进程的<code>pid</code>号</li>
 <li>出错：调用<code>wait</code>的当前进程并没有任何子进程。则返回<code>-1</code>。</li>
 </ul>
 </li>
-<li><p>宏函数判断终止原因。</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">WIFEXITED（status）宏判断为真 表示程序正常退出</span><br><span class="line">WEXITSTATUS(status)上一个宏判断为真 则返回状态值  <span class="comment">//也就是在获取子进程最后return的值。</span></span><br><span class="line">WIFSIGNALED(status) 宏判断为真 表示程序异常退出</span><br><span class="line">WTERMSIG(status) 上一个判断为真，则返回状态值</span><br><span class="line">WIFSTOPPED(status)：子进程被停止，返回真</span><br><span class="line">WSTOPSIG(status)：返回停止子进程的信号值</span><br></pre></td></tr></table></figure>
+<li><code>waitpid</code>相较于<code>wait</code>可以选择是否阻塞，以及回收特定的某一个子进程</li>
+<li>一次 <code>wait</code> 或 <code>waitpid</code> 调用只能清理一个子进程</li>
+<li><code>wait</code>等价于<code>waitpid(-1, &amp;wstatus, 0);</code></li>
+</ul>
+<ul>
+<li>宏函数判断终止原因。<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">WIFEXITED（status）宏判断为真 表示程序正常退出</span><br><span class="line">WEXITSTATUS(status)上一个宏判断为真 则返回状态值  <span class="comment">//也就是在获取子进程最后return的值。</span></span><br><span class="line">WIFSIGNALED(status) 宏判断为真 表示程序异常退出</span><br><span class="line">WTERMSIG(status) 上一个判断为真，则返回状态值 <span class="comment">//也就是在获取子进程最后return的值。</span></span><br><span class="line">WIFSTOPPED(status)：子进程被停止，返回真</span><br><span class="line">WSTOPSIG(status)：返回停止子进程的信号值 <span class="comment">//也就是在获取子进程最后return的值。</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* str)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        perror(str);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">pid_t</span> target_pid;</span><br><span class="line">        <span class="keyword">for</span>(;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">                <span class="keyword">if</span>(pid==<span class="number">-1</span>)</span><br><span class="line">                        sys_err(<span class="string">&quot;forl error&quot;</span>);</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span>(pid&gt;<span class="number">0</span>)&#123;</span><br><span class="line">                        <span class="keyword">if</span>(i==<span class="number">2</span>)</span><br><span class="line">                                target_pid = pid; <span class="comment">//  注意用pid 不是getpid()</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span>(pid==<span class="number">0</span>)</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">int</span> statloc;    <span class="comment">//  接收进程退出状态</span></span><br><span class="line">                <span class="keyword">pid_t</span> wpid = waitpid(target_pid,&amp;statloc,<span class="number">0</span>);    <span class="comment">//  阻塞回收 成功：返回进程id，错误：返回-1（一般是子进程不存在）</span></span><br><span class="line">                </span><br><span class="line">                <span class="keyword">if</span>(wpid==<span class="number">-1</span>)</span><br><span class="line">                        sys_err(<span class="string">&quot;waitpid&quot;</span>);</span><br><span class="line">                <span class="keyword">else</span></span><br><span class="line">                        <span class="built_in">printf</span>(<span class="string">&quot;i am the parent process , wait for the child process id = %d\n&quot;</span>,wpid);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;i am the child process id = %d\n&quot;</span>,getpid());</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier$ ./waitpid_shc.out </span><br><span class="line">i am the child process id = <span class="number">4306</span></span><br><span class="line">i am the child process id = <span class="number">4307</span></span><br><span class="line">i am the child process id = <span class="number">4309</span></span><br><span class="line">i am the child process id = <span class="number">4310</span></span><br><span class="line">i am the child process id = <span class="number">4308</span></span><br><span class="line">i am the parent process , wait <span class="keyword">for</span> the child process id = <span class="number">4308</span>  <span class="comment">//  回收i=2进程</span></span><br></pre></td></tr></table></figure></li>
 </ul>
 <h3 id="pid-t-waitpid-pid-t-pid-int-statloc-int-options"><a href="#pid-t-waitpid-pid-t-pid-int-statloc-int-options" class="headerlink" title="pid_t waitpid(pid_t pid,int *statloc,int options);"></a><code>pid_t waitpid(pid_t pid,int *statloc,int options);</code></h3><ul>
@@ -906,6 +1290,7 @@
 </li>
 <li><code>int *statloc</code><ul>
 <li>保存退出状态</li>
+<li>我也不太懂怎么就能保存状态。应该是通过位图吧</li>
 </ul>
 </li>
 <li><code>options</code><ul>
@@ -913,6 +1298,7 @@
 <li><code>WNOHANG</code>：非阻塞，没有子进程结束，立即返回</li>
 <li><code>WUNTRACED</code>：如果子进程由于被停止产生的 SIGCHLD，waitpid 则立即返回</li>
 <li><code>WCONTINUED</code>：如果子进程由于被 <code>SIGCONT</code> 唤醒而产生的 <code>SIGCHLD</code>，<code>waitpid</code> 则立即返回</li>
+<li>…</li>
 </ul>
 </li>
 </ul>
@@ -929,6 +1315,20 @@
 <li><p>回收所有进程</p>
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sys_err</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* str)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        perror(str);</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span>(;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">                <span class="keyword">if</span>(pid==<span class="number">-1</span>)</span><br><span class="line">                        sys_err(<span class="string">&quot;forl error&quot;</span>);</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span>(pid==<span class="number">0</span>)</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="keyword">pid_t</span> wpid  = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// while((wpid=waitpid(-1,NULL,0)!=-1))</span></span><br><span class="line">                <span class="comment">//         printf(&quot;i wait the child id = %d hhhh\n&quot;,wpid);</span></span><br><span class="line"></span><br><span class="line">                <span class="comment">//  这样循环使用WNOHANG 的 waitpid的效果和上面直接使用 阻塞的 waitpid的效果一样（我认为）</span></span><br><span class="line">               <span class="keyword">while</span>((wpid = waitpid(<span class="number">-1</span>,<span class="literal">NULL</span>,WNOHANG))!=<span class="number">-1</span>)</span><br><span class="line">               &#123;</span><br><span class="line">                        <span class="comment">//  非阻塞 且没有结束的子进程时 返回0</span></span><br><span class="line">                        <span class="keyword">if</span>(wpid&gt;<span class="number">0</span>)</span><br><span class="line">                                <span class="built_in">printf</span>(<span class="string">&quot;i wait the child id = %d\n&quot;</span>,wpid);</span><br><span class="line">                        <span class="keyword">else</span></span><br><span class="line">                                usleep(<span class="number">1</span>);      <span class="comment">//  父进程睡眠 让出cpu  </span></span><br><span class="line">               &#125;</span><br><span class="line"></span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot; parent die\n &quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">printf</span>(<span class="string">&quot;i am the %d th child process id = %d\n&quot;</span>,i,getpid());</span><br><span class="line">                <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// i am the 0 th child process id = 4407</span></span><br><span class="line"><span class="comment">// i am the 1 th child process id = 4408</span></span><br><span class="line"><span class="comment">// i am the 3 th child process id = 4410</span></span><br><span class="line"><span class="comment">// i wait the child id = 1 hhhh</span></span><br><span class="line"><span class="comment">// i wait the child id = 1 hhhh</span></span><br><span class="line"><span class="comment">// i wait the child id = 1 hhhh</span></span><br><span class="line"><span class="comment">// i am the 2 th child process id = 4409</span></span><br><span class="line"><span class="comment">// i am the 4 th child process id = 4411</span></span><br><span class="line"><span class="comment">// i wait the child id = 1 hhhh</span></span><br><span class="line"><span class="comment">// i wait the child id = 1 hhhh</span></span><br><span class="line"><span class="comment">//  parent die</span></span><br><span class="line"></span><br><span class="line">i am the <span class="number">1</span> th child process id = <span class="number">4381</span></span><br><span class="line">i am the <span class="number">0</span> th child process id = <span class="number">4380</span></span><br><span class="line">i am the <span class="number">3</span> th child process id = <span class="number">4383</span></span><br><span class="line">i wait the child id = <span class="number">4380</span></span><br><span class="line">i wait the child id = <span class="number">4381</span></span><br><span class="line">i am the <span class="number">2</span> th child process id = <span class="number">4382</span></span><br><span class="line">i am the <span class="number">4</span> th child process id = <span class="number">4384</span></span><br><span class="line">i wait the child id = <span class="number">4382</span></span><br><span class="line">i wait the child id = <span class="number">4383</span></span><br><span class="line">i wait the child id = <span class="number">4384</span></span><br><span class="line"> parent die</span><br></pre></td></tr></table></figure></li>
 </ul>
+<h2 id="关于wait函数只是负责获取终止状态，而不负责回收资源的代码"><a href="#关于wait函数只是负责获取终止状态，而不负责回收资源的代码" class="headerlink" title="关于wait函数只是负责获取终止状态，而不负责回收资源的代码"></a><strong>关于wait函数只是负责获取终止状态，而不负责回收资源的代码</strong></h2><ul>
+<li>所以那在处理死去的进程时，如果不需要获取这个死去进程的信息，就不需要<code>wait</code>。直接<code>signal(SIGCHLD，SIG_IGN)</code>就可以让这个死去的子进程被释放残留资源从而不变成僵尸进程<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line">	<span class="keyword">for</span>( i=<span class="number">0</span>;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">		<span class="keyword">if</span>(pid==<span class="number">0</span>) <span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	signal(SIGCHLD,SIG_IGN);</span><br><span class="line">	<span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot; i am parent \n&quot;</span>);</span><br><span class="line">		sleep(<span class="number">20</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;i am %d child\n&quot;</span>,i);</span><br><span class="line">		sleep(i);</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;%d die\n&quot;</span>,i);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">ps ajx也没有僵尸进程</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./test01_wait.out </span><br><span class="line">i am <span class="number">0</span> child</span><br><span class="line">i am <span class="number">1</span> child</span><br><span class="line"> i am parent </span><br><span class="line">i am <span class="number">2</span> child</span><br><span class="line">i am <span class="number">3</span> child</span><br><span class="line">i am <span class="number">4</span> child</span><br><span class="line"><span class="number">0</span> die</span><br><span class="line"><span class="number">1</span> die</span><br><span class="line"><span class="number">2</span> die</span><br><span class="line"><span class="number">3</span> die</span><br><span class="line"><span class="number">4</span> die</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="子进程返回值补充"><a href="#子进程返回值补充" class="headerlink" title="子进程返回值补充"></a>子进程返回值补充</h2><ul>
+<li>子进程结束时返回<code>int</code>值，父进程可以选择用<code>wait(&amp;status)</code>去接收<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">    <span class="keyword">if</span>(pid==<span class="number">0</span>) &#123;sleep(<span class="number">10</span>); <span class="built_in">exit</span>(<span class="number">1</span>);&#125;</span><br><span class="line">    <span class="comment">// kill(pid,SIGINT);</span></span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    wait(&amp;status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>,status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFEXITED(status),WEXITSTATUS(status));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFSIGNALED(status),WTERMSIG(status));</span><br><span class="line">&#125;</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./<span class="keyword">try</span>.out </span><br><span class="line"><span class="number">256</span></span><br><span class="line"><span class="number">1</span>       <span class="number">1</span></span><br><span class="line"><span class="number">0</span>       <span class="number">0</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">    <span class="keyword">if</span>(pid==<span class="number">0</span>) &#123;sleep(<span class="number">10</span>); <span class="built_in">exit</span>(<span class="number">1</span>);&#125;</span><br><span class="line">    kill(pid,SIGINT);</span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    wait(&amp;status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>,status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFEXITED(status),WEXITSTATUS(status));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFSIGNALED(status),WTERMSIG(status));</span><br><span class="line">&#125;</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./<span class="keyword">try</span>.out </span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="number">0</span>       <span class="number">0</span></span><br><span class="line"><span class="number">1</span>       <span class="number">2</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">    <span class="keyword">if</span>(pid==<span class="number">0</span>) &#123;<span class="built_in">exit</span>(<span class="number">0</span>);&#125;</span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    wait(&amp;status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>,status);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFEXITED(status),WEXITSTATUS(status));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d\t%d\n&quot;</span>,WIFSIGNALED(status),WTERMSIG(status));</span><br><span class="line">&#125;</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ./<span class="keyword">try</span>.out </span><br><span class="line"><span class="number">0</span></span><br><span class="line"><span class="number">1</span>       <span class="number">0</span></span><br><span class="line"><span class="number">0</span>       <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="manpage阅读"><a href="#manpage阅读" class="headerlink" title="manpage阅读"></a>manpage阅读</h2><ul>
+<li><code>wait</code><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">WAIT(2)                    Linux Programmer&#x27;s </span><br><span class="line">  SYNOPSIS</span><br><span class="line">        #include &lt;sys/types.h&gt;</span><br><span class="line">        #include &lt;sys/wait.h&gt;</span><br><span class="line"></span><br><span class="line">        pid_t wait(int *wstatus);</span><br><span class="line">        pid_t waitpid(pid_t pid, int *wstatus, int options);</span><br><span class="line">        int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);</span><br><span class="line"></span><br><span class="line">  DESCRIPTION</span><br><span class="line">        All  of these system calls are used to wait for state changes in a child of the calling process, and obtain information about</span><br><span class="line">        the child whose state has changed.  A state change is considered to be: the child terminated; the child was stopped by a sig‐</span><br><span class="line">        nal; or the child was resumed by a signal.  **In the case of a terminated child, performing a wait allows the system to release</span><br><span class="line">        the resources associated with the child; if a wait is not performed, then the terminated child remains in  a  &quot;zombie&quot;  state**</span><br><span class="line">        (see NOTES below).</span><br><span class="line"></span><br><span class="line">        If  a  child  has  already  changed  state,  then these calls return immediately.  Otherwise, they block until either a child</span><br><span class="line">        changes state or a signal handler interrupts the call (assuming that system calls are not automatically restarted  using  the</span><br><span class="line">        SA_RESTART  flag of sigaction(2)).  In the remainder of this page, a child whose state has changed and which has not yet been</span><br><span class="line">        waited upon by one of these system calls is termed waitable.</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  NOTES</span><br><span class="line">        A  child  that terminates, but has not been waited for becomes a &quot;zombie&quot;.  The kernel maintains a minimal set of information</span><br><span class="line">        about the zombie process (PID, termination status, resource usage information) in order to allow the parent to later  perform</span><br><span class="line">        a wait to obtain information about the child.  As long as a zombie is not removed from the system via a wait, it will consume</span><br><span class="line">        a slot in the kernel process table, and if this table fills, it will not be possible to create further processes.  If a  par‐</span><br><span class="line">        ent process terminates, then its &quot;zombie&quot; children (if any) are adopted by init(1), (or by the nearest &quot;subreaper&quot; process as</span><br><span class="line">        defined through the use of the prctl(2) PR_SET_CHILD_SUBREAPER operation); init(1) automatically performs a  wait  to  remove</span><br><span class="line">        the zombies.</span><br><span class="line"></span><br><span class="line">        POSIX.1-2001  specifies that if the disposition of SIGCHLD is set to SIG_IGN or the SA_NOCLDWAIT flag is set for SIGCHLD (see</span><br><span class="line">        sigaction(2)), then children that terminate do not become zombies and a call to wait() or  waitpid()  will  block  until  all</span><br><span class="line">        children  have terminated, and then fail with errno set to ECHILD.  (The original POSIX standard left the behavior of setting</span><br><span class="line">        SIGCHLD to SIG_IGN unspecified.  Note that even though the default disposition of SIGCHLD is &quot;ignore&quot;, explicitly setting the</span><br><span class="line">        disposition to SIG_IGN results in different treatment of zombie process children.)</span><br><span class="line"></span><br><span class="line">        Linux  2.6  conforms  to the POSIX requirements.  However, Linux 2.4 (and earlier) does not: if a wait() or waitpid() call is</span><br><span class="line">        made while SIGCHLD is being ignored, the call behaves just as though SIGCHLD were not being ignored, that is, the call blocks</span><br><span class="line">        until the next child terminates and then returns the process ID and status of that child.</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
 ]]></content>
       <categories>
         <category>Linux</category>
@@ -938,9 +1338,16 @@
       </tags>
   </entry>
   <entry>
-    <title>Linux-进程2</title>
+    <title>Linux-进程2-进程通信</title>
     <url>/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/</url>
-    <content><![CDATA[<h1 id="进程通信"><a href="#进程通信" class="headerlink" title="进程通信"></a>进程通信</h1><h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><ul>
+    <content><![CDATA[<p>Linux进程通信</p>
+<span id="more"></span>
+
+
+<ul>
+<li>参考 APUE，牛客讲义</li>
+</ul>
+<h1 id="进程通信"><a href="#进程通信" class="headerlink" title="进程通信"></a>进程通信</h1><h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><ul>
 <li>半双工<ul>
 <li>半双工通信是指可以双向流动，但不能同时。</li>
 </ul>
@@ -1182,6 +1589,9 @@
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line">懒得写了，下次一定</span><br></pre></td></tr></table></figure></li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Linux</category>
+      </categories>
       <tags>
         <tag>Linux</tag>
       </tags>
@@ -1215,24 +1625,6 @@
       </tags>
   </entry>
   <entry>
-    <title>ReStart</title>
-    <url>/2021/11/04/ReStart/</url>
-    <content><![CDATA[<p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
-<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
-<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
-<li>什么环境都没得了，幸好笔记还都在</li>
-<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
-<li>继续记录吧。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>碎碎念</category>
-      </categories>
-      <tags>
-        <tag>碎碎念</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hello World</title>
     <url>/2021/11/03/hello-world/</url>
     <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>!</p>
@@ -1260,28 +1652,21 @@
       </tags>
   </entry>
   <entry>
-    <title></title>
-    <url>/2021/11/14/static-library-And-shared-object/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>test</title>
-    <url>/2021/11/04/test/</url>
-    <content><![CDATA[<p>这是摘要</p>
-<span id="more"></span>
-<p>以下是正文</p>
-<h1 id="标题1"><a href="#标题1" class="headerlink" title="标题1"></a>标题1</h1><p>1</p>
-<h2 id="子标题1"><a href="#子标题1" class="headerlink" title="子标题1"></a>子标题1</h2><p>1.1</p>
-<h3 id="子子标题1"><a href="#子子标题1" class="headerlink" title="子子标题1"></a>子子标题1</h3><p>1.1.1</p>
-<h1 id="标题2"><a href="#标题2" class="headerlink" title="标题2"></a>标题2</h1><p>2</p>
-<h2 id="子标题2"><a href="#子标题2" class="headerlink" title="子标题2"></a>子标题2</h2><p>2.2</p>
-<h3 id="子子标题2"><a href="#子子标题2" class="headerlink" title="子子标题2"></a>子子标题2</h3><p>2.2.2</p>
+    <title>ReStart</title>
+    <url>/2021/11/04/ReStart/</url>
+    <content><![CDATA[<p><img src="/2021/11/04/ReStart/2021-11-04-22-11-58.png"></p>
+<h1 id="重新搭建的小窝"><a href="#重新搭建的小窝" class="headerlink" title="重新搭建的小窝"></a>重新搭建的小窝</h1><ul>
+<li><code>Dell</code>的硬盘坏掉了，来来回回修了快一个月</li>
+<li>什么环境都没得了，幸好笔记还都在</li>
+<li>虽然怕麻烦，不过重建一个自己的新窝还是很开心的。</li>
+<li>继续记录吧。</li>
+</ul>
 ]]></content>
       <categories>
-        <category>Blog_test</category>
+        <category>碎碎念</category>
       </categories>
       <tags>
-        <tag>Blog_test</tag>
+        <tag>碎碎念</tag>
       </tags>
   </entry>
   <entry>
@@ -1315,5 +1700,30 @@
       <tags>
         <tag>Blog_test</tag>
       </tags>
+  </entry>
+  <entry>
+    <title>test</title>
+    <url>/2021/11/04/test/</url>
+    <content><![CDATA[<p>这是摘要</p>
+<span id="more"></span>
+<p>以下是正文</p>
+<h1 id="标题1"><a href="#标题1" class="headerlink" title="标题1"></a>标题1</h1><p>1</p>
+<h2 id="子标题1"><a href="#子标题1" class="headerlink" title="子标题1"></a>子标题1</h2><p>1.1</p>
+<h3 id="子子标题1"><a href="#子子标题1" class="headerlink" title="子子标题1"></a>子子标题1</h3><p>1.1.1</p>
+<h1 id="标题2"><a href="#标题2" class="headerlink" title="标题2"></a>标题2</h1><p>2</p>
+<h2 id="子标题2"><a href="#子标题2" class="headerlink" title="子标题2"></a>子标题2</h2><p>2.2</p>
+<h3 id="子子标题2"><a href="#子子标题2" class="headerlink" title="子子标题2"></a>子子标题2</h3><p>2.2.2</p>
+]]></content>
+      <categories>
+        <category>Blog_test</category>
+      </categories>
+      <tags>
+        <tag>Blog_test</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2021/11/14/static-library-And-shared-object/</url>
+    <content><![CDATA[]]></content>
   </entry>
 </search>

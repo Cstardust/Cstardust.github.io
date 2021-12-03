@@ -20,18 +20,18 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="信号概述 特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送 信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉 每个进程收到的所有信号，都是由内核负责发送的，内核处理。 递达：递送并且到达进程。 未决：产生和递达之间的状态。主要由于阻塞(屏蔽)导致该状态。 产生信号:   按键产生，如：Ctrl+c、Ctrl+z、Ct">
+  <meta name="description" content="Linux信号">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux-信号">
 <meta property="og:url" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/index.html">
 <meta property="og:site_name" content="不落辰">
-<meta property="og:description" content="信号概述 特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送 信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉 每个进程收到的所有信号，都是由内核负责发送的，内核处理。 递达：递送并且到达进程。 未决：产生和递达之间的状态。主要由于阻塞(屏蔽)导致该状态。 产生信号:   按键产生，如：Ctrl+c、Ctrl+z、Ct">
+<meta property="og:description" content="Linux信号">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-43-32.png">
 <meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-11-30-18-45-07.png">
 <meta property="og:image" content="http://example.com/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-12-01-09-40-14.png">
 <meta property="article:published_time" content="2021-11-30T10:43:22.000Z">
-<meta property="article:modified_time" content="2021-12-01T15:52:06.344Z">
+<meta property="article:modified_time" content="2021-12-03T05:27:37.161Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="Linux">
 <meta name="twitter:card" content="summary">
@@ -239,8 +239,17 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-01 23:52:06" itemprop="dateModified" datetime="2021-12-01T23:52:06+08:00">2021-12-01</time>
+                <time title="修改时间：2021-12-03 13:27:37" itemprop="dateModified" datetime="2021-12-03T13:27:37+08:00">2021-12-03</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a>
+                </span>
+            </span>
 
           
             <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
@@ -260,7 +269,13 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+        <p>Linux信号</p>
+<span id="more"></span>
+
+<ul>
+<li>参考 APUE，牛客以及黑马讲义</li>
+</ul>
+<h1 id="信号"><a href="#信号" class="headerlink" title="信号"></a><strong>信号</strong></h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
 <li>特点：简单 ； 不能携带大量信息 ； 满足某个特设条件才发送</li>
 <li>信号的特质：由于信号是通过软件方法实现，其实现手段导致信号有很强的延时性。但对于用户来说，这个延迟时间非常短，不易察觉</li>
 <li>每个进程收到的所有信号，都是由内核负责发送的，内核处理。</li>
@@ -274,10 +289,17 @@
 <li> 命令产生，如：<code>kill</code> 命令</li>
 </ul>
 </li>
-<li>信号的处理方式:<ul>
-<li> 执行默认动作</li>
-<li> 忽略(丢弃)</li>
-<li> 捕捉(调用户处理函数)<h2 id="信号要素"><a href="#信号要素" class="headerlink" title="信号要素"></a>信号要素</h2></li>
+<li><strong>信号的处理方式:</strong><ul>
+<li><strong>执行默认动作</strong><ul>
+<li><code>Term：</code>终止进程</li>
+<li> <code>Ign：</code> 忽略信号 (默认即时对该种信号忽略操作)</li>
+<li> <code>Core</code>：终止进程，生成 Core 文件。(查验进程死亡原因， 用于 <code>gdb</code> 调试)</li>
+<li> <code>Stop：</code>停止（暂停）进程</li>
+<li> <code>Cont</code>：继续运行进程</li>
+</ul>
+</li>
+<li><strong>忽略(丢弃)</strong></li>
+<li> <strong>捕捉(调用户处理函数)</strong><h2 id="信号要素"><a href="#信号要素" class="headerlink" title="信号要素"></a>信号要素</h2></li>
 </ul>
 </li>
 <li><strong>信号4要素</strong><ul>
@@ -297,7 +319,7 @@
 <li> 1~31常规信号  </li>
 <li> <code>9 SIGKILL ; 19 SIGSTOP</code> 信号，不允许忽略和捕捉，只能执行默认动作。甚至不能将其设置为阻塞。</li>
 <li> 只有每个信号所对应的事件发生了，该信号才会被递送(但不一定递达)<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/revier/src$ <span class="built_in">kill</span> -l</span><br><span class="line"> 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP</span><br><span class="line"> 2) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1</span><br><span class="line">1)  SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM</span><br><span class="line">2)  SIGSTKFLT	17) SIGCHLD	18) SIGCONT	19) SIGSTOP	20) SIGTSTP</span><br><span class="line">3)  SIGTTIN	22) SIGTTOU	23) SIGURG	24) SIGXCPU	25) SIGXFSZ</span><br><span class="line">4)  SIGVTALRM	27) SIGPROF	28) SIGWINCH	29) SIGIO	30) SIGPWR</span><br><span class="line">5)  SIGSYS	34) SIGRTMIN	35) SIGRTMIN+1	36) SIGRTMIN+2	37) SIGRTMIN+3</span><br><span class="line">6)  SIGRTMIN+4	39) SIGRTMIN+5	40) SIGRTMIN+6	41) SIGRTMIN+7	42) SIGRTMIN+8</span><br><span class="line">7)  SIGRTMIN+9	44) SIGRTMIN+10	45) SIGRTMIN+11	46) SIGRTMIN+12	47) SIGRTMIN+13</span><br><span class="line">8)  SIGRTMIN+14	49) SIGRTMIN+15	50) SIGRTMAX-14	51) SIGRTMAX-13	52) SIGRTMAX-12</span><br><span class="line">9)  SIGRTMAX-11	54) SIGRTMAX-10	55) SIGRTMAX-9	56) SIGRTMAX-8	57) SIGRTMAX-7</span><br><span class="line">10) SIGRTMAX-6	59) SIGRTMAX-5	60) SIGRTMAX-4	61) SIGRTMAX-3	62) SIGRTMAX-2</span><br><span class="line">11) SIGRTMAX-1	64) SIGRTMAX	</span><br></pre></td></tr></table></figure></li>
-<li>常规信号的编号，名称，对应事件，默认处理动作。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1</span>) SIGHUP: 当用户退出 shell 时，由该 shell 启动的所有进程将收到这个信号，默认动作为终止进程</span><br><span class="line"><span class="number">2</span>) SIGINT：当用户按下了&lt;Ctrl+C&gt;组合键时，用户终端向正在运行中的由该终端启动的程序发出此信号。默认动</span><br><span class="line">作为终止进程。</span><br><span class="line"><span class="number">3</span>) SIGQUIT：当用户按下&lt;ctrl+\&gt;组合键时产生该信号，用户终端向正在运行中的由该终端启动的程序发出些信</span><br><span class="line">号。默认动作为终止进程。</span><br><span class="line"><span class="number">4</span>) SIGILL：CPU 检测到某进程执行了非法指令。默认动作为终止进程并产生 core 文件</span><br><span class="line"><span class="number">5</span>) SIGTRAP：该信号由断点指令或其他 trap 指令产生。默认动作为终止里程 并产生 core 文件。</span><br><span class="line"><span class="number">6</span>) SIGABRT: 调用 abort 函数时产生该信号。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">7</span>) SIGBUS：非法访问内存地址，包括内存对齐出错，默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">8</span>) SIGFPE：在发生致命的运算错误时发出。不仅包括浮点运算错误，还包括溢出及除数为 <span class="number">0</span> 等所有的算法错误。</span><br><span class="line">默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">9</span>) SIGKILL：无条件终止进程。本信号不能被忽略，处理和阻塞。默认动作为终止进程。它向系统管理员提供了</span><br><span class="line">可以杀死任何进程的方法。</span><br><span class="line"><span class="number">10</span>) SIGUSE1：用户定义 的信号。即程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">11</span>) SIGSEGV：指示进程进行了无效内存访问。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">12</span>) SIGUSR2：另外一个用户自定义信号，程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">13</span>) SIGPIPE：Broken pipe 向一个没有读端的管道写数据。默认动作为终止进程。</span><br><span class="line">北京市昌平区建材城西路金燕龙办公楼一层 电话：<span class="number">400</span><span class="number">-618</span><span class="number">-9090</span></span><br><span class="line"><span class="number">14</span>) SIGALRM: 定时器超时，超时的时间 由系统调用 alarm 设置。默认动作为终止进程。</span><br><span class="line"><span class="number">15</span>) SIGTERM：程序结束信号，与 SIGKILL 不同的是，该信号可以被阻塞和终止。通常用来要示程序正常退出。</span><br><span class="line">执行 shell 命令 Kill 时，缺省产生这个信号。默认动作为终止进程。</span><br><span class="line"><span class="number">16</span>) SIGSTKFLT：Linux 早期版本出现的信号，现仍保留向后兼容。默认动作为终止进程。</span><br><span class="line"><span class="number">17</span>) SIGCHLD：子进程状态发生变化时，父进程会收到这个信号。默认动作为忽略这个信号。</span><br><span class="line"><span class="number">18</span>) SIGCONT：如果进程已停止，则使其继续运行。默认动作为继续/忽略。</span><br><span class="line"><span class="number">19</span>) SIGSTOP：停止进程的执行。信号不能被忽略，处理和阻塞。默认动作为暂停进程。</span><br><span class="line"><span class="number">20</span>) SIGTSTP：停止终端交互进程的运行。按下&lt;ctrl+z&gt;组合键时发出这个信号。默认动作为暂停进程。</span><br><span class="line"><span class="number">21</span>) SIGTTIN：后台进程读终端控制台。默认动作为暂停进程。</span><br><span class="line"><span class="number">22</span>) SIGTTOU: 该信号类似于 SIGTTIN，在后台进程要向终端输出数据时发生。默认动作为暂停进程。</span><br><span class="line"><span class="number">23</span>) SIGURG：套接字上有紧急数据时，向当前正在运行的进程发出些信号，报告有紧急数据到达。如网络带外</span><br><span class="line">数据到达，默认动作为忽略该信号。</span><br><span class="line"><span class="number">24</span>) SIGXCPU：进程执行时间超过了分配给该进程的 CPU 时间 ，系统产生该信号并发送给该进程。默认动作为</span><br><span class="line">终止进程。</span><br><span class="line"><span class="number">25</span>) SIGXFSZ：超过文件的最大长度设置。默认动作为终止进程。</span><br><span class="line"><span class="number">26</span>) SIGVTALRM：虚拟时钟超时时产生该信号。类似于 SIGALRM，但是该信号只计算该进程占用 CPU 的使用时</span><br><span class="line">间。默认动作为终止进程。</span><br><span class="line"><span class="number">27</span>) SGIPROF：类似于 SIGVTALRM，它不公包括该进程占用 CPU 时间还包括执行系统调用时间。默认动作为终止</span><br><span class="line">进程。</span><br><span class="line"><span class="number">28</span>) SIGWINCH：窗口变化大小时发出。默认动作为忽略该信号。</span><br><span class="line"><span class="number">29</span>) SIGIO：此信号向进程指示发出了一个异步 IO 事件。默认动作为忽略。</span><br><span class="line"><span class="number">30</span>) SIGPWR：关机。默认动作为终止进程。</span><br><span class="line"><span class="number">31</span>) SIGSYS：无效的系统调用。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">34</span>) SIGRTMIN ～ (<span class="number">64</span>) SIGRTMAX：LINUX 的实时信号，它们没有固定的含义（可以由用户自定义）。所有的实时</span><br><span class="line">信号的默认动作都为终止进程。</span><br></pre></td></tr></table></figure></li>
+<li>常规信号的编号，名称，对应事件，默认处理动作。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1</span>) SIGHUP: 当用户退出 shell 时，由该 shell 启动的所有进程将收到这个信号，默认动作为终止进程</span><br><span class="line"><span class="number">2</span>) SIGINT：当用户按下了&lt;Ctrl+C&gt;组合键时，用户终端向正在运行中的由该终端启动的程序发出此信号。默认动作为终止进程。</span><br><span class="line"><span class="number">3</span>) SIGQUIT：当用户按下&lt;ctrl+\&gt;组合键时产生该信号，用户终端向正在运行中的由该终端启动的程序发出些信号。默认动作为终止进程。</span><br><span class="line"><span class="number">4</span>) SIGILL：CPU 检测到某进程执行了非法指令。默认动作为终止进程并产生 core 文件</span><br><span class="line"><span class="number">5</span>) SIGTRAP：该信号由断点指令或其他 trap 指令产生。默认动作为终止里程 并产生 core 文件。</span><br><span class="line"><span class="number">6</span>) SIGABRT: 调用 abort 函数时产生该信号。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">7</span>) SIGBUS：非法访问内存地址，包括内存对齐出错，默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">8</span>) SIGFPE：在发生致命的运算错误时发出。不仅包括浮点运算错误，还包括溢出及除数为 <span class="number">0</span> 等所有的算法错误。</span><br><span class="line">默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">9</span>) SIGKILL：无条件终止进程。本信号不能被忽略，处理和阻塞。默认动作为终止进程。它向系统管理员提供了</span><br><span class="line">可以杀死任何进程的方法。</span><br><span class="line"><span class="number">10</span>) SIGUSE1：用户定义 的信号。即程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">11</span>) SIGSEGV：指示进程进行了无效内存访问。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">12</span>) SIGUSR2：另外一个用户自定义信号，程序员可以在程序中定义并使用该信号。默认动作为终止进程。</span><br><span class="line"><span class="number">13</span>) SIGPIPE：Broken pipe 向一个没有读端的管道写数据。默认动作为终止进程。</span><br><span class="line">北京市昌平区建材城西路金燕龙办公楼一层 电话：<span class="number">400</span><span class="number">-618</span><span class="number">-9090</span></span><br><span class="line"><span class="number">14</span>) SIGALRM: 定时器超时，超时的时间 由系统调用 alarm 设置。默认动作为终止进程。</span><br><span class="line"><span class="number">15</span>) SIGTERM：程序结束信号，与 SIGKILL 不同的是，该信号可以被阻塞和终止。通常用来要示程序正常退出。</span><br><span class="line">执行 shell 命令 Kill 时，缺省产生这个信号。默认动作为终止进程。</span><br><span class="line"><span class="number">16</span>) SIGSTKFLT：Linux 早期版本出现的信号，现仍保留向后兼容。默认动作为终止进程。</span><br><span class="line"><span class="number">17</span>) SIGCHLD：子进程状态发生变化时，父进程会收到这个信号。默认动作为忽略这个信号。</span><br><span class="line"><span class="number">18</span>) SIGCONT：如果进程已停止，则使其继续运行。默认动作为继续/忽略。</span><br><span class="line"><span class="number">19</span>) SIGSTOP：停止进程的执行。信号不能被忽略，处理和阻塞。默认动作为暂停进程。</span><br><span class="line"><span class="number">20</span>) SIGTSTP：停止终端交互进程的运行。按下&lt;ctrl+z&gt;组合键时发出这个信号。默认动作为暂停进程。</span><br><span class="line"><span class="number">21</span>) SIGTTIN：后台进程读终端控制台。默认动作为暂停进程。</span><br><span class="line"><span class="number">22</span>) SIGTTOU: 该信号类似于 SIGTTIN，在后台进程要向终端输出数据时发生。默认动作为暂停进程。</span><br><span class="line"><span class="number">23</span>) SIGURG：套接字上有紧急数据时，向当前正在运行的进程发出些信号，报告有紧急数据到达。如网络带外</span><br><span class="line">数据到达，默认动作为忽略该信号。</span><br><span class="line"><span class="number">24</span>) SIGXCPU：进程执行时间超过了分配给该进程的 CPU 时间 ，系统产生该信号并发送给该进程。默认动作为</span><br><span class="line">终止进程。</span><br><span class="line"><span class="number">25</span>) SIGXFSZ：超过文件的最大长度设置。默认动作为终止进程。</span><br><span class="line"><span class="number">26</span>) SIGVTALRM：虚拟时钟超时时产生该信号。类似于 SIGALRM，但是该信号只计算该进程占用 CPU 的使用时</span><br><span class="line">间。默认动作为终止进程。</span><br><span class="line"><span class="number">27</span>) SGIPROF：类似于 SIGVTALRM，它不公包括该进程占用 CPU 时间还包括执行系统调用时间。默认动作为终止</span><br><span class="line">进程。</span><br><span class="line"><span class="number">28</span>) SIGWINCH：窗口变化大小时发出。默认动作为忽略该信号。</span><br><span class="line"><span class="number">29</span>) SIGIO：此信号向进程指示发出了一个异步 IO 事件。默认动作为忽略。</span><br><span class="line"><span class="number">30</span>) SIGPWR：关机。默认动作为终止进程。</span><br><span class="line"><span class="number">31</span>) SIGSYS：无效的系统调用。默认动作为终止进程并产生 core 文件。</span><br><span class="line"><span class="number">34</span>) SIGRTMIN ～ (<span class="number">64</span>) SIGRTMAX：LINUX 的实时信号，它们没有固定的含义（可以由用户自定义）。所有的实时</span><br><span class="line">信号的默认动作都为终止进程。</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="阻塞信号集（信号屏蔽字）；未决信号集"><a href="#阻塞信号集（信号屏蔽字）；未决信号集" class="headerlink" title="阻塞信号集（信号屏蔽字）；未决信号集"></a>阻塞信号集（信号屏蔽字）；未决信号集</h2><ul>
 <li><p>阻塞信号集(信号屏蔽字)</p>
@@ -321,7 +343,7 @@
 <li><p>按键</p>
 <ul>
 <li><code>Ctrl+c : SIGINT</code>。终端、中断。<code>interrupt</code></li>
-<li><code>Ctrl+z : SIGTSTP</code>。暂停、停止。<code>terminal</code></li>
+<li><code>Ctrl+z : SIGTSTP</code>。暂停、停止。<code>terminal stop</code></li>
 <li><code>Ctrl+\ : SIGQUIT</code></li>
 </ul>
 </li>
@@ -416,7 +438,9 @@
 </ul>
 <h2 id="捕捉"><a href="#捕捉" class="headerlink" title="捕捉"></a>捕捉</h2><h3 id="内核实现捕捉过程"><a href="#内核实现捕捉过程" class="headerlink" title="内核实现捕捉过程"></a>内核实现捕捉过程</h3><p><img src="/2021/11/30/Linux-%E4%BF%A1%E5%8F%B7/2021-12-01-09-40-14.png"></p>
 <ul>
-<li><code>signal signaction</code> 注册。捕捉的动作不是他完成的<h3 id="signal"><a href="#signal" class="headerlink" title="signal"></a>signal</h3></li>
+<li><code>signal signaction</code> 注册。捕捉的动作不是他完成的</li>
+</ul>
+<h3 id="signal"><a href="#signal" class="headerlink" title="signal"></a>signal</h3><ul>
 <li><code>sighandler_t signal(int signum, sighandler_t handler);</code><ul>
 <li><code>signum：</code>要捕捉信号</li>
 <li><code>handler：</code>相应处理函数</li>
@@ -449,7 +473,12 @@
 <h3 id="利用SIGCHLD回收子进程"><a href="#利用SIGCHLD回收子进程" class="headerlink" title="利用SIGCHLD回收子进程"></a>利用SIGCHLD回收子进程</h3></li>
 <li><p> 回收子进程常见方案，一定要会： 利用信号机制去回收子进程，防止使用execlp等而无法回收子线程的情况</p>
 </li>
-<li><p>思路：</p>
+<li><p><strong>思路1：</strong></p>
+<ul>
+<li> 直接设置<code>signal(SIGCHLD,SIG_IGN)</code>忽略这个信号即可。系统就懂了我们不需要残留的信息，直接释放残留资源。</li>
+</ul>
+</li>
+<li><p><strong>思路2：</strong></p>
 <ul>
 <li> 在父进程中注册<code>SIGCHLD</code>信号，回调函数里负责循环回收死掉的子进程。</li>
 </ul>
@@ -492,8 +521,9 @@
 </ul>
 </li>
 </ul>
-<blockquote>
-<p>子进程结束 对status的如何处理</p>
+<ul>
+<li><blockquote>
+<p><strong>子进程结束 对status的如何处理</strong></p>
 </blockquote>
 <ul>
 <li><code>pid_t waitpid(pid_t pid, int *status, int options)</code></li>
@@ -511,6 +541,8 @@
 <li><code>WIFSTOPPED(status)</code>：子进程被停止，返回真</li>
 <li><code>WSTOPSIG(status)</code>：返回停止子进程的信号值</li>
 <li><code>WIFCONTINUED(status)</code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -535,6 +567,8 @@
 </li>
 <li><p>扩展了解：<br><code>sa_flags</code> 还有很多可选参数，适用于不同情况。如：捕捉到信号后，在执行捕捉函数期间，不希望自动阻塞该<br>信号，可将 <code>sa_flags</code> 设置为 <code>SA_NODEFER</code>，除非 <code>sa_mask</code> 中包含该信号</p>
 </li>
+<li><p>以上了解摘自牛客讲义,APUE上也有，好多，有时间再看吧</p>
+</li>
 </ul>
 <h2 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h2><ul>
 <li>一些问题<ul>
@@ -542,6 +576,16 @@
 <li> 那么在这里这样看是不是阻塞要比<code>waitpid</code>非阻塞好？<code>waitpid</code>不会阻塞，会一直<code>while</code>循环，不让出<code>cpu</code>资源</li>
 </ul>
 </li>
+<li><code>wait(NULL)</code>与<code>signal(SIGCHLD,SIG_IGN)</code>区别？<ul>
+<li>我认为，前者可以保证子进程一定会运行完再进行主进程，后者子进程不一定运行完，父进程就结束了。</li>
+</ul>
+</li>
+</ul>
+<h2 id="关于SIG-ING处理SIGCHLD不会造成僵尸"><a href="#关于SIG-ING处理SIGCHLD不会造成僵尸" class="headerlink" title="关于SIG_ING处理SIGCHLD不会造成僵尸"></a>关于SIG_ING处理SIGCHLD不会造成僵尸</h2><ul>
+<li><code>SIGCHLD</code>默认处理方式是忽略，但是我们还是要显示写出来<code>signal(SIGCHLD,SIG_IGN)</code>才可以</li>
+<li>所以那在处理死去的进程时，如果不需要获取这个死去进程的信息，就不需要<code>wait</code>。直接<code>signal(SIGCHLD，SIG_IGN)</code>就可以让这个死去的子进程被释放残留资源从而不变成僵尸进程</li>
+<li><code>wait notes</code>  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">specifies that if the disposition of SIGCHLD is set to SIG_IGN or the SA_NOCLDWAIT flag is set for SIGCHLD [signal(SIGCHLD,SIG_IGN)](see</span><br><span class="line">    sigaction(2)), then children that terminate do not become zombies and a call to wait() or  waitpid()  will  block  until  all</span><br><span class="line">    children  have terminated, and then fail with errno set to ECHILD. </span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;signal.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line">	<span class="keyword">for</span>( i=<span class="number">0</span>;i&lt;<span class="number">5</span>;++i)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">		<span class="keyword">if</span>(pid==<span class="number">0</span>) <span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	signal(SIGCHLD,SIG_IGN);</span><br><span class="line">	<span class="keyword">if</span>(i==<span class="number">5</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot; i am parent \n&quot;</span>);</span><br><span class="line">		sleep(<span class="number">20</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;i am %d child\n&quot;</span>,i);</span><br><span class="line">		sleep(i);</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;%d die\n&quot;</span>,i);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">ps ajx也没有僵尸进程</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./test01_wait.out </span><br><span class="line">i am <span class="number">0</span> child</span><br><span class="line">i am <span class="number">1</span> child</span><br><span class="line"> i am parent </span><br><span class="line">i am <span class="number">2</span> child</span><br><span class="line">i am <span class="number">3</span> child</span><br><span class="line">i am <span class="number">4</span> child</span><br><span class="line"><span class="number">0</span> die</span><br><span class="line"><span class="number">1</span> die</span><br><span class="line"><span class="number">2</span> die</span><br><span class="line"><span class="number">3</span> die</span><br><span class="line"><span class="number">4</span> die</span><br></pre></td></tr></table></figure></li>
 </ul>
 
     </div>
@@ -561,10 +605,13 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/" rel="prev" title="Linux-进程2">
-      <i class="fa fa-chevron-left"></i> Linux-进程2
+    <a href="/2021/11/28/Linux-%E8%BF%9B%E7%A8%8B2/" rel="prev" title="Linux-进程2-进程通信">
+      <i class="fa fa-chevron-left"></i> Linux-进程2-进程通信
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/" rel="next" title="Linux-守护进程">
+      Linux-守护进程 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -623,7 +670,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.</span> <span class="nav-text">信号</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E8%A6%81%E7%B4%A0"><span class="nav-number">1.2.</span> <span class="nav-text">信号要素</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%98%BB%E5%A1%9E%E4%BF%A1%E5%8F%B7%E9%9B%86%EF%BC%88%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%EF%BC%89%EF%BC%9B%E6%9C%AA%E5%86%B3%E4%BF%A1%E5%8F%B7%E9%9B%86"><span class="nav-number">1.3.</span> <span class="nav-text">阻塞信号集（信号屏蔽字）；未决信号集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.4.</span> <span class="nav-text">产生信号</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.</span> <span class="nav-text">信号屏蔽字操作函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8D%95%E6%8D%89"><span class="nav-number">1.6.</span> <span class="nav-text">捕捉</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%AE%9E%E7%8E%B0%E6%8D%95%E6%8D%89%E8%BF%87%E7%A8%8B"><span class="nav-number">1.6.1.</span> <span class="nav-text">内核实现捕捉过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signal"><span class="nav-number">1.6.2.</span> <span class="nav-text">signal</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signaction"><span class="nav-number">1.6.3.</span> <span class="nav-text">signaction</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SIGCHLD"><span class="nav-number">1.7.</span> <span class="nav-text">SIGCHLD</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F"><span class="nav-number">1.7.1.</span> <span class="nav-text">产生</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8SIGCHLD%E5%9B%9E%E6%94%B6%E5%AD%90%E8%BF%9B%E7%A8%8B"><span class="nav-number">1.7.2.</span> <span class="nav-text">利用SIGCHLD回收子进程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%86%E8%A7%A3%EF%BC%9A%E4%B8%AD%E6%96%AD%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-number">1.8.</span> <span class="nav-text">了解：中断系统调用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">1.9.</span> <span class="nav-text">一些问题</span></a></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.</span> <span class="nav-text">信号</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E8%A6%81%E7%B4%A0"><span class="nav-number">1.2.</span> <span class="nav-text">信号要素</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%98%BB%E5%A1%9E%E4%BF%A1%E5%8F%B7%E9%9B%86%EF%BC%88%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%EF%BC%89%EF%BC%9B%E6%9C%AA%E5%86%B3%E4%BF%A1%E5%8F%B7%E9%9B%86"><span class="nav-number">1.3.</span> <span class="nav-text">阻塞信号集（信号屏蔽字）；未决信号集</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F%E4%BF%A1%E5%8F%B7"><span class="nav-number">1.4.</span> <span class="nav-text">产生信号</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E5%B1%8F%E8%94%BD%E5%AD%97%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0"><span class="nav-number">1.5.</span> <span class="nav-text">信号屏蔽字操作函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8D%95%E6%8D%89"><span class="nav-number">1.6.</span> <span class="nav-text">捕捉</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E6%A0%B8%E5%AE%9E%E7%8E%B0%E6%8D%95%E6%8D%89%E8%BF%87%E7%A8%8B"><span class="nav-number">1.6.1.</span> <span class="nav-text">内核实现捕捉过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signal"><span class="nav-number">1.6.2.</span> <span class="nav-text">signal</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#signaction"><span class="nav-number">1.6.3.</span> <span class="nav-text">signaction</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SIGCHLD"><span class="nav-number">1.7.</span> <span class="nav-text">SIGCHLD</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A7%E7%94%9F"><span class="nav-number">1.7.1.</span> <span class="nav-text">产生</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8SIGCHLD%E5%9B%9E%E6%94%B6%E5%AD%90%E8%BF%9B%E7%A8%8B"><span class="nav-number">1.7.2.</span> <span class="nav-text">利用SIGCHLD回收子进程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%86%E8%A7%A3%EF%BC%9A%E4%B8%AD%E6%96%AD%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-number">1.8.</span> <span class="nav-text">了解：中断系统调用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">1.9.</span> <span class="nav-text">一些问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8ESIG-ING%E5%A4%84%E7%90%86SIGCHLD%E4%B8%8D%E4%BC%9A%E9%80%A0%E6%88%90%E5%83%B5%E5%B0%B8"><span class="nav-number">1.10.</span> <span class="nav-text">关于SIG_ING处理SIGCHLD不会造成僵尸</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -637,7 +684,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-count">14</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
