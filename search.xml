@@ -926,23 +926,18 @@
 <li>线程间不共享</li>
 </ul>
 <h2 id="控制原语"><a href="#控制原语" class="headerlink" title="控制原语"></a>控制原语</h2><h3 id="线程创建"><a href="#线程创建" class="headerlink" title="线程创建"></a>线程创建</h3><h4 id="pthread-ceate"><a href="#pthread-ceate" class="headerlink" title="pthread_ceate"></a><code>pthread_ceate</code></h4><ul>
-<li><p><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></p>
-</li>
-<li><p><code>pthread_t *thread</code>：传出参数，表新创建的子线程 id</p>
-</li>
-<li><p><code>const pthread_attr_t *attr</code>：线程属性。传 NULL 表使用默认属性。</p>
-</li>
-<li><p><code>void *(*start_routine) (void *)</code>：新线程的线程体。</p>
-</li>
-<li><p><code>void *arg</code>：线程体的参数。没有的话，传<code>NULL</code></p>
-<ul>
+<li><code>int pthread_create(pthread_t *thread, const pthread_attr_t *attr,void *(*start_routine) (void *), void *arg)</code></li>
+<li><code>pthread_t *thread</code>：传出参数，表新创建的子线程 id</li>
+<li><code>const pthread_attr_t *attr</code>：线程属性。传 NULL 表使用默认属性。</li>
+<li><code>void *(*start_routine) (void *)</code>：新线程的线程体。</li>
+<li><code>void *arg</code>：线程体的参数。没有的话，传<code>NULL</code><ul>
 <li>如果有多个参数，需要将他们放入结构体，然后把结构体地址作为<code>arg</code>参数传入。</li>
 </ul>
 </li>
-<li><p>返回值：成功：0</p>
-</li>
-<li><p>失败：直接返回错误码，而非设置<code>errno</code></p>
-<h4 id="pthread-t-pthread-self-void"><a href="#pthread-t-pthread-self-void" class="headerlink" title="pthread_t pthread_self(void);"></a><code>pthread_t pthread_self(void);</code></h4></li>
+<li>返回值：成功：0</li>
+<li>失败：直接返回错误码，而非设置<code>errno</code></li>
+</ul>
+<h4 id="pthread-t-pthread-self-void"><a href="#pthread-t-pthread-self-void" class="headerlink" title="pthread_t pthread_self(void);"></a><code>pthread_t pthread_self(void);</code></h4><ul>
 <li><p>获取线程<code>ID</code>。其作用对应进程中 <code>getpid()</code> 函数。</p>
 </li>
 <li><p>返回值：成功：0； </p>
