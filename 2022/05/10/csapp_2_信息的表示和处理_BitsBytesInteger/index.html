@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="整形补码和无符号数关系 补码和无符号数关系 无符号数和有符号数并列。 有符号数 的一种表示形式是 补码   转化(位数为[w-1,0]) 补码 -&gt; 无符号 T2U(x) &#x3D; x + 2^w   (x&lt;0) T2U(x) &#x3D; x         (x&gt;&#x3D;0)   无符号 -&gt; 补码 U2T(u) &#x3D; u (u&lt;&#x3D;TMax) U2T(u) &#x3D; u-2^w (u&gt;T">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CSAPP_2_信息的表示和处理">
+<meta property="og:url" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="整形补码和无符号数关系 补码和无符号数关系 无符号数和有符号数并列。 有符号数 的一种表示形式是 补码   转化(位数为[w-1,0]) 补码 -&gt; 无符号 T2U(x) &#x3D; x + 2^w   (x&lt;0) T2U(x) &#x3D; x         (x&gt;&#x3D;0)   无符号 -&gt; 补码 U2T(u) &#x3D; u (u&lt;&#x3D;TMax) U2T(u) &#x3D; u-2^w (u&gt;T">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-18-09-28-30.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-20-09-42-42.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-20-19-46-45.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-20-42-03.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-21-01-15.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-20-45-53.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-21-44-55.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-34-53.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-35-18.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-13-09-51.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-25-43.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-09-28.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-39-17.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-49-44.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-14-31.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-11-15.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-51.png">
+<meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-58.png">
+<meta property="article:published_time" content="2022-05-10T08:40:13.000Z">
+<meta property="article:modified_time" content="2022-05-28T14:10:58.958Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计算机基础">
+<meta property="article:tag" content="CSAPP">
+<meta property="article:tag" content="学习笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-18-09-28-30.png">
+
+<link rel="canonical" href="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>CSAPP_2_信息的表示和处理 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CSAPP_2_信息的表示和处理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-05-10 16:40:13" itemprop="dateCreated datePublished" datetime="2022-05-10T16:40:13+08:00">2022-05-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-28 22:10:58" itemprop="dateModified" datetime="2022-05-28T22:10:58+08:00">2022-05-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="整形"><a href="#整形" class="headerlink" title="整形"></a>整形</h1><h2 id="补码和无符号数"><a href="#补码和无符号数" class="headerlink" title="补码和无符号数"></a>补码和无符号数</h2><h3 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h3><ul>
+<li>补码和无符号数关系<ul>
+<li>无符号数和有符号数并列。</li>
+<li>有符号数 的一种表示形式是 补码</li>
+</ul>
+</li>
+<li>转化(位数为[w-1,0])<ul>
+<li>补码 -&gt; 无符号<ul>
+<li><code>T2U(x) = x + 2^w   (x&lt;0)</code></li>
+<li><code>T2U(x) = x         (x&gt;=0)</code></li>
+</ul>
+</li>
+<li>无符号 -&gt; 补码<ul>
+<li><code>U2T(u) = u (u&lt;=TMax)</code></li>
+<li><code>U2T(u) = u-2^w (u&gt;TMax)</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-18-09-28-30.png"></li>
+<li>补码表示范围<ul>
+<li>前提：总共有n位。位数分别是[n-1,0]。也即从0开始，最高位是n-1</li>
+<li><code>[-2^(n-1),2^(n-1)-1];</code>（下例中就是<code>[-2^7 , 2^7-1];</code>）</li>
+</ul>
+</li>
+<li>无符号数表示范围<ul>
+<li>前提：总共有n位。位数分别是[n-1,0]。也即从0开始，最高位是n-1</li>
+<li><code>[0,2^n-1]</code>（下例中就是<code>[0 , 2^8-1];</code>）</li>
+</ul>
+</li>
+<li><strong>首位的符号位可以看作是一个带正/负号的数值位。</strong><ul>
+<li>当首位符号位为0时，该补码形式所表示的真值就是[6,0]位的和 + 首位0；首位符号位为1时，该补码形式所表示的真值就是就是 首位-2^7 + [6,0]位的数值位之和。</li>
+<li>补码与原码转化。原码 = ~补码+1。不用记，无所谓。求真值用上面的方法就好。</li>
+</ul>
+</li>
+<li>例子：总共8位。[7,0]<ul>
+<li>有符号数 补码形式。<code>[-2^7 , 2^7-1];</code><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">7</span> <span class="number">6</span> <span class="number">5</span> <span class="number">4</span> <span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span>     <span class="comment">//  2^7 - 1 = 127</span></span><br><span class="line">...</span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">1</span>     </span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span>     <span class="comment">//  0</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span>     <span class="comment">//  -2^7 + 2^6 + 2^5 + ... + 2^0 = -1;</span></span><br><span class="line">...</span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">1</span>     <span class="comment">//  -2^7 + 1 = -127（该二进制数据对应的真值）</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span>     <span class="comment">//  -2^7 = -128（该二进制数据对应的真值）</span></span><br></pre></td></tr></table></figure></li>
+<li>无符号数。[0,255]<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">7</span> <span class="number">6</span> <span class="number">5</span> <span class="number">4</span> <span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="number">7</span> <span class="number">6</span> <span class="number">5</span> <span class="number">4</span> <span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span>     <span class="comment">//  2^8-1=255</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>     <span class="comment">//  254</span></span><br><span class="line">...</span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">1</span>     <span class="comment">//  2^0 = 1;</span></span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span>     <span class="comment">//  0</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>从min到max是个循环</strong></li>
+<li>例子<ul>
+<li>无符号  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 …<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">1</span>   <span class="number">7</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">6</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">1</span>   <span class="number">5</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span>   <span class="number">4</span></span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">1</span>   <span class="number">3</span></span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">2</span></span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">1</span>   <span class="number">1</span></span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span>   <span class="number">0</span></span><br></pre></td></tr></table></figure></li>
+<li>补码  0 1 2 3 -4 -3 -2 -1 0 1 2 3…<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">1</span>   <span class="number">3</span></span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">2</span></span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">1</span>   <span class="number">1</span></span><br><span class="line"><span class="number">0</span> <span class="number">0</span> <span class="number">0</span>   <span class="number">0</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">1</span>   <span class="number">-1</span></span><br><span class="line"><span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">-2</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">1</span>   <span class="number">-3</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span>   <span class="number">-4</span></span><br></pre></td></tr></table></figure></li>
+<li>有符号数（补码）的溢出：是由正变负，由负变正</li>
+<li>无符号数的溢出：由正变0，由0变正。（无符号数的溢出就是取模）</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>左移 导致溢出。举例有符号补码<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> x = <span class="number">1</span>;  <span class="comment">//  有符号数 补码形式表示</span></span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;=<span class="number">33</span>;++i)</span><br><span class="line">    &#123;</span><br><span class="line"></span><br><span class="line">        cout&lt;&lt;(x&lt;&lt;i)&lt;&lt;endl;</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> j=<span class="number">31</span>;j&gt;=<span class="number">0</span>;--j)</span><br><span class="line">        &#123;</span><br><span class="line">            cout&lt;&lt;(((x&lt;&lt;i)&gt;&gt;j)&amp;<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        cout&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./test.out</span><br><span class="line"><span class="number">1</span></span><br><span class="line"><span class="number">00000000000000000000000000000001</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="number">00000000000000000000000000000010</span></span><br><span class="line"><span class="number">4</span></span><br><span class="line"><span class="number">00000000000000000000000000000100</span></span><br><span class="line"><span class="number">8</span></span><br><span class="line"><span class="number">00000000000000000000000000001000</span></span><br><span class="line"><span class="number">16</span></span><br><span class="line"><span class="number">00000000000000000000000000010000</span></span><br><span class="line"><span class="number">32</span></span><br><span class="line"><span class="number">00000000000000000000000000100000</span></span><br><span class="line"><span class="number">64</span></span><br><span class="line"><span class="number">00000000000000000000000001000000</span></span><br><span class="line"><span class="number">128</span></span><br><span class="line"><span class="number">00000000000000000000000010000000</span></span><br><span class="line"><span class="number">256</span></span><br><span class="line"><span class="number">00000000000000000000000100000000</span></span><br><span class="line"><span class="number">512</span></span><br><span class="line"><span class="number">00000000000000000000001000000000</span></span><br><span class="line"><span class="number">1024</span></span><br><span class="line"><span class="number">00000000000000000000010000000000</span></span><br><span class="line"><span class="number">2048</span></span><br><span class="line"><span class="number">00000000000000000000100000000000</span></span><br><span class="line"><span class="number">4096</span></span><br><span class="line"><span class="number">00000000000000000001000000000000</span></span><br><span class="line"><span class="number">8192</span></span><br><span class="line"><span class="number">00000000000000000010000000000000</span></span><br><span class="line"><span class="number">16384</span></span><br><span class="line"><span class="number">00000000000000000100000000000000</span></span><br><span class="line"><span class="number">32768</span></span><br><span class="line"><span class="number">00000000000000001000000000000000</span></span><br><span class="line"><span class="number">65536</span></span><br><span class="line"><span class="number">00000000000000010000000000000000</span></span><br><span class="line"><span class="number">131072</span></span><br><span class="line"><span class="number">00000000000000100000000000000000</span></span><br><span class="line"><span class="number">262144</span></span><br><span class="line"><span class="number">00000000000001000000000000000000</span></span><br><span class="line"><span class="number">524288</span></span><br><span class="line"><span class="number">00000000000010000000000000000000</span></span><br><span class="line"><span class="number">1048576</span></span><br><span class="line"><span class="number">00000000000100000000000000000000</span></span><br><span class="line"><span class="number">2097152</span></span><br><span class="line"><span class="number">00000000001000000000000000000000</span></span><br><span class="line"><span class="number">4194304</span></span><br><span class="line"><span class="number">00000000010000000000000000000000</span></span><br><span class="line"><span class="number">8388608</span></span><br><span class="line"><span class="number">00000000100000000000000000000000</span></span><br><span class="line"><span class="number">16777216</span></span><br><span class="line"><span class="number">00000001000000000000000000000000</span></span><br><span class="line"><span class="number">335544321</span></span><br><span class="line"><span class="number">00000010000000000000000000000000</span></span><br><span class="line"><span class="number">67108864</span></span><br><span class="line"><span class="number">00000100000000000000000000000000</span></span><br><span class="line"><span class="number">134217728</span></span><br><span class="line"><span class="number">00001000000000000000000000000000</span></span><br><span class="line"><span class="number">268435456</span></span><br><span class="line"><span class="number">00010000000000000000000000000000</span></span><br><span class="line"><span class="number">536870912</span></span><br><span class="line"><span class="number">00100000000000000000000000000000</span></span><br><span class="line"><span class="number">1073741824</span></span><br><span class="line"><span class="number">01000000000000000000000000000000</span></span><br><span class="line"><span class="number">-2147483648</span></span><br><span class="line"><span class="number">10000000000000000000000000000000</span></span><br><span class="line"></span><br><span class="line">如果x是<span class="keyword">unsigned</span> <span class="keyword">int</span>的话 那么就是</span><br><span class="line"><span class="number">2147483648</span></span><br><span class="line"><span class="number">10000000000000000000000000000000</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="转化"><a href="#转化" class="headerlink" title="转化"></a>转化</h3><ul>
+<li>有符号数与无符号数发生比较/运算时，<strong>有符号数会先被转化为无符号数</strong><ul>
+<li>signed(two’s complement) -&gt; unsigned</li>
+</ul>
+</li>
+<li>例子 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> DELTA sizeof(char)</span></span><br><span class="line"><span class="keyword">int</span> i;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  死循环</span></span><br><span class="line">i-<span class="built_in"><span class="keyword">sizeof</span></span>(<span class="keyword">char</span>) 得到一个<span class="keyword">unsigned</span></span><br><span class="line"><span class="comment">// 因为sizeof 返回 size_t ，是unsigned</span></span><br><span class="line"><span class="keyword">for</span>(i=CNT;i-DELTA&gt;=<span class="number">0</span>;--i)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">//...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>例子。错把无符号数当作有符号数。递减得到INT_MAX<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  死循环。不会终止。</span></span><br><span class="line"><span class="keyword">for</span>( <span class="keyword">unsigned</span> i = <span class="number">4</span> ; i&gt;=<span class="number">0</span> ; --i )</span><br><span class="line">&#123;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br><span class="line"><span class="number">00000000000000000000000000000100</span>  <span class="number">4</span></span><br><span class="line">...</span><br><span class="line"><span class="number">00000000000000000000000000000001</span>  <span class="number">1</span></span><br><span class="line"><span class="number">00000000000000000000000000000000</span>  <span class="number">0</span></span><br><span class="line"><span class="number">11111111111111111111111111111111</span>  <span class="keyword">signed</span> : <span class="number">-1</span> / <span class="keyword">unsigned</span> : <span class="number">2</span>^<span class="number">32</span><span class="number">-1</span></span><br><span class="line"><span class="number">11111111111111111111111111111110</span>  <span class="keyword">signed</span> : <span class="number">-2</span> / <span class="keyword">unsigned</span> : <span class="number">2</span>^<span class="number">32</span><span class="number">-2</span></span><br><span class="line">...</span><br><span class="line"><span class="number">10000000000000000000000000000000</span>  <span class="keyword">signed</span> : <span class="number">-2</span>^<span class="number">31</span> / <span class="keyword">unsigned</span> : <span class="number">2</span>^<span class="number">32</span></span><br><span class="line"><span class="number">01111111111111111111111111111111</span>  <span class="keyword">signed</span> : <span class="number">2</span>^<span class="number">31</span><span class="number">-1</span> / <span class="keyword">unsigned</span> : <span class="number">2</span>^<span class="number">31</span><span class="number">-1</span></span><br><span class="line"><span class="number">01111111111111111111111111111110</span>  <span class="keyword">signed</span> : <span class="number">2</span>^<span class="number">31</span><span class="number">-2</span> / <span class="keyword">unsigned</span> : <span class="number">2</span>^<span class="number">31</span><span class="number">-2</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li><p>printf并没用使用变量的任何类型信息，只是根据%d %u %x这样的指示符来按照指示将变量底下的字节以相应形式输出。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  32位</span></span><br><span class="line"><span class="keyword">int</span> x = <span class="number">-1</span>;                   <span class="number">11111.</span>.<span class="number">.1111</span></span><br><span class="line"><span class="keyword">unsigned</span> u = <span class="number">2147483648</span>;      <span class="number">10000.</span>.<span class="number">.0000</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;x=%u=%d\n&quot;</span>,x,x);</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;u=%u=%d\n&quot;</span>,u,u);</span><br><span class="line"></span><br><span class="line">x = <span class="number">4294967295</span> = <span class="number">-1</span>;</span><br><span class="line">u = <span class="number">2147836848</span> = <span class="number">-2147836848</span></span><br></pre></td></tr></table></figure></li>
+<li><p>有符号数转无符号数对于标准的算数运算并无多大差异，但对于&lt;&gt;比较运算开输送，就会导致非直观的结果。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 表达式                              类型             结果</span></span><br><span class="line"><span class="number">-2147483647</span><span class="number">-1</span> == <span class="number">2147836848U</span>         <span class="keyword">unsigned</span>            <span class="number">1</span></span><br><span class="line"><span class="number">-2147483647</span><span class="number">-1U</span> &lt; <span class="number">2147836847</span>          <span class="keyword">unsigned</span>            <span class="number">0</span>      </span><br><span class="line"><span class="comment">// 1000...0000 U &lt; 0111...1111  </span></span><br><span class="line"><span class="number">-2147483647</span><span class="number">-1U</span> &lt; <span class="number">-2147483647</span>         <span class="keyword">unsigned</span>            <span class="number">1</span></span><br><span class="line"><span class="comment">// 1000...0000 U &lt; 1000...0001       </span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="符号扩展"><a href="#符号扩展" class="headerlink" title="符号扩展"></a>符号扩展</h3><ul>
+<li><p><strong>符号的扩展发生了什么</strong>（符号扩展在由小类型到大类型时发生）</p>
+</li>
+<li><p>有符号数：补码的符号扩展。</p>
+<ul>
+<li><strong>复制符号位</strong>：向高位拿了一个新位用作符号位，<strong>新符号位的权重是原符号位的2倍，把这个原先的符号位用作正的数值位</strong>。</li>
+<li>这样并不改变这些数值位的总和；也即并不改变数（真值）的大小</li>
+<li>将各个权值位相加，可得补码对应的真值。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">5</span> <span class="number">4</span> <span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line">    <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   : <span class="number">-8</span> + <span class="number">4</span> + <span class="number">2</span> = <span class="number">-2</span></span><br><span class="line">  <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   : <span class="number">-16</span> + <span class="number">8</span> + <span class="number">4</span> + <span class="number">2</span> = <span class="number">-2</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>无符号数：0扩展</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">5</span> <span class="number">4</span> <span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span></span><br><span class="line">    <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   : <span class="number">8</span> + <span class="number">4</span> + <span class="number">2</span> = <span class="number">14</span></span><br><span class="line">  <span class="number">0</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   : <span class="number">8</span> + <span class="number">4</span> + <span class="number">2</span> = <span class="number">14</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="截断"><a href="#截断" class="headerlink" title="截断"></a>截断</h3><ul>
+<li>截断会导致数变化很大。例如补码被截断就有可能一正一负，无符号数被截断就是取模。</li>
+<li>无符号数。直接模<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1011</span>  <span class="comment">//  8+2+1=11</span></span><br><span class="line"><span class="number">011</span>   <span class="comment">//  3 = 11%8</span></span><br></pre></td></tr></table></figure></li>
+<li>有符号数。补码形式。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">11011</span>   <span class="comment">//  -16+8+2+1=-5</span></span><br><span class="line">-&gt;</span><br><span class="line"><span class="number">1011</span>   <span class="comment">//  -8+2+1=5</span></span><br><span class="line">没变。是因为从<span class="number">1011</span>到<span class="number">11011</span>可以看作是符号位拓展。</span><br><span class="line">-------------------------------------------</span><br><span class="line"><span class="number">10011</span>   <span class="comment">//  -16+2+1=-13</span></span><br><span class="line">-&gt;</span><br><span class="line"><span class="number">0011</span>   <span class="comment">//  2+1=3</span></span><br><span class="line"><span class="number">3</span> != <span class="number">-13</span>%<span class="number">16</span></span><br></pre></td></tr></table></figure></li>
+<li>无论溢出的那个下一个高位有什么，我们都假装看不到并舍弃。只拿低位的[n-1,0]位当作我获得的结果，编译器对这个过程也不会有任何warning</li>
+</ul>
+<ul>
+<li>乘法指令（3个周期）比移位指令（1个周期）花的时间周期多</li>
+<li>现代计算机除法仍然很慢 30个周期</li>
+</ul>
+<h3 id="移位"><a href="#移位" class="headerlink" title="移位"></a>移位</h3><ul>
+<li><p>补码右移：算数移位。copy符号位</p>
+</li>
+<li><p>补码左移：直接移，低位补0</p>
+</li>
+<li><p>无符号数右移：逻辑右移。高位补0</p>
+</li>
+<li><p>无符号数左移：逻辑左移。低位补0</p>
+</li>
+<li><p>总共w位，如果右移k位，且k&gt;=w位，那么结果是:</p>
+<ul>
+<li>大多数机器中都是这样做：实际位移量是 k mod w。</li>
+<li>C标准中规避了说明这种情况下如何做，因此这种行为对C程序来说没有保证。</li>
+</ul>
+</li>
+<li><p>习题</p>
+<ul>
+<li>六进制中从8到F的最高有效位为1，记住这一点就会发现十六进制表示二进制更方便<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fun1</span><span class="params">(<span class="keyword">unsigned</span> word)</span></span>&#123;</span><br><span class="line">              <span class="comment">//  逻辑左移 低位补0</span></span><br><span class="line">  <span class="keyword">return</span> (<span class="keyword">int</span>)( (word&lt;&lt;<span class="number">24</span>) &gt;&gt; <span class="number">24</span> );</span><br><span class="line">                        <span class="comment">//  逻辑右移 高位补0</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fun2</span><span class="params">(<span class="keyword">unsigned</span> word)</span></span>&#123;</span><br><span class="line">              <span class="comment">//  算数左移 低位补0</span></span><br><span class="line">  <span class="keyword">return</span> ( (<span class="keyword">int</span>)word&lt;&lt;<span class="number">24</span> ) &gt;&gt; <span class="number">24</span>;</span><br><span class="line">                        <span class="comment">//  算数右移 高位补x[w-1]</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">w                   <span class="title">fun1</span><span class="params">(w)</span>                 <span class="title">fun2</span><span class="params">(<span class="number">2</span>)</span></span></span><br><span class="line"><span class="function">0x00000076        0x00000076              0x00000076    </span></span><br><span class="line"><span class="function">0x87654321        0x00000021              0x00000021</span></span><br><span class="line"><span class="function">0x000000c9        0x000000c9              0xffffffc9</span></span><br><span class="line"><span class="function">0xEDCBA987        0x00000087              0xffffff87</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">// 左移24/4=6个十六进制位：只留下最低两位十六进制位</span></span></span><br><span class="line"><span class="function"><span class="comment">// 右移24/4=6个十六进制位：逻辑移位补0，算数移位补x[w-1]</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="对一个数取负"><a href="#对一个数取负" class="headerlink" title="对一个数取负"></a>对一个数取负</h3><ul>
+<li><p><strong>对补码的所有位（包括符号位）取反 ，再 + 1</strong></p>
+</li>
+<li><p><strong>[-x]补 = ~[x]补 + 1</strong></p>
+</li>
+<li><p>例子。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">x     <span class="number">1</span> <span class="number">0</span> <span class="number">1</span> <span class="number">0</span>    <span class="number">-8</span>+<span class="number">2</span>=<span class="number">-6</span></span><br><span class="line">~x    <span class="number">0</span> <span class="number">1</span> <span class="number">0</span> <span class="number">1</span>   </span><br><span class="line">~x+<span class="number">1</span>  <span class="number">0</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>    <span class="number">2</span>+<span class="number">4</span>=<span class="number">6</span>     </span><br></pre></td></tr></table></figure></li>
+<li><p>很巧啊，类似，从补码转到原码/从原码转到补码。都是取反+1，不过原码&lt;-&gt;补码不涉及符号位。</p>
+</li>
+<li><p><strong>原码补码转化公式：[x]补 =  ~[x]原+1</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">x     <span class="number">1</span> <span class="number">0</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">-2</span>  这是原码  </span><br><span class="line">~x    <span class="number">1</span> <span class="number">1</span> <span class="number">0</span> <span class="number">1</span></span><br><span class="line">~x+<span class="number">1</span>  <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> <span class="number">0</span>   <span class="number">-8</span>+<span class="number">4</span>+<span class="number">2</span>=<span class="number">-2</span>   这是x原码对应的补码</span><br></pre></td></tr></table></figure></li>
+<li><p>所以啊，为什么说 在程序中求 -x 就是在求 ~x+1?</p>
+<ul>
+<li>因为补码及其相反数的转化公式为：**[-x]补 = ~[x]补 + 1**</li>
+<li>可不是因为原码补码的转化公式是：[x]补 =  ~[x]原+1。大一做算法题的时候还误以为是这个原因。</li>
+</ul>
+</li>
+</ul>
+<h3 id="特别的-TMin的相反数是什么？"><a href="#特别的-TMin的相反数是什么？" class="headerlink" title="特别的 TMin的相反数是什么？"></a>特别的 TMin的相反数是什么？</h3><ul>
+<li>T Min的相反数还是 T Min</li>
+<li>应用公式：[-x]补 = ~[x]补 + 1</li>
+<li>假设n=4<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">3</span> <span class="number">2</span> <span class="number">1</span> <span class="number">0</span> </span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span>   : T MAX</span><br><span class="line">...</span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span>   : T MIN</span><br><span class="line"></span><br><span class="line">~ T MIN</span><br><span class="line"><span class="number">0</span> <span class="number">1</span> <span class="number">1</span> <span class="number">1</span> </span><br><span class="line">+<span class="number">1</span></span><br><span class="line"><span class="number">1</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span>   = -TMIN</span><br></pre></td></tr></table></figure></li>
+<li>所以<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  1.</span></span><br><span class="line">x &gt; y 不一定有 -x &lt; -y</span><br><span class="line">当y=T MIN时 y和-y都是最小的</span><br><span class="line"></span><br><span class="line"><span class="comment">//  2.</span></span><br><span class="line">x &gt;=<span class="number">0</span>  =&gt;   -x&lt;=<span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  3.</span></span><br><span class="line">x&lt;=<span class="number">0</span>  !=&gt;   -x&gt;=<span class="number">0</span></span><br><span class="line">当x=T min时，x=-x=Tmin</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="如何编写unsigned"><a href="#如何编写unsigned" class="headerlink" title="如何编写unsigned"></a>如何编写unsigned</h3><ul>
+<li>该用unsigned吗？<ul>
+<li>Java等语言抹去了unsigned，只保留了补码。<ul>
+<li>但Java中&gt;&gt;是算数右移，&gt;&gt;&gt;是逻辑右移</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>C标准并没有明确规定有符号溢出会发生什么。我们知识假设是按照补码。但严格意义上我们不能假设C标准以外的东西</li>
+<li>提出<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">size_t</span> i=...;  <span class="comment">//size_t : unsigned value of word size</span></span><br><span class="line"><span class="keyword">for</span>(i=cnt<span class="number">-2</span>;i&lt;cnt;--i)</span><br><span class="line">&#123;</span><br><span class="line">  a[i]=a[i+<span class="number">1</span>];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>最终：自己谨慎点吧</li>
+</ul>
+<h3 id="所以unsigned这么不好用，什么时候用？"><a href="#所以unsigned这么不好用，什么时候用？" class="headerlink" title="所以unsigned这么不好用，什么时候用？"></a>所以unsigned这么不好用，什么时候用？</h3><ul>
+<li>加密算法（需要取模）</li>
+<li>仅仅把字看作位的集合，而没有任何数学意义。</li>
+</ul>
+<h3 id="无符号数加法"><a href="#无符号数加法" class="headerlink" title="无符号数加法"></a>无符号数加法</h3><ul>
+<li><p>阿贝尔群</p>
+</li>
+<li><p>无符号加法公式</p>
+<ul>
+<li>x + w位的无符号数y (写作uwy) <ul>
+<li> = x + y  (x+y &lt; 2^w)</li>
+<li> = x + y - 2^w  (2^w &lt;= x+y &lt; 2^w+1)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>整数加法和无符号数加法关系。当x+y &gt; 2^w - 1时，和溢出<br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-20-09-42-42.png"></p>
+</li>
+</ul>
+<h3 id="有符号数（补码）加法"><a href="#有符号数（补码）加法" class="headerlink" title="有符号数（补码）加法"></a>有符号数（补码）加法</h3><ul>
+<li>阿贝尔群</li>
+<li>补码加法公式<ul>
+<li>x + w位的补码y（写作twy）<ul>
+<li>x + y - 2^w     （2^(w-1) &lt;= x + y）</li>
+<li>x + y             （ -2^(w-1) &lt;= x + y &lt; 2^(w-1)）</li>
+<li>x + y + 2^w     （ x + y &lt; -2^(w-1)）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>整数加法和无符号数加法之间的关系。x + y &lt; 2^(w-1) 时,负溢出 ； x + y &gt; 2^(w-1)-1时,正溢出<br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-20-19-46-45.png"></li>
+</ul>
+<h3 id="无符号乘法"><a href="#无符号乘法" class="headerlink" title="无符号乘法"></a>无符号乘法</h3><ul>
+<li>两个w位的无符号数相乘，结果应当用2w位保存，但是c语言中无符号乘法被定义成产生w位的值，也就是说会截断低位的w位。</li>
+<li>将一个无符号数截断为w位 ，等价于计算该值模2^w</li>
+<li>-&gt;得到公式： x * uwy = (x*y) mod (2^w)</li>
+</ul>
+<h3 id="补码乘法"><a href="#补码乘法" class="headerlink" title="补码乘法"></a>补码乘法</h3><ul>
+<li>两个w位的有符号数相乘，结果应当用2w位保存，但是c语言中有符号乘法被定义成产生w位的值，也就是说会截断低位的w位。</li>
+<li>将一个无符号数截断为w位，相当于 先计算该值模2^w , 再把无符号数转换为补码。</li>
+<li>-&gt;得到公式：x * twy = U2T ( (x*y) mod (2^w) )</li>
+</ul>
+<ul>
+<li>补码乘法和无符号乘法的位级表示是一样的（位级等价性）</li>
+</ul>
+<h2 id="字长"><a href="#字长" class="headerlink" title="字长"></a><strong>字长</strong></h2><h3 id="信息存储"><a href="#信息存储" class="headerlink" title="信息存储"></a>信息存储</h3><ul>
+<li><p>64位机器，寻址是2^64。 这是逻辑上的。实际上最大是2^47。可也正常人没钱买这么大内存。</p>
+</li>
+<li><p>运行程序时，程序认为他有这么大内存，实际上没有。操作系统只允许他访问能够访问的区域。</p>
+</li>
+<li><p>机器级程序将内存视为一个非常大的字节数组，称为<strong>虚拟内存</strong>。</p>
+</li>
+<li><p>内存的每一个字节都由唯一的数字来标识，称为它的地址。</p>
+</li>
+<li><p>所有可能地址的集合就称为<strong>虚拟地址空间</strong>。</p>
+<ul>
+<li>顾名思义，虚拟地址空间只是一个展现给机器级程序的概念性映像。实际的实现是将动态随机访问存储器(DRAM)、闪存、磁盘存储器、特殊硬件和操作系统软件结合起来，为程序提供一个看上去统一的字节数组。</li>
+</ul>
+</li>
+<li><p>程序对象：程序数据、指令、控制信息。</p>
+<ul>
+<li>编译器和运行时系统是如何将存储器空间划分为更可管理的单元，来存放不同的程序对象，即程序数据、指令和控制信息。可以用各种机制来分配和管理程序不同部分的存储。这种管理完全是在虚拟地址空间里完成的。</li>
+<li>每个程序对象可以简单的视为一个字节快，而程序本身就是一个字节序列</li>
+</ul>
+</li>
+<li><p>字节顺序：</p>
+<ul>
+<li>几乎在所有的机器上，多字节对象被存储为连续的字节序列；<strong>对象地址</strong>为所使用字节的<strong>最小地址</strong>。<blockquote>
+<p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-20-42-03.png"></p>
+</blockquote>
+</li>
+<li>大端机器较少，x86机器都是小端，arm处理器既可处理大端也可处理小端，但一般都是小端。</li>
+<li>基本上只有互联网是唯一一个有大端序的地方。当向网络发送数据包时，会以大端序接收<blockquote>
+<p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-21-01-15.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>按字节，将信息以16进制打印</strong>（这不是我昨天刚写过类似的吗哈哈哈）</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">char</span>* byte_pointer;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">show_bytes</span><span class="params">(byte_pointer start,<span class="keyword">size_t</span> len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">size_t</span> i;</span><br><span class="line">  <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;len;++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%p\t0x%.2x\n&quot;</span>,start+i,start[i]);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">9</span>;</span><br><span class="line">    <span class="built_in">show_bytes</span>((byte_pointer)&amp;a,<span class="keyword">sizeof</span> a);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./a.out </span><br><span class="line"><span class="number">0x7ffc93b80294</span>  <span class="number">0x09</span></span><br><span class="line"><span class="number">0x7ffc93b80295</span>  <span class="number">0x00</span></span><br><span class="line"><span class="number">0x7ffc93b80296</span>  <span class="number">0x00</span></span><br><span class="line"><span class="number">0x7ffc93b80297</span>  <span class="number">0x00</span></span><br></pre></td></tr></table></figure></li>
+<li><p>单位转换</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">KB MB GB TB</span><br><span class="line">K、M、G、T是数字大小的进制，单位(<span class="number">1</span>)</span><br><span class="line">B是物理意义上的单位，指Bytes</span><br><span class="line"></span><br><span class="line"><span class="number">2</span>^<span class="number">10</span> = <span class="number">1024</span> ==<span class="number">10</span>^<span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="number">1</span>KB = <span class="number">1024B</span> = <span class="number">2</span>^<span class="number">10</span> Bytes;</span><br><span class="line"><span class="number">1</span>MB = <span class="number">1024</span>KB = <span class="number">1024</span>*<span class="number">1024</span>KB = <span class="number">2</span>^<span class="number">20</span> Bytes</span><br><span class="line"><span class="number">1</span>GB = <span class="number">1024</span>MB = <span class="number">2</span>^<span class="number">30</span> Bytes = <span class="number">10</span>^<span class="number">9</span> Bytes</span><br><span class="line"><span class="number">1</span>TB = <span class="number">1024</span>GB</span><br><span class="line"><span class="number">1</span>PB = <span class="number">1024</span>TB = <span class="number">1125899906842624</span> Bytes</span><br><span class="line"><span class="number">1</span>EB = <span class="number">1024</span>PB = <span class="number">1152921504606846976</span> Bytes</span><br><span class="line"><span class="number">1</span>MM = <span class="number">2</span>^<span class="number">20</span> * <span class="number">2</span>^<span class="number">20</span> = <span class="number">2</span>^<span class="number">40</span> Bytes = <span class="number">10</span>^<span class="number">12</span> Bytes</span><br><span class="line"></span><br><span class="line"><span class="number">2</span>^<span class="number">47</span> 估算：</span><br><span class="line"><span class="number">2</span>^<span class="number">40</span> * <span class="number">2</span>^<span class="number">7</span> = <span class="number">128</span> * <span class="number">10</span>^<span class="number">12</span> Bytes = <span class="number">128</span> MM Bytes = <span class="number">128</span>*<span class="number">10</span>^<span class="number">3</span> G Bytes</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="什么是字长"><a href="#什么是字长" class="headerlink" title="什么是字长"></a><strong>什么是字长</strong></h3><ul>
+<li><p>每台计算机都有一个字长，<strong>指明指针数据的标称大小</strong>。因为虚拟地址是以这样的一个字来编码的，所有字长决定的最重要的系统参数就是<strong>虚拟地址空间的最大大小</strong>。也就是说，对于一个字长为w位的机器而言，虚拟地址的范围是[0,2^w-1]。程序最多访问2 ^w 个字节。（一个地址背后是1Bytes、8bits的存储空间）</p>
+</li>
+<li><p>大多数64位机器也可以运行32位机器编译的程序，这是一种向后兼容。我们将程序称为“32位程序”或“64位程序”时，区别在于该程序是如何编译的，而不是其运行的机器类型。</p>
+<ul>
+<li>生成32位程序，该程序可以在32位/64位机器上运行<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -m32 prog.c</span><br></pre></td></tr></table></figure></li>
+<li>生成64位程序，只能在64位机器上运行<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -m64 prog.c</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>困扰我好久了！这些话解决了大半。</p>
+</li>
+<li><p>Whatever the largest number is that or the range that sort of signifies how big a pointer is in this language , Or hardware wise the largest sort of chunkof hardware for which.<br>无论最大数是多少，或者指针表的范围是多少，或者硬件的一个chunk块是多大<br>There’s a standard support for storing it for arithmetic operations and so forth<br>有一个标准确定如何存储值和进行算数运算等<br>So when we say it’s a 64-bit machine<br>所以当我们说他是64位机器时<br>What we mean is that it regular and routinely manipulate 64-bit and operations<br>意思是他惯常处理64位值和算数运算<br>And also it has a pointer or the values of addresses are 64-bit<br>并且他的指针和地址的值是64位<br>Even if for right now only 47 of those bits are usable , it’s still considered a 64-bit machine<br>即便只有47位是有效的，我们也认为他是64位机器</p>
+</li>
+<li><p>我们的机器有个奇怪的特性，当我们用gcc作为编译器时，我们可以指定是32位还是64位编译，并且32位和64位会生成两种不同类型的代码。但就目前而言，重点是硬件本身并不一定决定字长的大小，it’s a combination of the hardware and the complier that determines，是由硬件和编译器一起决定的。</p>
+<ul>
+<li>And that code can be run on the point is a 64-bit machine，and can insert of a backward compatibiltiy a style also excutes 32-bit code</li>
+</ul>
+</li>
+<li><p>And we also saw one of the other feature is<br>并且我们可以看到另一个特性<br>Even though it’s a 64-bit word size machine ,  the data type int without any other qualifiers<br>即使它是个64位机器：对于数据类型int来说，如果没有任何其他的修饰符<br>it is jusy 32-bit<br>它就是32位的<br>so the sort of this mixture of how big things are<br>所以这种数据类型大小的定义是混合的</p>
+</li>
+<li><p>So when people just say word or word size ，<br>所以当人们说字或者字长时<br>let’s must say give a precise definition that’s not a very meaningful term<br>我们必须说。从精确的定义来说，这不是个有意义的术语/措辞<br>And we’ll sort of throw  it around when we mean sort of generic chunk of bits<br>我们说他的时候一般是泛指一个比特块，<br>without trying to assume that it has a particular number of bits to it<br>而不去假设他具有特定数量的bit</p>
+</li>
+</ul>
+<ul>
+<li>64bit的标准int仍然是32位，64位与32位相比，主要特征是<strong>64bit的指针是64位的</strong>，或者说是8字节的。<ul>
+<li><blockquote>
+<p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-20-45-53.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="习题"><a href="#习题" class="headerlink" title="习题"></a>习题</h2><ul>
+<li><blockquote>
+<p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-11-21-44-55.png"></p>
+</blockquote>
+</li>
+<li><p>p75 <strong>经典</strong></p>
+<ul>
+<li>记住 <strong>无符号数 和 补码的位级表示相同！！哪怕经过加减乘除计算之后，也仍是这样。</strong>（位级别相同的两组补码和无符号数，各自经历相同的加减乘除计算之后，<strong>得到的结果的位级表示仍然相同</strong>）</li>
+<li>记住 -Tmin = Tmin</li>
+<li>记住第a位的数 在 左(右)移b位后，会移动到a+(-)b位上。（数的位数范围[w-1,0]）<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 已知</span></span><br><span class="line"><span class="keyword">int</span> x = <span class="built_in">foo</span>();</span><br><span class="line"><span class="keyword">int</span> y = <span class="built_in">bar</span>();</span><br><span class="line"></span><br><span class="line"><span class="keyword">unsigned</span> ux = x;</span><br><span class="line"><span class="keyword">unsigned</span> uy = y;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">(x&gt;<span class="number">0</span>) || (x<span class="number">-1</span>&lt;<span class="number">0</span>)      </span><br><span class="line"><span class="comment">//  FALSE</span></span><br><span class="line">x = Tmin = <span class="number">-2147483648</span> </span><br><span class="line">则 x&lt;<span class="number">0</span> , x<span class="number">-1</span>&gt;<span class="number">0</span></span><br><span class="line"></span><br><span class="line">(x&amp;<span class="number">7</span>)!=<span class="number">7</span> || (x&lt;&lt;<span class="number">29</span> &lt; <span class="number">0</span>)</span><br><span class="line"><span class="comment">//  TRUE</span></span><br><span class="line"><span class="comment">//  x&amp;7 != 7 ok</span></span><br><span class="line"><span class="comment">//  x&amp;7 == 7 则 x = aaaa...0111</span></span><br><span class="line"><span class="comment">//  则 x&lt;&lt;29 = 111000...0001</span></span><br><span class="line"></span><br><span class="line">(x*x) &gt;= <span class="number">0</span></span><br><span class="line"><span class="comment">//  FALSE</span></span><br><span class="line">x = <span class="number">0xffff</span></span><br><span class="line"><span class="number">0xffff</span> * <span class="number">0xffff</span>  = <span class="number">-131071</span></span><br><span class="line"></span><br><span class="line">x&lt;<span class="number">0</span> || -x&lt;=<span class="number">0</span></span><br><span class="line"><span class="comment">//  TRUE</span></span><br><span class="line">x = Tmin = <span class="number">-2147483648</span></span><br><span class="line">-x = Tmin &lt;=<span class="number">0</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">x&gt;<span class="number">0</span> || -x&gt;=<span class="number">0</span></span><br><span class="line"><span class="comment">// FALSE</span></span><br><span class="line">x = Tmin = <span class="number">-2147483648</span></span><br><span class="line">-x = Tmin &lt;=<span class="number">0</span></span><br><span class="line"></span><br><span class="line">x+y == uy + ux</span><br><span class="line"><span class="comment">//  TRUE</span></span><br><span class="line">补码和无符号数的位级行为相同</span><br><span class="line">也就是说 x + y 与 ux + uy 的位级表示相同</span><br><span class="line">且 在 == 比较时 会将补码转化成无符号数</span><br><span class="line">故 x + y == ux + uy</span><br><span class="line"></span><br><span class="line">x*(~y) + uy*ux == -x</span><br><span class="line"><span class="comment">// TRUE</span></span><br><span class="line">~y = -y<span class="number">-1</span>;</span><br><span class="line">x*(-y<span class="number">-1</span>) + uy*ux = -xy -x + uy * ux = -x</span><br><span class="line">补码和无符号数的位级行为相同</span><br><span class="line">也就是说 uy*ux 与 -xy的位级表示相同 。（也许完整的乘积的位级表示可能不同，但是按照C语言标准，截断之后的乘积的位级表示是相同的）（C标准规定截断位w位）</span><br><span class="line">因此 -xy可以和uy*ux相抵消</span><br><span class="line">故 剩下-x</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="漏洞"><a href="#漏洞" class="headerlink" title="漏洞"></a>漏洞</h2><ul>
+<li>csapp p59</li>
+<li>习题<ul>
+<li>当length = 0时，会访问非法内存。<ul>
+<li>length = 0，length - 1 = -1 -&gt; UMAX。</li>
+<li>i先转化成unsigned，然后从0增至UMAX</li>
+</ul>
+</li>
+<li>改正：<ul>
+<li>length 类型改为 int。（即便length想要&gt;INT_MAX也没关系，想想就知道了）</li>
+<li>i &lt;= length - 1 ——&gt; i &lt; length<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">float</span> <span class="title">sum_eles</span><span class="params">(<span class="keyword">float</span> a[],<span class="keyword">unsigned</span> length)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> i;</span><br><span class="line">  <span class="keyword">float</span> result = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span>( <span class="keyword">int</span> i=<span class="number">0</span> ; i&lt;=length<span class="number">-1</span> ; ++i)</span><br><span class="line">    result += a[i];</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="浮点型"><a href="#浮点型" class="headerlink" title="浮点型"></a>浮点型</h1><h2 id="IEEE浮点数表示（比唐书说得清楚些）"><a href="#IEEE浮点数表示（比唐书说得清楚些）" class="headerlink" title="IEEE浮点数表示（比唐书说得清楚些）"></a>IEEE浮点数表示（比唐书说得清楚些）</h2><h3 id="基本规则说明"><a href="#基本规则说明" class="headerlink" title="基本规则说明"></a>基本规则说明</h3><ul>
+<li>IEEE浮点标准用 V = (-1)^s * M * 2^E来表示一个数。<ul>
+<li>符号（sign）：1负0正</li>
+<li>尾数（significand）：M为一二进制小数。范围是 1<del>2-无穷小 （2^(-n)） 或者 0</del>1 - 无穷小 （2^(-n)）</li>
+<li>阶码（exponent）：E的作用是对浮点数加权</li>
+</ul>
+</li>
+<li>将浮点数的位表示为三个字段，分别对这三个值进行编码：<ul>
+<li>一个单独的符号位s 直接编码符号s</li>
+<li>k位的阶码字段 <code>exp=ek-1...e1e0</code> 编码阶码E</li>
+<li>n位的小数字段<code>frac=fn-1...f1f0</code>编码尾数M，但是编码出来的值也依赖于阶码字段的值是否等于0</li>
+</ul>
+</li>
+<li>图示<ul>
+<li><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-34-53.png"></li>
+<li>阶码的值决定了一个浮点数是否是规格化的<img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-35-18.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="是否规格化（三种情况）"><a href="#是否规格化（三种情况）" class="headerlink" title="是否规格化（三种情况）"></a>是否规格化（三种情况）</h3><ul>
+<li>规格化的值：exp的位模式 既不全为0，也不全为1。<ul>
+<li>E = e-Bias。其中e是无符号数。偏置值Bias=2^(k-1) - 1。<ul>
+<li>因此，指数的取值范围：单精度 [-126,127] ；双精度 [-1022,+1023]</li>
+</ul>
+</li>
+<li>M = 1+f。称为隐含的以1开头的表示。<ul>
+<li>其中f属于[0,1)，f的二进制表示为<code>0.fn-1...f1f0</code>（即小数点在最高位有效位的左边）。因此M可以看为二进制：<code>1.fn-1...f1f0</code>。（可以通过调整E，使得M属于[1,2)。通过M=1+f，使得f不必显示写出那个1。这样，就获得了一个额外的精度位）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>非规格化的值：exp的位模式全部为0<ul>
+<li>E = 1-Bias</li>
+<li>M = f。即小数字段的值，不包含隐含的开头的1。也即f的值的小数点左侧实际上为0。</li>
+<li>非规格化数用途<ul>
+<li>提供了一种表示数值0的方法<ul>
+<li>+0.0：位模式全部为0。s = 0，exp = 0，frac = 0.</li>
+<li>-0.0：s=1，exp=0，frac=0.</li>
+</ul>
+</li>
+<li>还可用于表示那些非常接近0.0的数</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>特殊值：exp的位模式全部为1.<ul>
+<li>s=0，frac=0，表示正无穷</li>
+<li>s=1，frac=0，表示负无穷</li>
+<li>frac!=0时，其结果表示为 NaN （Not a number）。可用作表示未初始化的数值，或计算结果不能是实数或者无穷。</li>
+</ul>
+</li>
+</ul>
+<h3 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h3><ul>
+<li><p>假设6位浮点格式（3位阶码2位尾数）。可表示的数不是均匀分布的，越靠近远点越稠密<br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-13-09-51.png"></p>
+</li>
+<li><p>8位浮点格式的非负值示例<br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-12-25-43.png"></p>
+</li>
+<li><p>最靠近0：非规格化数。</p>
+<ul>
+<li>E = 1-7 = -6 。权 = 2^E = 1/64</li>
+<li><code>f = 0，1/8，...，7/8</code></li>
+<li>所以V [0,1/64 * 7/8]。（非连续）</li>
+<li>最小为0</li>
+</ul>
+</li>
+<li><p>规格化数</p>
+<ul>
+<li>最小规格化数：<ul>
+<li>E = 1-7 = -6</li>
+<li><code>frac = 0,1/8...7/8 -&gt; M = 1+f = 1...15/8</code></li>
+<li>所以V [8/512 , 15/512]</li>
+<li>最小为8/512。</li>
+</ul>
+</li>
+<li>逐渐增大</li>
+<li>最大规格化数<ul>
+<li>E = 7 </li>
+<li><code>frac = 0,1/8...7/8 -&gt; M = 1+f = 1...15/8</code></li>
+<li>所以，最大规格化值 V = 15/8*2^7 = 240</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>无穷大</p>
+<ul>
+<li>超过最大规格化数，溢出到正无穷</li>
+</ul>
+</li>
+<li><p>k位阶码，n位小数的一般规律</p>
+<ul>
+<li><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-09-28.png"></li>
+<li><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-39-17.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>整数转化成IEEE规格化表示<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">12345</span></span><br><span class="line">二进制：<span class="number">11000000111001</span></span><br><span class="line"><span class="number">12345</span> = (<span class="number">1.1000000111001</span>)<span class="number">2</span> * <span class="number">2</span>^<span class="number">13</span></span><br><span class="line">为了用IEEE单精度形式编码，</span><br><span class="line">构造小数字段：应该丢弃开头的<span class="number">1</span>（作为隐含的<span class="number">1</span>），并在末尾+<span class="number">10</span>个<span class="number">0</span>，来构造小数字段：<span class="number">10000001110010000000000</span></span><br><span class="line">构造阶码字段：<span class="number">13</span> + bias（<span class="number">2</span>^(<span class="number">8</span><span class="number">-1</span>)<span class="number">-1</span> = <span class="number">127</span>） = <span class="number">140</span>。二进制表示为 <span class="number">10001100</span></span><br><span class="line">再加上符号位<span class="number">0</span></span><br><span class="line">得到二进制的浮点数表示</span><br><span class="line">s   exp       frac</span><br><span class="line"><span class="number">0</span> <span class="number">10001100</span> <span class="number">10000001110010000000000</span></span><br></pre></td></tr></table></figure></li>
+<li>比较<ul>
+<li>12345整形（0x00003039）：</li>
+<li>12345.0单精度浮点数：（0x4640E400）：</li>
+<li><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-22-15-49-44.png"></li>
+</ul>
+</li>
+</ul>
+<h2 id="舍入"><a href="#舍入" class="headerlink" title="舍入"></a>舍入</h2><ul>
+<li>向上舍入</li>
+<li>向下舍入</li>
+<li>向0舍入</li>
+<li><strong>向偶数舍入</strong><ul>
+<li>向偶数舍入原则有2个</li>
+<li>当要舍入到的位的 之后的位 不等于中间值（半值）时，向最靠近的数舍入。也即&lt;半值就向下舍入，大于半值就向上舍入</li>
+<li>当要舍入到的位的 之后的位 等于中间值（半值）时，向偶数舍入<ul>
+<li>如果要舍入到的位，现在是偶数，那么向下舍入，直接舍去后面的位，原先要舍入到的位的数就是舍入的结果。</li>
+<li>如果要舍入到的位，现在是奇数，那么向上舍入。</li>
+</ul>
+</li>
+<li>例子：舍入到小数点后一位<ul>
+<li>10.010(2) -&gt; 10.0 <ul>
+<li>因为 小数点右边一位的0之后的10 = 0.25 = 0.5/2 ，也即等于半值，所以向偶数舍入，又因小数点后一位为偶数0，所以结果为10.0</li>
+</ul>
+</li>
+<li>10.011(2) -&gt; 10.1<ul>
+<li>因为 0之后的11 = 0.375 &gt; 0.5/2 ，也即&gt;半值，所以向上舍入，故10.1</li>
+</ul>
+</li>
+<li>10.110(2) -&gt; 11.0<ul>
+<li>因为 小数点右边一位的1之后的10 = 0.25 = 0.5/2 ，也即等于半值，所以向偶数舍入，又因小数点后一位为偶数1，所以(+1向上舍入)结果为11.0</li>
+</ul>
+</li>
+<li>11.001(2) -&gt; 11.0<ul>
+<li>因为 0之后的01 = 0.125 &lt; 0.5/2 ，也即&lt;半值，所以向下舍入，故10.0</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="运算"><a href="#运算" class="headerlink" title="运算"></a>运算</h2><ul>
+<li><p>不是阿贝尔群</p>
+<ul>
+<li>具备交换律 但 不具备 结合律</li>
+</ul>
+</li>
+<li><p>赶作业去了</p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://zh.m.wikipedia.org/zh-hans/%E9%98%BF%E8%B4%9D%E5%B0%94%E7%BE%A4">阿贝尔群</a>（近世代数里讲过）<br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-14-31.png"></p>
+</li>
+</ul>
+<h2 id="习题-1"><a href="#习题-1" class="headerlink" title="习题"></a>习题</h2><p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-11-15.png"></p>
+<h1 id="摘要（csapp）"><a href="#摘要（csapp）" class="headerlink" title="摘要（csapp）"></a>摘要（csapp）</h1><p><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-51.png"><br><img src="/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-58.png"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" rel="tag"># 计算机基础</a>
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+              <a href="/tags/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="tag"># 学习笔记</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/05/09/c++_%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C/" rel="prev" title="c++_文件操作">
+      <i class="fa fa-chevron-left"></i> c++_文件操作
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/05/10/Linux-mmap/" rel="next" title="Linux-mmap">
+      Linux-mmap <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B4%E5%BD%A2"><span class="nav-number">1.</span> <span class="nav-text">整形</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A1%A5%E7%A0%81%E5%92%8C%E6%97%A0%E7%AC%A6%E5%8F%B7%E6%95%B0"><span class="nav-number">1.1.</span> <span class="nav-text">补码和无符号数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E7%B3%BB"><span class="nav-number">1.1.1.</span> <span class="nav-text">关系</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BD%AC%E5%8C%96"><span class="nav-number">1.1.2.</span> <span class="nav-text">转化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E6%89%A9%E5%B1%95"><span class="nav-number">1.1.3.</span> <span class="nav-text">符号扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%88%AA%E6%96%AD"><span class="nav-number">1.1.4.</span> <span class="nav-text">截断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A7%BB%E4%BD%8D"><span class="nav-number">1.1.5.</span> <span class="nav-text">移位</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%B9%E4%B8%80%E4%B8%AA%E6%95%B0%E5%8F%96%E8%B4%9F"><span class="nav-number">1.1.6.</span> <span class="nav-text">对一个数取负</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%89%B9%E5%88%AB%E7%9A%84-TMin%E7%9A%84%E7%9B%B8%E5%8F%8D%E6%95%B0%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">1.1.7.</span> <span class="nav-text">特别的 TMin的相反数是什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%BC%96%E5%86%99unsigned"><span class="nav-number">1.1.8.</span> <span class="nav-text">如何编写unsigned</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%80%E4%BB%A5unsigned%E8%BF%99%E4%B9%88%E4%B8%8D%E5%A5%BD%E7%94%A8%EF%BC%8C%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E7%94%A8%EF%BC%9F"><span class="nav-number">1.1.9.</span> <span class="nav-text">所以unsigned这么不好用，什么时候用？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%A0%E7%AC%A6%E5%8F%B7%E6%95%B0%E5%8A%A0%E6%B3%95"><span class="nav-number">1.1.10.</span> <span class="nav-text">无符号数加法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%89%E7%AC%A6%E5%8F%B7%E6%95%B0%EF%BC%88%E8%A1%A5%E7%A0%81%EF%BC%89%E5%8A%A0%E6%B3%95"><span class="nav-number">1.1.11.</span> <span class="nav-text">有符号数（补码）加法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%A0%E7%AC%A6%E5%8F%B7%E4%B9%98%E6%B3%95"><span class="nav-number">1.1.12.</span> <span class="nav-text">无符号乘法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A1%A5%E7%A0%81%E4%B9%98%E6%B3%95"><span class="nav-number">1.1.13.</span> <span class="nav-text">补码乘法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E9%95%BF"><span class="nav-number">1.2.</span> <span class="nav-text">字长</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%A1%E6%81%AF%E5%AD%98%E5%82%A8"><span class="nav-number">1.2.1.</span> <span class="nav-text">信息存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E5%AD%97%E9%95%BF"><span class="nav-number">1.2.2.</span> <span class="nav-text">什么是字长</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%A0%E9%A2%98"><span class="nav-number">1.3.</span> <span class="nav-text">习题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%BC%8F%E6%B4%9E"><span class="nav-number">1.4.</span> <span class="nav-text">漏洞</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B5%AE%E7%82%B9%E5%9E%8B"><span class="nav-number">2.</span> <span class="nav-text">浮点型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#IEEE%E6%B5%AE%E7%82%B9%E6%95%B0%E8%A1%A8%E7%A4%BA%EF%BC%88%E6%AF%94%E5%94%90%E4%B9%A6%E8%AF%B4%E5%BE%97%E6%B8%85%E6%A5%9A%E4%BA%9B%EF%BC%89"><span class="nav-number">2.1.</span> <span class="nav-text">IEEE浮点数表示（比唐书说得清楚些）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E8%A7%84%E5%88%99%E8%AF%B4%E6%98%8E"><span class="nav-number">2.1.1.</span> <span class="nav-text">基本规则说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%AF%E5%90%A6%E8%A7%84%E6%A0%BC%E5%8C%96%EF%BC%88%E4%B8%89%E7%A7%8D%E6%83%85%E5%86%B5%EF%BC%89"><span class="nav-number">2.1.2.</span> <span class="nav-text">是否规格化（三种情况）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BE%8B%E5%AD%90"><span class="nav-number">2.1.3.</span> <span class="nav-text">例子</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%88%8D%E5%85%A5"><span class="nav-number">2.2.</span> <span class="nav-text">舍入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%90%E7%AE%97"><span class="nav-number">2.3.</span> <span class="nav-text">运算</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%A0%E9%A2%98-1"><span class="nav-number">2.4.</span> <span class="nav-text">习题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%91%98%E8%A6%81%EF%BC%88csapp%EF%BC%89"><span class="nav-number">3.</span> <span class="nav-text">摘要（csapp）</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

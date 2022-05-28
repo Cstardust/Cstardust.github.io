@@ -17,7 +17,7 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="Linux守护进程">
@@ -30,10 +30,9 @@
 <meta property="og:image" content="http://example.com/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-09-28.png">
 <meta property="og:image" content="http://example.com/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-31-39.png">
 <meta property="article:published_time" content="2021-12-02T00:51:46.000Z">
-<meta property="article:modified_time" content="2021-12-05T10:24:04.229Z">
+<meta property="article:modified_time" content="2022-05-28T14:19:00.255Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="Linux">
-<meta property="article:tag" content="学习笔记">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://example.com/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-09-28.png">
 
@@ -104,7 +103,7 @@
       <h1 class="site-title">不落辰</h1>
       <span class="logo-line-after"><i></i></span>
     </a>
-      <p class="site-subtitle" itemprop="description">愿此去前程似锦，再逢依旧如故</p>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
   </div>
 
   <div class="site-nav-right">
@@ -239,7 +238,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-12-05 18:24:04" itemprop="dateModified" datetime="2021-12-05T18:24:04+08:00">2021-12-05</time>
+                <time title="修改时间：2022-05-28 22:19:00" itemprop="dateModified" datetime="2022-05-28T22:19:00+08:00">2022-05-28</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -289,13 +288,13 @@
 </ul>
 </li>
 <li>bg<ul>
-<li>启动在后台暂停的运行，并使得其在后台运行。</li>
+<li>启动在后台暂停的进程，并使得其在后台运行。</li>
 <li>如果后台中有多个命令，可以用bg %jobnumber将选中的命令调出，%jobnumber是通过jobs命令查到的后台正在执行的命令的序号(不是pid)</li>
 <li>将任务转移到后台运行：先ctrl + z；再bg，这样进程就被移到后台运行，终端还能继续接受命令。</li>
 </ul>
 </li>
 <li>fg<ul>
-<li>将在后台暂停/运行的进程，调到前台来，使其占据终端。</li>
+<li><code>fg %jobnum</code>将在后台暂停/运行的进程，调到前台来，使其占据终端。</li>
 </ul>
 </li>
 <li>ctrl + c 终止<ul>
@@ -325,16 +324,16 @@
 </ul>
 <h2 id="进程组"><a href="#进程组" class="headerlink" title="进程组"></a>进程组</h2><ul>
 <li>进程组是一个或者多个进程的集合。通常他们在同一作业中结合起来。</li>
-<li>同一进程组的各进程接收来自同一终端的各种信号。每个进程组有位移的进程组ID。函数<code>pid_t getpgrp(void);</code>可以返回调用进程的进程组ID。</li>
+<li>同一进程组的各进程接收来自同一终端的各种信号。每个进程组有唯一的进程组ID。函数<code>pid_t getpgrp(void);</code>可以返回调用进程的进程组ID。</li>
 <li>每个进程组有一个组长进程。<strong>进程组ID等于其组长进程的进程ID</strong></li>
 <li>进程组组长可以创建一个进程组、创建该组中的进程，然后终止。只要进程组中有一个进程存在，那么这个进程组就存在，与组长进程是否终止无关。</li>
 <li>进程调用setpgid可以加入一个现有的进程组或者创建一个新进程组。<ul>
 <li><code>int setpgid(pid_t pid,pid_t pgid)</code></li>
-<li>该函数将pid进程的进程组号设置为pgid，如果pid=pgid，则该pid进程成为组长进程。如果pid=0，即为getpid()；pgid-0，即为pid作为进程组pgid。</li>
+<li>该函数将pid进程的进程组号设置为pgid，如果pid=pgid，则该pid进程成为组长进程。如果pid=0，即为getpid()；pgid=0，即为pid作为进程组pgid。</li>
 <li>成功0，失败-1。</li>
 </ul>
 </li>
-<li>一个进程只能为他或者他的子进程设置组进程pgid。在它的子进程调用exec后，他就不再更改子进程的进程组ID<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ps ajx</span><br><span class="line">  PPID    PID   PGID    SID TTY       TPGID STAT   UID   TIME COMMAND</span><br><span class="line">     <span class="number">0</span>      <span class="number">1</span>      <span class="number">1</span>      <span class="number">1</span> ?            <span class="number">-1</span> Ss       <span class="number">0</span>   <span class="number">0</span>:<span class="number">03</span> /sbin/init splash</span><br><span class="line"></span><br><span class="line">PPID：是程序的父进程号。</span><br><span class="line"></span><br><span class="line">PID：进程的唯一标识。如果一个进程含有多个线程，所有线程调用 getpid 函数会返回相同的值。</span><br><span class="line"></span><br><span class="line">PGID：进程组 ID。每个进程都会有进程组 ID，表示该进程所属的进程组。默认情况下新创建的进程会继承父进程的进程组 ID。</span><br><span class="line"></span><br><span class="line">SID：会话 ID。每个进程也都有会话 ID。默认情况下，新创建的进程会继承父进程的会话 ID。</span><br></pre></td></tr></table></figure></li>
+<li>一个进程只能为他或者他的子进程设置组进程pgid。在它的子进程调用exec后，他就不再更改子进程的进程组ID<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/revier/src$ ps ajx</span><br><span class="line">  PPID    PID   PGID    SID TTY       TPGID STAT   UID   TIME COMMAND</span><br><span class="line">     <span class="number">0</span>      <span class="number">1</span>      <span class="number">1</span>      <span class="number">1</span> ?            <span class="number">-1</span> Ss       <span class="number">0</span>   <span class="number">0</span>:<span class="number">03</span> /sbin/init splash</span><br><span class="line"></span><br><span class="line">PPID：是当前进程的父进程号。</span><br><span class="line"></span><br><span class="line">PID：进程的唯一标识。如果一个进程含有多个线程，所有线程调用 getpid 函数会返回相同的值。</span><br><span class="line"></span><br><span class="line">PGID：进程组 ID。每个进程都会有进程组 ID，表示该进程所属的进程组。默认情况下新创建的进程会继承父进程的进程组 ID。</span><br><span class="line"></span><br><span class="line">SID：会话 ID。每个进程也都有会话 ID。默认情况下，新创建的进程会继承父进程的会话 ID。</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="会话"><a href="#会话" class="headerlink" title="会话"></a>会话</h2><ul>
 <li>会话是一个或者多个进程组的集合。<br><img src="/2021/12/02/Linux-%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B/2021-12-02-14-09-28.png"></li>
@@ -342,7 +341,7 @@
 <li>如果调用此函数的进程不是一个进程组组长，那么此函数创建一个新会话。<ul>
 <li>该进程会变成新会话的会话首进程（会话首进程是创建该会话的进程）。此时，该进程是新会话中的唯一进程。</li>
 <li>该进程成为一个新进程组的组长进程。新进程组ID是该调用进程的进程ID</li>
-<li>该进程没有控制终端。如果在调用setsid之前改进昵称有一个控制终端，那么这种联系也被切断。<ul>
+<li>该进程没有控制终端。如果在调用setsid之前该进程有一个控制终端，那么这种联系也被切断。<ul>
 <li>即会话首进程不占有控制终端。只有会话中的前台进程组才占有终端。！</li>
 </ul>
 </li>
@@ -359,7 +358,7 @@
 <li>若pid不属于调用者所在会话，那么就不能得到会话ID。</li>
 </ul>
 </li>
-<li>尽量避免使用“会话ID”，而是称其为“会话首进程的进程组ID”。会话首进程总是一个进程组的组长进程，素以两者等价。</li>
+<li>尽量避免使用“会话ID”，而是称其为“会话首进程的进程组ID”。会话首进程总是一个进程组的组长进程，所以两者等价。</li>
 </ul>
 <h2 id="控制终端"><a href="#控制终端" class="headerlink" title="控制终端"></a>控制终端</h2><ul>
 <li>一般情况下 session 和终端是一对一的关系，当我们打开多个终端窗口时，实际上就创建了多个 session。</li>
@@ -470,7 +469,7 @@
 </ul>
 <h2 id="进程补充"><a href="#进程补充" class="headerlink" title="进程补充"></a>进程补充</h2><ul>
 <li>进程是系统分配资源的最小单位。</li>
-<li><code>pstree</code>查看进程家族树<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">systemd─┬─ModemManager───2*[&#123;ModemManager&#125;]</span><br><span class="line">        ├─NetworkManager─┬─dhclient</span><br><span class="line">        │                └─2*[&#123;NetworkManager&#125;]</span><br><span class="line">        ├─VGAuthService</span><br><span class="line">        ├─accounts-daemon───2*[&#123;accounts-daemon&#125;]</span><br><span class="line">        ├─acpid</span><br><span class="line">        ├─avahi-daemon───avahi-daemon</span><br><span class="line">        ├─boltd───2*[&#123;boltd&#125;]</span><br><span class="line">        ├─colord───2*[&#123;colord&#125;]</span><br><span class="line">        ├─cron</span><br><span class="line">        ├─cups-browsed───2*[&#123;cups-browsed&#125;]</span><br><span class="line">        ├─cupsd</span><br><span class="line">        ├─dbus-daemon</span><br><span class="line">        ├─fwupd───4*[&#123;fwupd&#125;]</span><br><span class="line">        ├─gdm3─┬─gdm-session-wor─┬─gdm-wayland-ses─┬─gnome-session-b─┬─gnome-shell─┬─Xwayland───8*[&#123;Xwayland&#125;]</span><br><span class="line">        │      │                 │                 │                 │             ├─ibus-daemon─┬─ibus-dconf───3*[&#123;ibus-dconf&#125;]</span><br><span class="line">        ...</span><br></pre></td></tr></table></figure></li>
+<li><code>pstree</code>查看进程家族树<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">systemd─┬─ModemManager───2*[&#123;ModemManager&#125;]</span><br><span class="line">        ├─NetworkManager─┬─dhclient</span><br><span class="line">        │                └─2*[&#123;NetworkManager&#125;]</span><br><span class="line">        ├─VGAuthService</span><br><span class="line">        ├─accounts-daemon───2*[&#123;accounts-daemon&#125;]</span><br><span class="line">        ├─acpid</span><br><span class="line">        ├─cupsd</span><br><span class="line">        ├─dbus-daemon</span><br><span class="line">        ├─fwupd───4*[&#123;fwupd&#125;]</span><br><span class="line">        ├─gdm3─┬─gdm-session-wor─┬─gdm-wayland-ses─┬─gnome-session-b─┬─gnome-shell─┬─Xwayland───8*[&#123;Xwayland&#125;]</span><br><span class="line">        │      │                 │                 │                 │             ├─ibus-daemon─┬─ibus-dconf───3*[&#123;ibus-dconf&#125;]</span><br><span class="line">        ...</span><br></pre></td></tr></table></figure></li>
 </ul>
 
     </div>
@@ -482,7 +481,6 @@
       <footer class="post-footer">
           <div class="post-tags">
               <a href="/tags/Linux/" rel="tag"># Linux</a>
-              <a href="/tags/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" rel="tag"># 学习笔记</a>
           </div>
 
         
@@ -570,20 +568,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-count">67</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-count">17</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-count">28</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -610,13 +608,13 @@
 <div class="copyright">
   
   &copy; 
-  <span itemprop="copyrightYear">2021</span>
+  <span itemprop="copyrightYear">2022</span>
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
   <span class="author" itemprop="copyrightHolder">Cstardust</span>
 </div>
-  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
   </div>
 
         
@@ -662,7 +660,7 @@
 <script src="/js/motion.js"></script>
 
 
-<script src="/js/schemes/pisces.js"></script>
+<script src="/js/schemes/muse.js"></script>
 
 
 <script src="/js/next-boot.js"></script>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="默认形参默认值 由右向左 定义处可以给形参默认值，声明处也可以给形参默认值 形参给默认值时，不管是定义处还是声明处，（同一形参只能给一次）只能给一次 提高效率123456789101112131415161718192021222324252627int sum(int x,int y &#x3D; 40) &amp;#123;&amp;#125;&#x2F;&#x2F;  1.  传入变量sum(a,b);mov eax , dword p">
+<meta property="og:type" content="article">
+<meta property="og:title" content="c++基础复习">
+<meta property="og:url" content="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="默认形参默认值 由右向左 定义处可以给形参默认值，声明处也可以给形参默认值 形参给默认值时，不管是定义处还是声明处，（同一形参只能给一次）只能给一次 提高效率123456789101112131415161718192021222324252627int sum(int x,int y &#x3D; 40) &amp;#123;&amp;#125;&#x2F;&#x2F;  1.  传入变量sum(a,b);mov eax , dword p">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-19-13-11.png">
+<meta property="og:image" content="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-19-59-43.png">
+<meta property="og:image" content="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-22-04-48.png">
+<meta property="article:published_time" content="2022-03-29T12:42:59.000Z">
+<meta property="article:modified_time" content="2022-05-28T14:19:11.081Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="C++">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-19-13-11.png">
+
+<link rel="canonical" href="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>c++基础复习 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          c++基础复习
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-03-29 20:42:59" itemprop="dateCreated datePublished" datetime="2022-03-29T20:42:59+08:00">2022-03-29</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-28 22:19:11" itemprop="dateModified" datetime="2022-05-28T22:19:11+08:00">2022-05-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="默认形参默认值"><a href="#默认形参默认值" class="headerlink" title="默认形参默认值"></a>默认形参默认值</h2><ul>
+<li>由右向左</li>
+<li>定义处可以给形参默认值，声明处也可以给形参默认值</li>
+<li>形参给默认值时，不管是定义处还是声明处，（同一形参只能给一次）<strong>只能给一次</strong></li>
+<li><strong>提高效率</strong><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> x,<span class="keyword">int</span> y = <span class="number">40</span>)</span> </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  1.  传入变量</span></span><br><span class="line"><span class="built_in">sum</span>(a,b);</span><br><span class="line"></span><br><span class="line">mov eax , dword ptr[ebp<span class="number">-8</span>]</span><br><span class="line">push eax</span><br><span class="line">mov eax , dword ptr[ebp<span class="number">-4</span>]</span><br><span class="line">push eax</span><br><span class="line">call sum</span><br><span class="line"></span><br><span class="line"><span class="comment">//  2.  传入立即数 直接push立即数</span></span><br><span class="line"><span class="built_in">sum</span>(<span class="number">10</span>,<span class="number">20</span>)</span><br><span class="line"></span><br><span class="line">push <span class="number">14</span>h</span><br><span class="line">push <span class="number">0</span>Ah</span><br><span class="line">call sum</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  3.  默认实参    直接push立即数</span></span><br><span class="line"><span class="built_in">sum</span>(a)</span><br><span class="line"></span><br><span class="line">push <span class="number">28</span>h    </span><br><span class="line">mov eax , dword ptr[ebp<span class="number">-4</span>]</span><br><span class="line">push eax</span><br><span class="line">call sum</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="inline内联函数"><a href="#inline内联函数" class="headerlink" title="inline内联函数"></a>inline内联函数</h2><ul>
+<li><code>inline</code>：提高效率，减少函数调用时<strong>参数压栈、开辟栈帧、栈帧回退时的开销（指令）</strong></li>
+<li>函数里面的操作很简单比如 <code>x+y</code>时，翻译成汇编指令只有三个操作<code>mov eax , dword ptr[x] ; add eax , dword ptr[y] ; mov dword ptr[..] , eax;</code>。</li>
+<li>而我们调用函数时的参数压栈、开辟栈帧、战阵回退时的开销。比函数目的要实现的操作还大，得不偿失。</li>
+<li><code>inline</code>对于debug版本无效，只对<code>release</code>版本有效</li>
+</ul>
+<h3 id="inline函数与普通函数区别？"><a href="#inline函数与普通函数区别？" class="headerlink" title="inline函数与普通函数区别？"></a><strong>inline函数与普通函数区别？</strong></h3><ul>
+<li><ol>
+<li><strong>开销</strong></li>
+</ol>
+<ul>
+<li>普通函数调用有标准的 参数压栈，栈帧开辟，栈帧回退的开辟</li>
+<li>内联函数在编译阶段（生成.o），将函数代码展开，省去编译时开销</li>
+</ul>
+</li>
+<li><ol start="2">
+<li><code>inline</code>函数不再生成相应的函数符号</li>
+</ol>
+</li>
+<li><ol start="3">
+<li><code>inline</code>不一定展开。递归一定不内联<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">5</span>;</span><br><span class="line">    <span class="keyword">int</span> b = <span class="number">10</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">int</span> ret = <span class="built_in">sum</span>(a, b);</span><br><span class="line"><span class="comment">//  调用函数：</span></span><br><span class="line"><span class="comment">//    1. 参数压栈（传入的参数）</span></span><br><span class="line"><span class="comment">//    2. call 函数名 a.保存下一指令地址   b.跳转到目标函数</span></span><br><span class="line"><span class="comment">//    3. 进入函数 &#123; ：</span></span><br><span class="line"><span class="comment">//        保留现函数栈底 ，</span></span><br><span class="line"><span class="comment">//        开辟栈帧 ，</span></span><br><span class="line"><span class="comment">//    4. 函数代码段</span></span><br><span class="line"><span class="comment">//    5. 离开函数 &#125; ：</span></span><br><span class="line"><span class="comment">//        栈帧回退 ，</span></span><br><span class="line"><span class="comment">//        取回函数调用方的函数栈底，</span></span><br><span class="line"><span class="comment">//        跳转到函数调用处的下一条指令（ret，对应sum）。</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+<h2 id="函数重载"><a href="#函数重载" class="headerlink" title="函数重载"></a>函数重载</h2><h3 id="C-支持，C不支持函数重载。why？"><a href="#C-支持，C不支持函数重载。why？" class="headerlink" title="C++支持，C不支持函数重载。why？"></a>C++支持，C不支持函数重载。why？</h3><ul>
+<li>编译时产生函数符号规则不同</li>
+<li>c++产生函数符号时，由函数名和参数列表决定</li>
+<li>c产生函数符号时，只由函数名决定<h3 id="C与C-代码之间如何互相调用？"><a href="#C与C-代码之间如何互相调用？" class="headerlink" title="C与C++代码之间如何互相调用？"></a>C与C++代码之间如何互相调用？</h3></li>
+</ul>
+<h3 id="函数重载需要注意什么？"><a href="#函数重载需要注意什么？" class="headerlink" title="函数重载需要注意什么？"></a>函数重载需要注意什么？</h3><ul>
+<li>函数名相同，参数列表不同，称为函数重载</li>
+<li>一组函数要重载，必须在同一作用域</li>
+<li><strong>const和volatile，是如何影响形参类型的。</strong></li>
+<li>返回值不同，不构成重载。</li>
+</ul>
+<p>参数是否为const不构成重载</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">const</span> <span class="keyword">int</span> b)</span> <span class="comment">// int __cdecl(int,int)  </span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">5</span>;              <span class="comment">//  int</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">int</span> b = <span class="number">10</span>;       <span class="comment">//  int</span></span><br><span class="line">    cout &lt;&lt; <span class="built_in"><span class="keyword">typeid</span></span>(a).<span class="built_in">name</span>() &lt;&lt; endl;</span><br><span class="line">    cout &lt;&lt; <span class="built_in"><span class="keyword">typeid</span></span>(b).<span class="built_in">name</span>() &lt;&lt; endl;</span><br><span class="line">    cout &lt;&lt; <span class="built_in"><span class="keyword">typeid</span></span>(sum).<span class="built_in">name</span>() &lt;&lt; endl;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="请你解释一下，什么是多态？"><a href="#请你解释一下，什么是多态？" class="headerlink" title="请你解释一下，什么是多态？"></a>请你解释一下，什么是多态？</h3><ul>
+<li>静态（编译时期）的多态：函数重载（编译时期、即生成指令时就确定了要调用哪个）</li>
+<li>动态（运行时期）的多肽</li>
+</ul>
+<h3 id="如何答什么是函数重载"><a href="#如何答什么是函数重载" class="headerlink" title="如何答什么是函数重载"></a>如何答什么是函数重载</h3><ul>
+<li><ol>
+<li>定义：同一作用域，函数名相同，参数列表不同</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>C++为什么支持，C为什么不支持？</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>函数重载也是静态时多态的一部分。</li>
+</ol>
+</li>
+</ul>
+<h2 id="c-c如何调用c-c"><a href="#c-c如何调用c-c" class="headerlink" title="c++/c如何调用c/c++"></a>c++/c如何调用c/c++</h2><ul>
+<li>c++文件中有函数声明。按照c++规则编译生成函数符号（函数名 + 参数列表） ，是 “UND”的。需要到外部文件中去找。但是c文件中相应函数所生成的符号表是按照c规则生成的（函数名）。故找不到。</li>
+<li>当c++中这个函数被调用时，（在link时报错）就会发生 <strong>无法解析的外部符号“int __cdecl sum(int,int)”，该符号在main中被引用</strong><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">LNK2019	无法解析的外部符号 <span class="string">&quot;int __cdecl sum(int,int)&quot;</span> (?sum@@YAHHH@Z)，</span><br><span class="line">函数 main 中引用了该符号	ConsoleApplication1	</span><br></pre></td></tr></table></figure></li>
+<li>解决方法：把C函数的声明放在 <code>extern &quot;C&quot; &#123;&#125;</code>里面<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">main.cpp</span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  按照C++的规则生成函数符号 &quot;int __cdecl sum(int,int)&quot; (?sum@@YAHHH@Z)    &quot;UND&quot;</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span>      <span class="comment">//  告诉编译器，以C的规则生成符号</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">int</span> b = <span class="number">20</span>;</span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;SDSDAD&quot;</span> &lt;&lt; endl;</span><br><span class="line">    <span class="keyword">int</span> ret = <span class="built_in">sum</span>(a, b);</span><br><span class="line">    cout &lt;&lt; <span class="string">&quot;ret = &quot;</span> &lt;&lt; ret &lt;&lt; endl;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">sum.c</span><br><span class="line"><span class="comment">//  按照C的规则生成函数符号 sum .text段</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> a + b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>C无法直接调用C++怎么办？ 把C++源码放在 <code>extern &quot;C&quot;&#123;&#125;</code>里面</li>
+</ul>
+<h3 id="最终"><a href="#最终" class="headerlink" title="最终"></a>最终</h3><ul>
+<li>即可以放在C++里，也可以放在C里</li>
+<li>C++定义了__cpluscplus。C++有extern C没有。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __cpluscplus</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">sum</span><span class="params">(<span class="keyword">int</span> a,<span class="keyword">int</span> b)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __cpluscplus</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="C和C-const的区别"><a href="#C和C-const的区别" class="headerlink" title="C和C++const的区别"></a>C和C++const的区别</h2><ul>
+<li><strong>const编译方式不同</strong>，<ul>
+<li>C中，const修饰的变量就是<strong>当作一个变量来编译生成指令</strong>的（只是在语法层面禁止对变量进行更改赋值，但是仍然可以通过指针对那块内存进行更改）。</li>
+<li><strong>C++中，所有出现const常量名字的地方，都被常量的初始化替换了</strong>。！！！！（在编译时就做了）</li>
+</ul>
+</li>
+</ul>
+<h3 id="C语言的const"><a href="#C语言的const" class="headerlink" title="C语言的const"></a>C语言的const</h3><ul>
+<li>const修饰的量，可以不用初始化；一定不能被赋值。</li>
+<li>const修饰的量不叫常量，叫做<strong>常变量</strong>。与变量唯一区别：<strong>不能作为左值。</strong><ul>
+<li>因此C语言的const变量不能当作常量去定义数组 <code>int array[const长变量]=&#123;&#125;; error</code></li>
+</ul>
+</li>
+<li>C语言的const，是语法级别的const，通过指针仍可以修改那块常变量的内存。</li>
+<li>所以如下，通过p修改之后，对a取值以及对p取值。都是取那块内存存储的值、20<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">int</span> *p = (<span class="keyword">int</span>*)&amp;a;</span><br><span class="line">    *p = <span class="number">20</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d %d %d\n&quot;</span>,*p,a,*(&amp;a));</span><br><span class="line">    <span class="comment">//     20  20  20</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="C-的const"><a href="#C-的const" class="headerlink" title="C++的const"></a>C++的const</h3><ul>
+<li><p>const修饰的量，必须初始化</p>
+</li>
+<li><p>（用立即数初始化）叫做<strong>常量</strong></p>
+<ul>
+<li><code>const int a = 10</code></li>
+<li>可以用来作为大小初始化数组。（因为会被替换成10）</li>
+</ul>
+</li>
+<li><p>C++const修饰的变量，在编译阶段，就已经用常量值替换了。</p>
+</li>
+<li><p>用变量初始化const变量时，得到的const修饰的变量不是常量，退化成C中的常变量。因为初始值不是立即数，无法在编译时就得到值。<br><img src="/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-19-13-11.png"></p>
+</li>
+<li><p><strong>C和C++的区别来了！：编译方式不同</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line">    <span class="keyword">int</span> array[a];   <span class="comment">//  C++中的const得到的是常量，可以用定义数组。（在编译时期就替换为10）</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> *p = (<span class="keyword">int</span>*)&amp;a;  <span class="comment">//  注意需要强转</span></span><br><span class="line">    *p = <span class="number">20</span>;        <span class="comment">//  实际上a的内存已经被改变！！！！</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  a出现的地方已经被编译器替换成10</span></span><br><span class="line">    cout&lt;&lt;*p&lt;&lt;<span class="string">&quot; &quot;</span>&lt;&lt;a&lt;&lt;<span class="string">&quot; &quot;</span>&lt;&lt;*(&amp;a)&lt;&lt;endl;</span><br><span class="line">    <span class="comment">//  20         10       10</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-19-59-43.png"></p>
+</li>
+<li><p>（居然真的可以这样 const变量地址被强转之后可以被普通指针接收。那个普通指针也可以去改变那块内存存储的值。）</p>
+</li>
+</ul>
+<h2 id="const和一级指针结合"><a href="#const和一级指针结合" class="headerlink" title="const和一级指针结合"></a>const和一级指针结合</h2><h3 id="const"><a href="#const" class="headerlink" title="const"></a>const</h3><ul>
+<li>const修饰的量常出现的错误</li>
+<li><ol>
+<li>常量不能再作为左值 《====  直接修改常量的值</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>不能把常量的地址泄露给一个普通的指针或普通的引用变量 《= 可以间接修改常量的值</li>
+</ol>
+</li>
+<li>我都会，就不记笔记了。<br>const如果右边没有指针*的话（那就是顶层const了），const是不参与类型的<br><img src="/2022/03/29/c++_%E5%9F%BA%E7%A1%80%E5%A4%8D%E4%B9%A0/2022-03-30-22-04-48.png"></li>
+</ul>
+<h2 id="const和二级指针结合"><a href="#const和二级指针结合" class="headerlink" title="const和二级指针结合"></a>const和二级指针结合</h2><ul>
+<li><p><code>const int **q</code></p>
+<ul>
+<li>const修饰的是 <code>**q</code>，也即int。</li>
+<li><code>q(int**)</code>和<code>*q(int*)</code>都可以更改和赋值</li>
+</ul>
+</li>
+<li><p><code>int *const* q</code></p>
+<ul>
+<li>const修饰的是 <code>*q</code></li>
+<li><code>q</code> 和<code>**q</code>可以更改和赋值</li>
+</ul>
+</li>
+<li><p><code>int **const q</code></p>
+<ul>
+<li>const修饰的是<code>q</code></li>
+<li>*q 和 **q可以更改和赋值</li>
+</ul>
+</li>
+<li><p>int ** &lt;= const int ** 。      no  不可去掉底层const（const修饰的是 **p）</p>
+</li>
+<li><p><strong><code>const int* * q&lt;= int* *p</code>   。   no！！！   原因见下</strong></p>
+</li>
+<li><p>简介来说就是：如果可以的话，会通过<code>const int* *q = &amp;p</code>中的<code>*q</code>，来操作p指针的指向，使得其合法指向常量地址，使得常量地址暴露给非常量指针。</p>
+</li>
+<li><p>换句话说，常量的地址可能经由q被泄露给p。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">这个动作会让p指针无形间升级为一个const *指针！！！</span><br><span class="line">- 如果成立，那么就是 const int *q就是p指针，二者是同一块内存;</span><br><span class="line">- 可以看作是 const int* *q = &amp;p; *q是一个指向const int*指针的指针。指向的那个指针就是p指针，</span><br><span class="line">- 那么*（*q）=...，就是在修改指向的这个指针的内容，也就是在修改p指针的指向）</span><br><span class="line"></span><br><span class="line">那么当有</span><br><span class="line">const int b = 120;</span><br><span class="line">* (*q) = &amp;b; 时。</span><br><span class="line">也即，让*q指向的指针指向b</span><br><span class="line">这是合法的。因为*q认为自己指向的是一个const *指针</span><br><span class="line">可是同时，*q指向的指针，是p指针！</span><br><span class="line">p指针是一个非const*指针！</span><br><span class="line">那么，我们就会有通过p指针，来修改这个const指针的风险！！！</span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>* &lt;= <span class="keyword">const</span> <span class="keyword">int</span> *         no  不可去掉底层<span class="keyword">const</span>（底层<span class="keyword">const</span>：<span class="keyword">const</span>修饰的是指针指向的内容）</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> * &lt;= <span class="keyword">int</span>*         ok  可以增加底层<span class="keyword">const</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> ** &lt;= <span class="keyword">const</span> <span class="keyword">int</span> **      no  不可去掉底层<span class="keyword">const</span>（<span class="keyword">const</span>修饰的是 **p）</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span>* * &lt;= <span class="keyword">int</span>* *       no！！！   原因见下</span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> ** &lt;= <span class="keyword">int</span> *<span class="keyword">const</span> *      no  不可去掉底层<span class="keyword">const</span></span><br><span class="line"><span class="keyword">int</span> *<span class="keyword">const</span> * &lt;= <span class="keyword">int</span> **      ok   </span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">int</span> *p = &amp;a;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> **q = &amp;p;     <span class="comment">//  const int** &lt;= int** 不可以！！！</span></span><br><span class="line"><span class="comment">//  不可以原因！！！</span></span><br><span class="line">这个动作会让p指针无形间升级为一个<span class="keyword">const</span> *指针！！！</span><br><span class="line">- 如果成立，那么就是 *q操作的就是p指针。*q的值，是p指针的内容，也就是p指针的指向，也就是<span class="keyword">int</span>的地址。</span><br><span class="line">- 可以看作是 <span class="keyword">const</span> <span class="keyword">int</span>* (*q) = &amp;p; *q是一个指向<span class="keyword">const</span> <span class="keyword">int</span>*指针的指针。指向的那个指针就是p指针，那么*q=...，就是在修改指向的这个指针的内容，也就是在修改p指针的指向）</span><br><span class="line">- 也即 *q &lt;=&gt; p</span><br><span class="line">那么当有</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> b = <span class="number">120</span>;</span><br><span class="line">*q = &amp;b; 时。</span><br><span class="line">也即，让*q指向的指针指向b</span><br><span class="line">这是合法的。因为*q认为自己指向的是一个<span class="keyword">const</span> *指针</span><br><span class="line">可是同时，*q指向的指针，是p指针！</span><br><span class="line">p指针是一个非<span class="keyword">const</span>*指针！</span><br><span class="line">那么，我们就会有通过p指针，来修改这个<span class="keyword">const</span>指针的风险！！！</span><br><span class="line">也即，将一个常量的地址，泄露给一个非常量的指针！！</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>那么为什么 <code>int *p = &amp;a ; const int *q = p;</code> 就可以呢<ul>
+<li>因为这时没有任何东西指向<code>p</code>指针（的内存），<code>q</code>指向的是<code>a</code>。并没有对<code>p</code>指针本身进行改变。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>修改方法</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="comment">//  01</span></span><br><span class="line"><span class="keyword">int</span> *p = &amp;a;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> **q = &amp;p; <span class="comment">//  wrong!</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  02</span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> *p = <span class="literal">nullptr</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> **q = &amp;p;     <span class="comment">//  常量地址泄露给p也没事儿，因为p是个指向常量的指针</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  03</span></span><br><span class="line"><span class="keyword">int</span> *p = <span class="literal">nullptr</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> * <span class="keyword">const</span> *q = &amp;p;  </span><br><span class="line"><span class="comment">//  常量地址不会被泄露出去。</span></span><br><span class="line"><span class="comment">//  因为没有人有方法给*q赋值。</span></span><br><span class="line"><span class="comment">//  *q是个指针，指向的指针类型是 `const int * const`</span></span><br><span class="line"><span class="comment">//  也即 *q认为自己无法操作自己指向的指针的指向</span></span><br><span class="line"><span class="comment">//  也就无法操作p指针指向常量地址</span></span><br></pre></td></tr></table></figure></li>
+<li><p>例子<br>const右侧没有*则不参与类型</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">int</span> *<span class="keyword">const</span> p = &amp;a;     </span><br><span class="line"><span class="comment">//  ok!  int *(const因为右侧没有*所以不参与）&lt;= int*</span></span><br><span class="line"><span class="keyword">int</span> **q = &amp;p;   <span class="comment">//  因为&amp;了，所以要加一个*</span></span><br><span class="line"><span class="comment">//  no!!!   int * * &lt;= int * const *</span></span><br><span class="line"><span class="comment">//  变成 * &lt;= const *</span></span><br><span class="line"><span class="comment">//  因此不行</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> *p = &amp;a;      <span class="comment">// const int * &lt;= int*</span></span><br><span class="line"><span class="keyword">int</span> * <span class="keyword">const</span> * q = &amp;p;</span><br><span class="line"><span class="comment">//  int * const * &lt;= const int **</span></span><br><span class="line"><span class="comment">//  消去左侧的一个const</span></span><br><span class="line"><span class="comment">//  int * &lt;= const int *</span></span><br><span class="line"><span class="comment">//  所以wrong！！！</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="引用和指针"><a href="#引用和指针" class="headerlink" title="引用和指针"></a>引用和指针</h2><h3 id="引用和指针区别"><a href="#引用和指针区别" class="headerlink" title="引用和指针区别"></a>引用和指针区别</h3><ul>
+<li><p>引用是更安全的指针</p>
+</li>
+<li><p>引用必须初始化，指针不需要</p>
+</li>
+<li><p>引用只有一级引用，没有多级引用；指针可以有一级、多级指针</p>
+</li>
+<li><p><strong>定义一个引用和指针在汇编指令上没有任何区别；通过引用变量修改所引用内存的值，和通过指针解引用修改指向变量的值，其底层指令也是一摸一样</strong>。</p>
+</li>
+<li><p>如何引用数组</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> array[<span class="number">5</span>];</span><br><span class="line"><span class="built_in"><span class="keyword">int</span></span> (&amp;r)[<span class="number">5</span>] = array;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="汇编"><a href="#汇编" class="headerlink" title="汇编"></a>汇编</h3><h4 id="lea和mov"><a href="#lea和mov" class="headerlink" title="lea和mov"></a>lea和mov</h4><ul>
+<li><strong><code>lea</code>是“<code>load effective address</code>”的缩写</strong>，简单的说，<code>lea</code>指令可以用来将一个内存地址直接赋给目的操作数，例如：<code>lea eax,[ebx+8]</code>就是将<code>ebx+8</code>这个值直接赋给<code>eax</code>，而不是把<code>ebx+8</code>处的内存地址里的数据赋给<code>eax</code>。</li>
+<li>而<code>mov</code>指令则恰恰相反，例如：<code>mov eax,[ebx+8]</code>则是把内存地址为<code>ebx+8</code>处的数据赋给<code>eax</code>。</li>
+</ul>
+<h4 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h4><ul>
+<li>变量a的地址放入寄存器，然后寄存器的内容存入内存（栈中）<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> *p = &amp;a;</span><br><span class="line">        lea     rax, [rbp<span class="number">-32</span>]       </span><br><span class="line">        <span class="comment">//   rbp-32这个地址是a的地址 把这个地址放到rax寄存器中</span></span><br><span class="line">        mov     QWORD PTR [rbp<span class="number">-8</span>], rax</span><br><span class="line">        <span class="comment">//   再把寄存器的内容放入内存中</span></span><br><span class="line"><span class="keyword">int</span>&amp; r = a;</span><br><span class="line">        lea     rax, [rbp<span class="number">-32</span>]</span><br><span class="line">        mov     QWORD PTR [rbp<span class="number">-16</span>], rax  </span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="左值引用、右值引用"><a href="#左值引用、右值引用" class="headerlink" title="左值引用、右值引用"></a>左值引用、右值引用</h2><ul>
+<li><p>左值引用所引用的东西有名字，有内存，可以作为左值</p>
+</li>
+<li><p>右值引用引用的东西没名字，没内存。</p>
+</li>
+<li><p>左值引用不能引用右值（右值：临时量、数值）。</p>
+</li>
+<li><p>右值引用不能引用左值。</p>
+</li>
+<li><p>右值：在寄存器里的，随时会被覆盖。（右值饮用后就是把这个音右值拷贝到栈中，使其可以被引用）</p>
+</li>
+<li><p>左值：在栈空间里的</p>
+</li>
+<li><p><strong>用途（目的）</strong></p>
+<ul>
+<li>为了从语法层面，就可以分辨出一个变量是否即将被销毁。一个变量能被右值引用，也就意味着这个变量即将无效；我们就可以针对这种对象进行指定的操作；如果一个变量被左值引用，就意味着他不会无效，我们对其进行指定操作。</li>
+<li><strong>编译器通过判断一个变量/值是否将要被销毁（局部对象出作用于之后被销毁）【（是否是右值）（也即是否是临时量或者数值）】，来判断他是否是右值，进而来看她是否匹配到右值引用参数列表（是否可以被右值引用。），从而调用指定函数</strong></li>
+<li><del>左值引用右值引用不会对所引用的东西本身造成影响</del>。引入右值引用只是为了让右值匹配特定的函数参数列表（与左值区分开），来调用针对右值设计的函数来提高效率。</li>
+</ul>
+</li>
+</ul>
+<h3 id="左值引用、右值引用在汇编的区别"><a href="#左值引用、右值引用在汇编的区别" class="headerlink" title="左值引用、右值引用在汇编的区别"></a>左值引用、右值引用在汇编的区别</h3><ul>
+<li><p><strong>左值引用：把变量的地址拷贝一份放到栈的内存中</strong></p>
+<ul>
+<li>把变量对应的内存的地址装入寄存器，再从寄存器放入内存的另一处内存空间x中（栈的另一位置）。我们左值引用变量本身的地址应当就是这块内存空间x的地址</li>
+</ul>
+</li>
+<li><p><strong>右值引用：为立即数分配一块内存空间，并把内存空间的地址拷贝一份放到栈的另一块内存空间中</strong></p>
+<ul>
+<li>由于立即数不是左值，没有名字，没有内存。因此我们先把为这个立即数分配一个存储空间。也即把这个立即数放入一块（栈的）存储空间中。然后再做左值引用的操作：把这个内存地址拷贝一份放到栈中的另一处内存空间x中。</li>
+<li>我们右值引用变量本身的地址应当就是这块内存空间x的地址<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>&amp; r = a;</span><br><span class="line">        lea     rax, [rbp<span class="number">-24</span>]       <span class="comment">// </span></span><br><span class="line">        mov     QWORD PTR [rbp<span class="number">-8</span>], rax</span><br><span class="line"><span class="keyword">int</span>&amp;&amp; rr = <span class="number">10</span>;</span><br><span class="line">        mov     DWORD PTR [rbp<span class="number">-20</span>], <span class="number">0xA</span></span><br><span class="line">        lea     rax, [rbp<span class="number">-20</span>]</span><br><span class="line">        mov     QWORD PTR [rbp<span class="number">-16</span>], rax </span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>也因此右值引用变量本身是个左值</strong>，因为他有名字，有内存空间。</p>
+</li>
+</ul>
+<h3 id="常量左值引用、右值引用"><a href="#常量左值引用、右值引用" class="headerlink" title="常量左值引用、右值引用"></a>常量左值引用、右值引用</h3><ul>
+<li><strong>常量左值引用</strong>和<strong>右值引用</strong>在<strong>汇编</strong>上没有区别！</li>
+<li><strong>区别在于语法层面：不能够改变常左cr引用的变量的值，能够改变右引rr引用的值。</strong><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> &amp;&amp;rr = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> &amp;cr = <span class="number">10</span>;</span><br><span class="line">rr = <span class="number">8</span>; <span class="comment">// ok</span></span><br><span class="line">cr = <span class="number">8</span>; <span class="comment">//  wrong!</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> &amp;cr = <span class="number">10</span>;</span><br><span class="line"><span class="comment">// int t = 10;  cr &lt;= t</span></span><br><span class="line">        mov     DWORD PTR [rbp<span class="number">-36</span>], <span class="number">0xA</span></span><br><span class="line">        lea     rax, [rbp<span class="number">-36</span>]</span><br><span class="line">        mov     QWORD PTR [rbp<span class="number">-32</span>], rax</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>胡咧咧：感觉右值引用实际上是告诉编译器把右值保存在一个内存中，让我们可以引用，并且在引用时通过语法层面确保用户知道，所引用的值是一个即将被销毁的东西。</li>
+</ul>
+<h3 id="const-引用-指针-题"><a href="#const-引用-指针-题" class="headerlink" title="const 引用 指针 题"></a>const 引用 指针 题</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">A.</span><br><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">int</span> *p = &amp;a;</span><br><span class="line"><span class="keyword">int</span> * &amp;q = p;   </span><br><span class="line"><span class="comment">//  p是个引用。引用的对象是个int*指针。通过q可以改变p的指向。观察得ok</span></span><br><span class="line"><span class="comment">//  也可以看成是 int * *q = &amp;p;</span></span><br><span class="line"><span class="comment">//  所以就是 int** &lt;= int** ok</span></span><br><span class="line"></span><br><span class="line">B.wrong!</span><br><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">int</span> *<span class="keyword">const</span> p = &amp;a;  <span class="comment">//  int * &lt;= int*</span></span><br><span class="line"><span class="keyword">int</span> *&amp;q = p;</span><br><span class="line"><span class="comment">//  通过引用变量q可以改变p得指向。而p应当是const不变指向。因此wrong！</span></span><br><span class="line"><span class="comment">//  也可以看作 int **q = &amp;p; </span></span><br><span class="line"><span class="comment">//  即 int ** q&lt;= int *const * p    ; 即 * &lt;= const * 因此wtong！</span></span><br><span class="line"><span class="comment">//  (const修饰*p，p指向int*；*p是int*；q指向int* ；*q是int*，所以当可以通过*q修改p指向，因此不对！)</span></span><br><span class="line"></span><br><span class="line">C.wrong!</span><br><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> *p = &amp;a;  <span class="comment">//  const int* &lt;=int*</span></span><br><span class="line"><span class="keyword">int</span> *&amp;q = p;    </span><br><span class="line"><span class="comment">//  int** q = &amp;p;</span></span><br><span class="line"><span class="comment">//  即int ** &lt;= const int **  wrong!</span></span><br><span class="line"></span><br><span class="line">D. wrong!</span><br><span class="line"><span class="keyword">int</span> a = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">int</span> *p = &amp;a;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> * &amp;q = p;</span><br><span class="line"><span class="comment">//  通过q会修改p得指向，使其合法指向常量地址，因此wrong！</span></span><br><span class="line"><span class="comment">//  const int ** q = &amp;p;</span></span><br><span class="line"><span class="comment">//  const int ** &lt;= int ** </span></span><br><span class="line"><span class="comment">// wrong!</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="new、malloc区别。free、delete区别"><a href="#new、malloc区别。free、delete区别" class="headerlink" title="new、malloc区别。free、delete区别"></a>new、malloc区别。free、delete区别</h2><ul>
+<li><p>malloc delete 称为C的库函数</p>
+</li>
+<li><p>new delete 称作运算符</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> *p = <span class="built_in">malloc</span>();</span><br><span class="line"><span class="built_in">free</span>(p);</span><br><span class="line">==================================</span><br><span class="line"><span class="keyword">int</span> *p = <span class="keyword">new</span> <span class="built_in"><span class="keyword">int</span></span>(...);</span><br><span class="line"><span class="keyword">delete</span> p;</span><br><span class="line"></span><br><span class="line"><span class="keyword">delete</span>：</span><br><span class="line">p-&gt;~析构函数();</span><br><span class="line"><span class="built_in">free</span>(p);  释放内存</span><br></pre></td></tr></table></figure></li>
+<li><p>new不仅开辟内存，还可内存初始化。</p>
+</li>
+<li><p>malloc开辟内存失败，通过返回值合nullptr比较</p>
+</li>
+<li><p>new开辟内存失败，是通过bad_alloc类型的异常来比较</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>* p = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="built_in"><span class="keyword">sizeof</span></span>(<span class="keyword">int</span>));</span><br><span class="line"><span class="keyword">if</span> (p == <span class="literal">nullptr</span>) cout &lt;&lt; <span class="string">&quot;wrong&quot;</span> &lt;&lt; endl;</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">int</span>* pp = <span class="keyword">new</span> <span class="built_in"><span class="keyword">int</span></span>(<span class="number">10</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in"><span class="keyword">catch</span></span> (<span class="keyword">const</span> bad_alloc&amp; e) &#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  int *pp = new int[20];  在堆上开辟后不会初始化</span></span><br><span class="line">    <span class="keyword">int</span> *pp = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">20</span>]();    <span class="comment">// 在堆上开辟后会初始化</span></span><br><span class="line">    <span class="keyword">delete</span> []pp;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>有几种new</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  int *pp = new int[20];  在堆上开辟后不会初始化</span></span><br><span class="line"><span class="keyword">int</span> *pp = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">20</span>]();    <span class="comment">// 在堆上开辟后会初始化</span></span><br><span class="line"><span class="keyword">delete</span> []pp;</span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> *p1 = <span class="keyword">new</span> <span class="built_in"><span class="keyword">int</span></span>(<span class="number">20</span>);</span><br><span class="line"><span class="keyword">int</span> *p2 = <span class="built_in"><span class="keyword">new</span></span> (nothrow) <span class="keyword">int</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> *p3 = <span class="keyword">new</span> <span class="keyword">const</span> <span class="built_in"><span class="keyword">int</span></span>(<span class="number">20</span>);</span><br><span class="line"><span class="comment">//  定位new</span></span><br><span class="line"><span class="keyword">int</span> data = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">int</span> *p4 = <span class="built_in"><span class="keyword">new</span></span> (&amp;data) <span class="built_in"><span class="keyword">int</span></span>(<span class="number">5</span>);</span><br><span class="line">cout&lt;&lt;data&lt;&lt;endl; <span class="comment">//  5</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="volatile"><a href="#volatile" class="headerlink" title="volatile"></a>volatile</h2><p><a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1637791">C++与Java不同</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/C/" rel="tag"># C++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/03/27/c++_%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8/" rel="prev" title="函数调用">
+      <i class="fa fa-chevron-left"></i> 函数调用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/04/01/c++_OOP%E5%A4%8D%E4%B9%A0/" rel="next" title="OOP复习">
+      OOP复习 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%BB%98%E8%AE%A4%E5%BD%A2%E5%8F%82%E9%BB%98%E8%AE%A4%E5%80%BC"><span class="nav-number">1.</span> <span class="nav-text">默认形参默认值</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#inline%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0"><span class="nav-number">2.</span> <span class="nav-text">inline内联函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#inline%E5%87%BD%E6%95%B0%E4%B8%8E%E6%99%AE%E9%80%9A%E5%87%BD%E6%95%B0%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">2.1.</span> <span class="nav-text">inline函数与普通函数区别？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD"><span class="nav-number">3.</span> <span class="nav-text">函数重载</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#C-%E6%94%AF%E6%8C%81%EF%BC%8CC%E4%B8%8D%E6%94%AF%E6%8C%81%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD%E3%80%82why%EF%BC%9F"><span class="nav-number">3.1.</span> <span class="nav-text">C++支持，C不支持函数重载。why？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#C%E4%B8%8EC-%E4%BB%A3%E7%A0%81%E4%B9%8B%E9%97%B4%E5%A6%82%E4%BD%95%E4%BA%92%E7%9B%B8%E8%B0%83%E7%94%A8%EF%BC%9F"><span class="nav-number">3.2.</span> <span class="nav-text">C与C++代码之间如何互相调用？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">3.3.</span> <span class="nav-text">函数重载需要注意什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%B7%E4%BD%A0%E8%A7%A3%E9%87%8A%E4%B8%80%E4%B8%8B%EF%BC%8C%E4%BB%80%E4%B9%88%E6%98%AF%E5%A4%9A%E6%80%81%EF%BC%9F"><span class="nav-number">3.4.</span> <span class="nav-text">请你解释一下，什么是多态？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%AD%94%E4%BB%80%E4%B9%88%E6%98%AF%E5%87%BD%E6%95%B0%E9%87%8D%E8%BD%BD"><span class="nav-number">3.5.</span> <span class="nav-text">如何答什么是函数重载</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#c-c%E5%A6%82%E4%BD%95%E8%B0%83%E7%94%A8c-c"><span class="nav-number">4.</span> <span class="nav-text">c++&#x2F;c如何调用c&#x2F;c++</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E7%BB%88"><span class="nav-number">4.1.</span> <span class="nav-text">最终</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C%E5%92%8CC-const%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">5.</span> <span class="nav-text">C和C++const的区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#C%E8%AF%AD%E8%A8%80%E7%9A%84const"><span class="nav-number">5.1.</span> <span class="nav-text">C语言的const</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#C-%E7%9A%84const"><span class="nav-number">5.2.</span> <span class="nav-text">C++的const</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#const%E5%92%8C%E4%B8%80%E7%BA%A7%E6%8C%87%E9%92%88%E7%BB%93%E5%90%88"><span class="nav-number">6.</span> <span class="nav-text">const和一级指针结合</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#const"><span class="nav-number">6.1.</span> <span class="nav-text">const</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#const%E5%92%8C%E4%BA%8C%E7%BA%A7%E6%8C%87%E9%92%88%E7%BB%93%E5%90%88"><span class="nav-number">7.</span> <span class="nav-text">const和二级指针结合</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E5%92%8C%E6%8C%87%E9%92%88"><span class="nav-number">8.</span> <span class="nav-text">引用和指针</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E5%92%8C%E6%8C%87%E9%92%88%E5%8C%BA%E5%88%AB"><span class="nav-number">8.1.</span> <span class="nav-text">引用和指针区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B1%87%E7%BC%96"><span class="nav-number">8.2.</span> <span class="nav-text">汇编</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#lea%E5%92%8Cmov"><span class="nav-number">8.2.1.</span> <span class="nav-text">lea和mov</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8E%9F%E7%90%86"><span class="nav-number">8.2.2.</span> <span class="nav-text">原理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B7%A6%E5%80%BC%E5%BC%95%E7%94%A8%E3%80%81%E5%8F%B3%E5%80%BC%E5%BC%95%E7%94%A8"><span class="nav-number">9.</span> <span class="nav-text">左值引用、右值引用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%A6%E5%80%BC%E5%BC%95%E7%94%A8%E3%80%81%E5%8F%B3%E5%80%BC%E5%BC%95%E7%94%A8%E5%9C%A8%E6%B1%87%E7%BC%96%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">9.1.</span> <span class="nav-text">左值引用、右值引用在汇编的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E9%87%8F%E5%B7%A6%E5%80%BC%E5%BC%95%E7%94%A8%E3%80%81%E5%8F%B3%E5%80%BC%E5%BC%95%E7%94%A8"><span class="nav-number">9.2.</span> <span class="nav-text">常量左值引用、右值引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#const-%E5%BC%95%E7%94%A8-%E6%8C%87%E9%92%88-%E9%A2%98"><span class="nav-number">9.3.</span> <span class="nav-text">const 引用 指针 题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#new%E3%80%81malloc%E5%8C%BA%E5%88%AB%E3%80%82free%E3%80%81delete%E5%8C%BA%E5%88%AB"><span class="nav-number">10.</span> <span class="nav-text">new、malloc区别。free、delete区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#volatile"><span class="nav-number">11.</span> <span class="nav-text">volatile</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

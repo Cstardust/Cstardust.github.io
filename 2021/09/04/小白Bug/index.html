@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="BUG (小白的锌酸历程)heap corruption detectedhttps:&#x2F;&#x2F;blog.csdn.net&#x2F;fjz13&#x2F;article&#x2F;details&#x2F;2535126 1 .h头文件上来记得加1234#ifndef xxx  #define xxx ..... #endif  2.0  multiple definition &#x2F; redefinition &#x2F; xxx already de">
+<meta property="og:type" content="article">
+<meta property="og:title" content="BUG">
+<meta property="og:url" content="http://example.com/2021/09/04/%E5%B0%8F%E7%99%BDBug/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="BUG (小白的锌酸历程)heap corruption detectedhttps:&#x2F;&#x2F;blog.csdn.net&#x2F;fjz13&#x2F;article&#x2F;details&#x2F;2535126 1 .h头文件上来记得加1234#ifndef xxx  #define xxx ..... #endif  2.0  multiple definition &#x2F; redefinition &#x2F; xxx already de">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2021/09/04/%E5%B0%8F%E7%99%BDBug/2021-11-24-09-12-38.png">
+<meta property="article:published_time" content="2021-09-04T03:00:00.000Z">
+<meta property="article:modified_time" content="2021-11-13T15:46:00.000Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="杂记">
+<meta property="article:tag" content="BUG">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2021/09/04/%E5%B0%8F%E7%99%BDBug/2021-11-24-09-12-38.png">
+
+<link rel="canonical" href="http://example.com/2021/09/04/%E5%B0%8F%E7%99%BDBug/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>BUG | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/09/04/%E5%B0%8F%E7%99%BDBug/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          BUG
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-09-04 11:00:00" itemprop="dateCreated datePublished" datetime="2021-09-04T11:00:00+08:00">2021-09-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-11-13 23:46:00" itemprop="dateModified" datetime="2021-11-13T23:46:00+08:00">2021-11-13</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/BUG/" itemprop="url" rel="index"><span itemprop="name">BUG</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="BUG-小白的锌酸历程"><a href="#BUG-小白的锌酸历程" class="headerlink" title="BUG (小白的锌酸历程)"></a><strong>BUG (小白的锌酸历程)</strong></h1><h2 id="heap-corruption-detected"><a href="#heap-corruption-detected" class="headerlink" title="heap corruption detected"></a><strong>heap corruption detected</strong></h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/fjz13/article/details/2535126">https://blog.csdn.net/fjz13/article/details/2535126</a></p>
+<h2 id="1"><a href="#1" class="headerlink" title="1"></a><strong>1</strong></h2><ul>
+<li><code>.h</code>头文件上来记得加<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> xxx  </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> xxx </span></span><br><span class="line">..... </span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><a href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj" class="headerlink" title="2.0  multiple definition / redefinition / xxx already defined in adsasd.obj"></a><strong>2.0  multiple definition / redefinition / xxx already defined in adsasd.obj</strong></h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//a.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">func1</span><span class="params">()</span></span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.h</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">pragma</span> once</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//c.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;a.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//main.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;c.h&quot;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"><span class="number">1</span>&gt;c.obj : error LNK2005: <span class="string">&quot;void __cdecl func1(void)&quot;</span> (?func1@@YAXXZ) already defined in a.obj</span><br><span class="line"><span class="number">1</span>&gt;C:\Users\de<span class="number">&#x27;l</span><span class="number">&#x27;l</span>\VSProjects\MistakeTry\Debug\MistakeTry.exe : fatal error LNK1169: one <span class="keyword">or</span> more multiply defined symbols found</span><br><span class="line"><span class="number">1</span>&gt;Done building project <span class="string">&quot;MistakeTry.vcxproj&quot;</span> -- FAILED.</span><br></pre></td></tr></table></figure>
+<ul>
+<li>养成<strong>不要在头<code>.h</code>文件中定义非类成员函数以及非内联函数</strong>的习惯。</li>
+<li>养成<strong>在类相应源<code>.cpp</code>文件中定义函数</strong>的习惯</li>
+<li>非类的成员函数的定义尽量放在<code>.cpp</code>文件中<ul>
+<li>因为c++采用单独编译，就是将每个<code>.cpp</code>文件编译成对应的<code>.o</code>文件，最后链接器再将多个<code>.obj</code>文件链接成可执行程序。</li>
+<li>所以本例，从各个<code>cpp</code>文件看，编译成.o文件时没有任何问题（在main中也没有问题，因为有<code>#pargma once </code>,<code>a.h</code>只会在<code>main</code>中<code>include</code>一次，但是在<code>c.cpp</code>和<code>a.cpp</code>和文件中都<code>include</code>了<code>a.h</code>文件</li>
+<li>(宏的定义域只局限于一个文件) </li>
+<li>而<code>a.h</code>文件中又定义了<code>print</code>函数，即与预处理过后，在c和a源文件中都定义了<code>print</code>函数，重复定义，即会有<code>one or more multiply defined symbols found</code>或者 <code>....already defined in ..obj</code>的错误</li>
+</ul>
+</li>
+<li>有人可能会问，既然是从同一份文件<code>include</code>过来的函数<code>hhh()</code>，那么定义都是同一份，为什么编译器不会智能的处理一下，让链接时候不报错呢？<ul>
+<li>其实编译器链接的时候，并不知道<code>b.cpp</code>中定义的<code>hhh</code>与<code>c.cpp</code>中定义的<code>hhh</code>是同一个文件<code>include</code>过来的，它只会认为如果有两份定义，而且这两份定义如果实现不同，那么到底以哪个为准呢？既然决定不了，那就干脆报错好了。</li>
+<li>这段引自博客,链接我真没找到。。</li>
+</ul>
+</li>
+</ul>
+<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a><strong>例外</strong></h3><ul>
+<li><strong><code>inline</code></strong> 函数定义在头文件中<ul>
+<li>C++规定，内联函数可以在程序中定义多次，只要内联函数定义在同一个<code>cpp</code>中只出现一次就行。</li>
+</ul>
+</li>
+<li><strong><code>class</code></strong> 成员函数可在头文件中定义</li>
+<li><a target="_blank" rel="noopener" href="https://jiadebin.github.io/2017/04/03/%E5%A4%B4%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%87%BD%E6%95%B0%E5%BC%95%E5%8F%91%E7%9A%84multiple-definition/">参考 感谢作者</a></li>
+</ul>
+<h2 id="2-1-inline函数要定义在头文件内。"><a href="#2-1-inline函数要定义在头文件内。" class="headerlink" title="2.1 inline函数要定义在头文件内。"></a><strong>2.1 <code>inline</code>函数要定义在头文件内。</strong></h2><ul>
+<li>若定义在<code>.cpp</code>文件则会<ul>
+<li><strong><code>undefined reference to &#39;CScene::CScene()&#39;</code></strong></li>
+<li><strong><code>main.obj : error LNK2019: unresolved external symbol &quot;public: __thiscall CScene::CScene(void)&quot; (??0CScene@@QAE@XZ) referenced in function _main</code></strong></li>
+</ul>
+</li>
+<li><ol>
+<li>大多数环境在编译期间进行<code>inline</code>，而为了将一个<code>函数调用</code>替换为<code>被调用的函数的本体</code>，编译器必须知道那个函数长什么样子。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>与非<code>inline</code>函数不同，<code>inline</code>函数必须在调用该函数的每个文件中定义。（为了完成上一句话的要求）</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>对于同一程序的不同文件，同一<code>inline</code>函数的定义应当相同。</li>
+</ol>
+</li>
+<li>因此，<strong>应把<code>inline</code>函数的定义放入头文件</strong>，在<strong>每个</strong>调用了该<code>inline</code>函数的地方<code>include</code>该头文件 （为了完成2），这种方法*<strong>保证了每个<code>inline</code>函数只有一个定义</strong>，且程序员无需复制代码，并且不可能在程序的生命周期引起无意不匹配的事情。</li>
+</ul>
+<ul>
+<li>static<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">static修饰全局变量和全局函数就不说了，这里主要讨论修饰类的成员函数和成员变量。</span><br><span class="line">当类的编写者在头文件中编写一个类声明的时候，他必须明确告诉将要使用这个类的人这个类的用法，比如哪些变量和类是public的。</span><br><span class="line">static成员也是，编写者如果想要让一个成员变量在所有对象之间共享，那就用static告诉类的使用者，后续类的使用者就可以用类名::变量名来使用这个变量了。</span><br><span class="line">所以static在修饰成员变量和成员函数时，是向外明确接口的，必须要写在声明里。至于定义的时候要不要static，这不重要，各自编译器决定定义时写static的行为就好了</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="2-2-const作用域"><a href="#2-2-const作用域" class="headerlink" title="2.2 const作用域"></a><strong>2.2 <code>const作用域</code></strong></h2><h3 id="问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？"><a href="#问题：会不会出现编译器没有把我们在-h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple-definition的情况？" class="headerlink" title="问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？"></a>问题：会不会出现编译器没有把我们在<code>.h</code>文件中定义的内联函数当作<code>inline</code>函数，而我们又到处<code>include</code>，造成<code>multiple definition</code>的情况？</h3><ul>
+<li>qs是出现了。。。。md。。。。我的解决方法：<ul>
+<li>直接在那个<code>.h</code>文件的类内定义该成员函数</li>
+<li>或者取消把他内联的想法。交给编译器，听他的。</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-相互包含头文件"><a href="#3-相互包含头文件" class="headerlink" title="3.  相互包含头文件"></a><strong>3.  相互包含头文件</strong></h2><ul>
+<li>两个头文件相互包含</li>
+<li>若在B的头文件中：<ul>
+<li><ol>
+<li><strong>要定义使用<code>A对象</code>或<code>A对象</code>作为返回值的函数则要<code>include A.h</code></strong></li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>使用<code>A类型</code>作为指针则在定义<code>A*</code>前声明<code>class A</code>即可</strong></li>
+</ol>
+</li>
+<li>另外，若为<strong>情况2</strong>，<strong>则在<code>B.cpp</code>文件中，为了使用A类的成员函数，则要<code>include A.h</code></strong></li>
+<li><ol start="3">
+<li>两个类中互相使用了对方的指针，这样的情况很简单，分别在各自的头文件中声明一下使用的类，而在各自的源文件中包含对方的头文件即可。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="4-There-is-no-matching-member-for-call-to-‘find’"><a href="#4-There-is-no-matching-member-for-call-to-‘find’" class="headerlink" title="4. There is no matching member for call to ‘find’"></a><strong>4. There is no matching member for call to ‘find’</strong></h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; m = &#123;&#123;<span class="string">&quot;I&quot;</span>,<span class="number">1</span>&#125;,&#123;<span class="string">&quot;IV&quot;</span>,<span class="number">4</span>&#125;,&#123;<span class="string">&quot;V&quot;</span>,<span class="number">5</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;IX&quot;</span>,<span class="number">9</span>&#125;,&#123;<span class="string">&quot;X&quot;</span>,<span class="number">10</span>&#125;,&#123;<span class="string">&quot;XL&quot;</span>,<span class="number">40</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;L&quot;</span>,<span class="number">50</span>&#125;,&#123;<span class="string">&quot;XC&quot;</span>,<span class="number">90</span>&#125;,&#123;<span class="string">&quot;C&quot;</span>,<span class="number">100</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;CD&quot;</span>,<span class="number">400</span>&#125;,&#123;<span class="string">&quot;D&quot;</span>,<span class="number">500</span>&#125;,&#123;<span class="string">&quot;CM&quot;</span>,<span class="number">900</span>&#125;,</span><br><span class="line">&#123;<span class="string">&quot;M&quot;</span>,<span class="number">1000</span>&#125;&#125;;</span><br><span class="line">string s = <span class="string">&quot;MCD&quot;</span>;</span><br><span class="line">unordered_map&lt;string,<span class="keyword">int</span>&gt; ::iterator iter = m.<span class="built_in">find</span>(s[<span class="number">0</span>]);</span><br><span class="line"><span class="keyword">if</span>(iter!=s.<span class="built_in">end</span>()) ...  </span><br></pre></td></tr></table></figure>
+<p><code>There is no matching member for call to &#39;find&#39;</code></p>
+<ul>
+<li><strong>原因</strong><ul>
+<li><code>unordered_map&lt;string,int&gt;</code>的<code>key type</code>是 <code>std::string</code>,但是我们传入的是一个字符<code>char</code>给<code>find()</code>函数.<code>std::string</code>没有一个可以接收一个<code>char</code>的<code>constructor</code>.因此<code>error</code>.</li>
+</ul>
+</li>
+<li><strong>解决</strong><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">m.<span class="built_in">find</span>(&#123;s[<span class="number">0</span>]&#125;);</span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>()+s[<span class="number">0</span>]); <span class="comment">//一个string型字符串和一个char相加,会将char先转化为string,再相加</span></span><br><span class="line">m.<span class="built_in">find</span>(<span class="built_in">string</span>(<span class="number">1</span>,s[<span class="number">0</span>]));<span class="comment">//string构造函数 string(n,char);</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="5-关于（几乎就是不可以）返回局部变量的引用"><a href="#5-关于（几乎就是不可以）返回局部变量的引用" class="headerlink" title="5. 关于（几乎就是不可以）返回局部变量的引用"></a><strong>5. 关于（几乎就是不可以）返回局部变量的引用</strong></h2><ul>
+<li>函数<strong>返回local variable引用</strong>（<strong>无论是否是常量引用</strong>）是<strong>不可以</strong>的。(条件是函数调用处并<strong>没有用常量引用来接收</strong>)<ul>
+<li>理解：编译器根据 <code>local</code> 变量造了一个<code>const</code>局部临时量 让<code>const</code>引用绑定在这个临时变量上，<strong>可这个变量还是一个局部变量</strong>。函数结束这个局部的临时量时该销毁还是销毁了。</li>
+</ul>
+</li>
+<li>对于函数中的一个变量，如果<strong>不是局部变量</strong>，而是函数传参传入的一个引用，那么返回时当然<strong>可以</strong>返回该变量的引用（无论是否常），因为这个变量在函数结束时并不会被销毁。</li>
+<li>图片来自<a target="_blank" rel="noopener" href="https://blog.csdn.net/u012814856/article/details/84099328">博客</a><br><img src="/2021/09/04/%E5%B0%8F%E7%99%BDBug/2021-11-24-09-12-38.png"></li>
+</ul>
+<h4 id="特例"><a href="#特例" class="headerlink" title="特例"></a><strong>特例</strong></h4><ul>
+<li><del>如果在函数调用处使用了const引用来接收返回的引用/常量引用，那么是ok的</del>。</li>
+<li>经实验，没有特例，无论是不是用常量引用接收，就是不能返回局部变量的常引。如果是一些容器类的话，可能不止是警告，还有编译error。</li>
+<li>如果返回一个值的话，函数调用处用一个<code>const</code>引用接收当然可以延长生命周期。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> jj02 &#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &gt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func2</span><span class="params">(<span class="keyword">int</span> a, <span class="keyword">int</span> b)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> a &lt; b ? a : b;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">5</span>, b = <span class="number">10</span>;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; c = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; d = <span class="built_in">func2</span>(a, b);</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">int</span>&amp; e = <span class="built_in">func1</span>(a, b);</span><br><span class="line">		cout &lt;&lt; c &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; d &lt;&lt; endl;</span><br><span class="line">		cout &lt;&lt; e &lt;&lt; endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	jj02::<span class="built_in">test</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+<li>运行结果<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">6492220</span><br><span class="line">6509462</span><br><span class="line">6492220</span><br><span class="line"></span><br><span class="line">C:\Users\de<span class="string">&#x27;l&#x27;</span>l\VSProjects\MistakeTry\Debug\MistakeTry.exe (process 20256) exited with code 0.</span><br><span class="line">To automatically close the console when debugging stops, <span class="built_in">enable</span> Tools-&gt;Options-&gt;Debugging-&gt;Automatically close the console when debugging stops.</span><br><span class="line">Press any key to close this window . . .</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">namespace</span> jj01</span><br><span class="line">&#123;</span><br><span class="line">	<span class="function"><span class="keyword">const</span> <span class="keyword">int</span>&amp; <span class="title">func1</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> a = <span class="number">19999</span>;</span><br><span class="line">		<span class="keyword">return</span> a;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">int</span>&amp; <span class="title">g</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">int</span> b = <span class="number">1121332</span>;</span><br><span class="line">		<span class="keyword">return</span> b;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> a = jj01::<span class="built_in">func1</span>();</span><br><span class="line">	cout &lt;&lt; a &lt;&lt; endl;</span><br><span class="line">	<span class="keyword">int</span> x = <span class="number">88</span>;</span><br><span class="line">	<span class="keyword">int</span> b = jj01::<span class="built_in">g</span>();</span><br><span class="line">	cout &lt;&lt; b &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(80): warning C4172: returning address of local variable or temporary: b</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//1&gt;C:\Users\de&#x27;l&#x27;l\VSProjects\MistakeTry\main.cpp(74): warning C4172: returning address of local variable or temporary: a</span></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="6-vector类内初始化"><a href="#6-vector类内初始化" class="headerlink" title="6. vector类内初始化"></a><strong>6. vector类内初始化</strong></h2><ul>
+<li><code>vector</code>容器对象在类内定义时不允许指定大小(编译器会认为这是定义了一个函数)，只能通过<strong>列表初始化</strong>指定大小。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">vector&lt;<span class="keyword">int</span>&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;	<span class="comment">// error 编译器会认为这是定义了一个函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//解决</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">A</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">A</span>(<span class="keyword">int</span> n):<span class="built_in">v</span>(n)&#123;&#125;		<span class="comment">//  列表初始化 ok</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="7-静态成员函数指针-非静态成员函数指针"><a href="#7-静态成员函数指针-非静态成员函数指针" class="headerlink" title="7. 静态成员函数指针 非静态成员函数指针"></a>7. <strong>静态成员函数指针 非静态成员函数指针</strong></h2><ul>
+<li><strong>问题：</strong> 在使用<code>sort()</code>函数时，第三个函数只能是 <strong>全局函数指针</strong>或者<strong>静态成员函数指针</strong>，不能是<strong>非静态成员函数指针</strong>。</li>
+<li><strong>解释：</strong> 非静态成员函数的参数中有一个<strong>隐式绑定的this指针</strong>(因为非静态成员函数需要由具体对象来调用)，而<code>sort</code>第三个参数需要得是一个接受两个参数的函数指针，所以不可。如果是静态成员函数的话，<code>sort</code>时直接使用<code>cmp</code>即可，无需依赖于实际对象。</li>
+<li>感觉这话题好像挺大的，之后再研究研究。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 贴个合并区间的代码hhhh</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Solution</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">cmp</span><span class="params">(<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;a,<span class="keyword">const</span> vector&lt;<span class="keyword">int</span>&gt; &amp;b)</span>  <span class="comment">// 成员函数指针 静态函数指针 全局函数指针 整理。</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a[<span class="number">0</span>]&lt;b[<span class="number">0</span>];</span><br><span class="line">    &#125;</span><br><span class="line">    vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; <span class="built_in">merge</span>(vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt;&amp; intervals) &#123;</span><br><span class="line">        vector&lt;vector&lt;<span class="keyword">int</span>&gt;&gt; res;</span><br><span class="line">        <span class="built_in">sort</span>(intervals.<span class="built_in">begin</span>(),intervals.<span class="built_in">end</span>(),cmp);    <span class="comment">// 按照左端点排序</span></span><br><span class="line">        <span class="keyword">int</span> n = intervals.<span class="built_in">size</span>();</span><br><span class="line">        <span class="keyword">int</span> l = intervals[<span class="number">0</span>][<span class="number">0</span>];</span><br><span class="line">        <span class="keyword">int</span> r = intervals[<span class="number">0</span>][<span class="number">1</span>];</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">1</span>;i&lt;n;++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(intervals[i][<span class="number">0</span>]&gt;r) </span><br><span class="line">            &#123;</span><br><span class="line">                res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">                l=intervals[i][<span class="number">0</span>],r=intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">if</span>(intervals[i][<span class="number">1</span>]&gt;r) r = intervals[i][<span class="number">1</span>];</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        res.<span class="built_in">push_back</span>(&#123;l,r&#125;);</span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">作者：猪啊猪</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/file_system/file/content/whole/index/content/2974707/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="string相关"><a href="#string相关" class="headerlink" title="string相关"></a><strong><code>string</code>相关</strong></h2><ul>
+<li>可以<code>+</code>不可以<code>-</code><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">string s = <span class="string">&quot;012345&quot;</span>;</span><br><span class="line">s += <span class="string">&#x27;6&#x27;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s += <span class="string">&quot;6&quot;</span>; <span class="comment">// s = &quot;0123456&quot;</span></span><br><span class="line">s -= <span class="string">&quot;6&quot;</span>; <span class="comment">//error</span></span><br><span class="line">s -= <span class="string">&#x27;6&#x27;</span>; <span class="comment">//error</span></span><br><span class="line">no viable loaded <span class="string">&#x27;-=&#x27;</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="对pthread-create未定义的引用"><a href="#对pthread-create未定义的引用" class="headerlink" title="对pthread_create未定义的引用"></a><strong>对<code>pthread_create</code>未定义的引用</strong></h2><ul>
+<li><code>gcc</code>编译时加上参数 <code>-lpthread</code></li>
+<li>原因：<code>pthread</code>不是<code>Linux</code>默认的库。（毕竟<code>Linux</code>最开始本身没有线程），所以要链接上这个动态库</li>
+</ul>
+<h2 id="c-类成员是引用时"><a href="#c-类成员是引用时" class="headerlink" title="c++类成员是引用时"></a>c++类成员是引用时</h2><ul>
+<li>记住引用只是个别名。</li>
+<li>引用类型必须在构造列表初始化(因为引用必须初始化)</li>
+<li>且构造函数的相应形参必须是引用</li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/bluemaths/article/details/8651868?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2~default~CTRLIST~Rate-1.pc_relevant_default&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2~default~CTRLIST~Rate-1.pc_relevant_default&utm_relevant_index=1">博客</a></li>
+</ul>
+<h2 id="模板的定义和声明最好放在同一文件中"><a href="#模板的定义和声明最好放在同一文件中" class="headerlink" title="模板的定义和声明最好放在同一文件中"></a>模板的定义和声明最好放在同一文件中</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/dc94f0cbfcf7">https://www.jianshu.com/p/dc94f0cbfcf7</a></li>
+</ul>
+<h2 id="不懂？？"><a href="#不懂？？" class="headerlink" title="不懂？？"></a>不懂？？</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">In file included from main.cpp:1:0:</span><br><span class="line">threadpool.h: In instantiation of ‘void threadpool&lt;T&gt;::run() [with T = int]’:</span><br><span class="line">threadpool.h:96:13:   required from ‘static void* threadpool&lt;T&gt;::worker(void*) [with T = int]’</span><br><span class="line">threadpool.h:53:26:   required from ‘threadpool&lt;T&gt;::threadpool(int, int) [with T = int]’</span><br><span class="line">main.cpp:9:33:   required from here</span><br></pre></td></tr></table></figure>
+
+<h2 id="try-catch-…"><a href="#try-catch-…" class="headerlink" title="try{}catch(…){}"></a>try{}catch(…){}</h2><h2 id="new数组-是否初始化"><a href="#new数组-是否初始化" class="headerlink" title="new数组 是否初始化"></a>new数组 是否初始化</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/baidu_41388533/article/details/106560988#:~:text=c%2B%2B%20%E4%BD%BF%E7%94%A8%20new%20%E5%88%86%E9%85%8D%E4%B8%80%E4%B8%AA%20%E6%95%B0%E7%BB%84%20%EF%BC%8C%E5%88%86%E4%B8%BA%20%E6%95%B0%E7%BB%84%20%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E6%9C%AA%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%A4%E7%A7%8D%E6%83%85%E5%BD%A2%EF%BC%9A,c%2B%2B%20new%20delete%20new%20%5B%5D%20delete%20%5B%5D%20%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0">https://blog.csdn.net/baidu_41388533/article/details/106560988#:~:text=c%2B%2B%20%E4%BD%BF%E7%94%A8%20new%20%E5%88%86%E9%85%8D%E4%B8%80%E4%B8%AA%20%E6%95%B0%E7%BB%84%20%EF%BC%8C%E5%88%86%E4%B8%BA%20%E6%95%B0%E7%BB%84%20%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E6%9C%AA%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%A4%E7%A7%8D%E6%83%85%E5%BD%A2%EF%BC%9A,c%2B%2B%20new%20delete%20new%20%5B%5D%20delete%20%5B%5D%20%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0</a></p>
+<h2 id="关于默认参数"><a href="#关于默认参数" class="headerlink" title="关于默认参数"></a>关于默认参数</h2><ul>
+<li>默认参数只能指定一次。在函数的声明和定义中只能在一处指定参数的默认值。如果两处都指定为非法；</li>
+<li>编译器把这种情况作为非法处理的原因是：在声明和定义中如果指定了不同的默认值，编译器将无法判断采用哪个值作为参数的默认值。</li>
+</ul>
+<h2 id="EPOLLRDHUP"><a href="#EPOLLRDHUP" class="headerlink" title="EPOLLRDHUP"></a>EPOLLRDHUP</h2><p>这两个事件其实是一个东西，分别对应poll和epoll，通常用来判断对端是否关闭，但是当你对某个socket注册POLLIN和POLLRDHUP(EPOLLIN和EPOLLRDHUP)时，在对端关闭时，对于poll来说会一直触发POLLIN + POLLRDHUP事件，epoll也会触发EPOLLIN + EPOLLRDHUP事件，是否一直触发要看epoll是工作在LT模式下还是ET模式下。</p>
+<p>所以，当我们使用POLLRDHUP（EPOLLRDHUP）事件来判断对端是否关闭时，POLLRDHUP（EPOLLRDHUP）事件的处理应放在POLLIN（EPOLLIN）事件的前面，避免将对端关闭当做一次读事件，而无法处理POLLRDHUP（EPOLLRDHUP）事件<br>————————————————<br>版权声明：本文为CSDN博主「城南花已开.jpg」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。<br>原文链接：<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_39781096/article/details/106980232">https://blog.csdn.net/qq_39781096/article/details/106980232</a></p>
+<h2 id="c-枚举"><a href="#c-枚举" class="headerlink" title="c++ 枚举"></a>c++ 枚举</h2><p><a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/cpp-enum-intro.html">https://www.runoob.com/w3cnote/cpp-enum-intro.html</a></p>
+<h2 id="回车-换行"><a href="#回车-换行" class="headerlink" title="回车 换行"></a>回车 换行</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">\r ：将当前位置移到本行开头。又叫回车，对应键盘上的return键</span><br><span class="line">\n：将当前位置移到下一行开头。又叫换行，newline。</span><br><span class="line">Linux中\n表示回车并换行；</span><br><span class="line">Windows中\r\n表示回车并换行。</span><br><span class="line">Mac中\r表示回车并换行。</span><br><span class="line"></span><br><span class="line">Linux下打开windows文件，每行末尾会多出一个^M</span><br><span class="line">windows下打开Linux文件，会变成一行。</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="writev"><a href="#writev" class="headerlink" title="writev"></a>writev</h2><p><a target="_blank" rel="noopener" href="https://blog.51cto.com/laoxu/1441205">https://blog.51cto.com/laoxu/1441205</a><br><a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_36750623/article/details/84579243">https://blog.csdn.net/weixin_36750623/article/details/84579243</a></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// writevex.c</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/uio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> *str0 = <span class="string">&quot;hello &quot;</span>;</span><br><span class="line">    <span class="keyword">char</span> *str1 = <span class="string">&quot;world\n&quot;</span>;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">iovec</span> <span class="title">iov</span>[2];</span></span><br><span class="line">    <span class="keyword">ssize_t</span> nwritten;</span><br><span class="line"></span><br><span class="line">    iov[<span class="number">0</span>].iov_base = str0;</span><br><span class="line">    iov[<span class="number">0</span>].iov_len = <span class="built_in">strlen</span>(str0) + <span class="number">1</span>;  <span class="comment">// str+&#x27;\0&#x27; 7   [base,base+str_len) 即[&#x27;h&#x27;&#x27;&#x27;e&#x27;&#x27;l&#x27;&#x27;l&#x27;&#x27;o&#x27;&#x27;\0&#x27;]</span></span><br><span class="line">    iov[<span class="number">1</span>].iov_base = str1;</span><br><span class="line">    iov[<span class="number">1</span>].iov_len = <span class="built_in">strlen</span>(str1) + <span class="number">1</span>;  <span class="comment">//  str+&#x27;\0&#x27; 7</span></span><br><span class="line"></span><br><span class="line">    nwritten = <span class="built_in">writev</span>(STDOUT_FILENO, iov, <span class="number">2</span>);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%ld bytes written.\n&quot;</span>, nwritten);   <span class="comment">//14</span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">exit</span>(EXIT_SUCCESS);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ————————————————</span></span><br><span class="line"><span class="comment">// 版权声明：本文为CSDN博主「粪逗er」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。</span></span><br><span class="line"><span class="comment">// 原文链接：https://blog.csdn.net/weixin_36750623/article/details/84579243shc@shc-virtual-machine:~/code/linux_network/TCP_IP$ ./test_writev.out </span></span><br><span class="line">hello world</span><br><span class="line"><span class="number">14</span> bytes written.</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="ET模式下-写触发"><a href="#ET模式下-写触发" class="headerlink" title="ET模式下 写触发"></a>ET模式下 写触发</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/263931629">https://www.zhihu.com/question/263931629</a></li>
+</ul>
+<h2 id="忙等待-与-阻塞"><a href="#忙等待-与-阻塞" class="headerlink" title="忙等待 与 阻塞"></a>忙等待 与 阻塞</h2><ul>
+<li>忙等待占用cpu，阻塞不占用cpu<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 阻塞等待，阻塞期间不占用cpu</span></span><br><span class="line"><span class="built_in">sem_wait</span>(&amp;sem);</span><br><span class="line"> </span><br><span class="line"><span class="comment">// 忙等待，虽然也是在等待信号，但是一直占用cpu</span></span><br><span class="line"><span class="keyword">while</span>(<span class="number">1</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">sem_trywait</span>(&amp;sem) == <span class="number">0</span>) </span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (errno != EAGAIN) &#123;</span><br><span class="line">        <span class="built_in">perror</span>(<span class="string">&quot;trywait error&quot;</span>);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="互斥"><a href="#互斥" class="headerlink" title="互斥"></a>互斥</h2><ul>
+<li>实现互斥的p操作一定要放在实现同步的p操作之后（防止死锁）</li>
+<li>互斥：信号量初始为1，同步：信号量初始为0(或者n)</li>
+</ul>
+<h2 id="定义-声明"><a href="#定义-声明" class="headerlink" title="定义 声明"></a>定义 声明</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">同一个文件下：</span><br><span class="line">对于变量而言，在同一个文件里面，很少使用声明这个说法，一般没有人去说我要声明一个变量，然后定义这个变量。或者说，声明与定义没有明显的区别。就好比 <span class="keyword">int</span> a；我们可以说这是一个声明，也可以说这是一个定义，因为当程序执行到这句话的时候就完成了内存分配。数据类型，变量名，对应的内存单元就已经明确了。</span><br><span class="line">多个文件下：</span><br><span class="line">在同一个工程，在多个文件中变量的声明和定义才有区别(比如说在first.c文件中先定义了一个<span class="keyword">int</span> a;我在second.c中要访问这个a,这时我们需要在second.c这个文件中声明一下);</span><br><span class="line">declaration 声明：</span><br><span class="line">声明 说明了变量的名字和类型，但并不分配存储空间。</span><br><span class="line">definition 定义：</span><br><span class="line">定义 也说明了变量的名字和类型，而且还为它分配了存储空间。并不一定要填充初始值</span><br><span class="line">initialization 初始化：</span><br><span class="line">初始化 是一种特殊的定义，初始化 = 定义的同时并赋初始值。</span><br><span class="line">assignment 赋值：</span><br><span class="line">将某一个数值 赋值 给一个变量的过程，赋值只针对于已分配存储空间的的变量而言。可以多次进行。在对类成员变量在构造函数内部赋值和在初始值列表中初始化而言，二者具有一些差异，这会影响程序的效率。</span><br><span class="line">变量能且只能被定义一次，但是可以被多次声明。</span><br><span class="line">任何包含了 显示初始化 的 声明 即成为了定义。如果想对一个变量进行声明那么就在变量前加<span class="keyword">extern</span>关键字，而且不要显示的初始化变量。</span><br><span class="line"></span><br><span class="line">作者：有心人</span><br><span class="line">链接：https:<span class="comment">//www.acwing.com/solution/content/63191/</span></span><br><span class="line">来源：AcWing</span><br><span class="line">著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。 </span><br></pre></td></tr></table></figure>
+
+
+<h2 id="指针-引用-指向指针的引用"><a href="#指针-引用-指向指针的引用" class="headerlink" title="指针 引用 指向指针的引用"></a>指针 引用 指向指针的引用</h2><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/fatfish_/article/details/86768887">https://blog.csdn.net/fatfish_/article/details/86768887</a></p>
+<h2 id="数组的元素不能是引用"><a href="#数组的元素不能是引用" class="headerlink" title="数组的元素不能是引用"></a>数组的元素不能是引用</h2><ul>
+<li>[]优先级高于&amp;和*</li>
+<li><code>int &amp;a[10]</code>：非法，大小为10的数组，元素都是引用。</li>
+<li><code>int (&amp;)a[10]</code></li>
+</ul>
+<h2 id="cookie"><a href="#cookie" class="headerlink" title="cookie"></a>cookie</h2><p><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/6fc9cea6daa2">https://www.jianshu.com/p/6fc9cea6daa2</a></p>
+<ul>
+<li>由类定义的类型名字和其他成员一样存在访问限制，可以是public或者private<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="keyword">typedef</span> std::string::size_type pos;</span><br><span class="line">  <span class="keyword">using</span> pos = std::string::size_type;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="C语言预定义宏"><a href="#C语言预定义宏" class="headerlink" title="C语言预定义宏"></a>C语言预定义宏</h2><ul>
+<li>__LINE__：在源代码中插入当前源代码行号；</li>
+<li>__FILE__：在源文件中插入当前源文件名；</li>
+<li>__DATE__：在源文件中插入当前的编译日期</li>
+<li>__TIME__：在源文件中插入当前编译时间；</li>
+<li><strong>TIMESTAMP</strong>:当前源文件的最近一次的修改日期和时间，格式是Ddd Mmm Date hh:mm:ss yyyy 。该宏当做字符串对待</li>
+<li>__STDC__：当要求程序严格遵循ANSI C标准时该标识被赋值为1；</li>
+<li><strong>__cplusplus</strong>：当编写C++程序时该标识符被定义。</li>
+</ul>
+<h2 id="计时函数-clock"><a href="#计时函数-clock" class="headerlink" title="计时函数 clock"></a><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/152680520#:~:text=clock%20%28%29%E6%98%AFC%2FC%2B%2B%E4%B8%AD%E7%9A%84%E8%AE%A1%E6%97%B6%E5%87%BD%E6%95%B0%EF%BC%8C%E4%B8%8E%E5%85%B6%E7%9B%B8%E5%85%B3%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E6%98%AFclock_t%EF%BC%8C%E5%A4%B4%E6%96%87%E4%BB%B6%E6%98%AFtime.h%2Fctime%E3%80%82%20clock,%28%29%E5%87%BD%E6%95%B0%E7%9A%84%E5%8A%9F%E8%83%BD%E6%98%AF%EF%BC%9A%E8%BF%94%E5%9B%9E%E4%BB%8E%E2%80%9C%E5%BC%80%E5%90%AF%E8%BF%99%E4%B8%AA%E7%A8%8B%E5%BA%8F%E8%BF%9B%E7%A8%8B%E2%80%9D%E5%88%B0%E2%80%9C%E7%A8%8B%E5%BA%8F%E4%B8%AD%E8%B0%83%E7%94%A8clock%20%28%29%E5%87%BD%E6%95%B0%E2%80%9D%E6%97%B6%E4%B9%8B%E9%97%B4%E7%9A%84CPU%E6%97%B6%E9%92%9F%E8%AE%A1%E6%97%B6%E5%8D%95%E5%85%83%E6%95%B0%EF%BC%88clock%20tick%EF%BC%89%E3%80%82">计时函数 clock</a></h2>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%9D%82%E8%AE%B0/" rel="tag"># 杂记</a>
+              <a href="/tags/BUG/" rel="tag"># BUG</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/08/29/c++_const/" rel="prev" title="c++_const">
+      <i class="fa fa-chevron-left"></i> c++_const
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/09/15/effective_c++/" rel="next" title="Effective_C++">
+      Effective_C++ <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#BUG-%E5%B0%8F%E7%99%BD%E7%9A%84%E9%94%8C%E9%85%B8%E5%8E%86%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">BUG (小白的锌酸历程)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#heap-corruption-detected"><span class="nav-number">1.1.</span> <span class="nav-text">heap corruption detected</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1"><span class="nav-number">1.2.</span> <span class="nav-text">1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-0-multiple-definition-redefinition-xxx-already-defined-in-adsasd-obj"><span class="nav-number">1.3.</span> <span class="nav-text">2.0  multiple definition &#x2F; redefinition &#x2F; xxx already defined in adsasd.obj</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BE%8B%E5%A4%96"><span class="nav-number">1.3.1.</span> <span class="nav-text">例外</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-inline%E5%87%BD%E6%95%B0%E8%A6%81%E5%AE%9A%E4%B9%89%E5%9C%A8%E5%A4%B4%E6%96%87%E4%BB%B6%E5%86%85%E3%80%82"><span class="nav-number">1.4.</span> <span class="nav-text">2.1 inline函数要定义在头文件内。</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-const%E4%BD%9C%E7%94%A8%E5%9F%9F"><span class="nav-number">1.5.</span> <span class="nav-text">2.2 const作用域</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%EF%BC%9A%E4%BC%9A%E4%B8%8D%E4%BC%9A%E5%87%BA%E7%8E%B0%E7%BC%96%E8%AF%91%E5%99%A8%E6%B2%A1%E6%9C%89%E6%8A%8A%E6%88%91%E4%BB%AC%E5%9C%A8-h%E6%96%87%E4%BB%B6%E4%B8%AD%E5%AE%9A%E4%B9%89%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0%E5%BD%93%E4%BD%9Cinline%E5%87%BD%E6%95%B0%EF%BC%8C%E8%80%8C%E6%88%91%E4%BB%AC%E5%8F%88%E5%88%B0%E5%A4%84include%EF%BC%8C%E9%80%A0%E6%88%90multiple-definition%E7%9A%84%E6%83%85%E5%86%B5%EF%BC%9F"><span class="nav-number">1.5.1.</span> <span class="nav-text">问题：会不会出现编译器没有把我们在.h文件中定义的内联函数当作inline函数，而我们又到处include，造成multiple definition的情况？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E7%9B%B8%E4%BA%92%E5%8C%85%E5%90%AB%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="nav-number">1.6.</span> <span class="nav-text">3.  相互包含头文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-There-is-no-matching-member-for-call-to-%E2%80%98find%E2%80%99"><span class="nav-number">1.7.</span> <span class="nav-text">4. There is no matching member for call to ‘find’</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%85%B3%E4%BA%8E%EF%BC%88%E5%87%A0%E4%B9%8E%E5%B0%B1%E6%98%AF%E4%B8%8D%E5%8F%AF%E4%BB%A5%EF%BC%89%E8%BF%94%E5%9B%9E%E5%B1%80%E9%83%A8%E5%8F%98%E9%87%8F%E7%9A%84%E5%BC%95%E7%94%A8"><span class="nav-number">1.8.</span> <span class="nav-text">5. 关于（几乎就是不可以）返回局部变量的引用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%89%B9%E4%BE%8B"><span class="nav-number">1.8.0.1.</span> <span class="nav-text">特例</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-vector%E7%B1%BB%E5%86%85%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">1.9.</span> <span class="nav-text">6. vector类内初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7-%E9%9D%99%E6%80%81%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88-%E9%9D%9E%E9%9D%99%E6%80%81%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0%E6%8C%87%E9%92%88"><span class="nav-number">1.10.</span> <span class="nav-text">7. 静态成员函数指针 非静态成员函数指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#string%E7%9B%B8%E5%85%B3"><span class="nav-number">1.11.</span> <span class="nav-text">string相关</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9pthread-create%E6%9C%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E5%BC%95%E7%94%A8"><span class="nav-number">1.12.</span> <span class="nav-text">对pthread_create未定义的引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#c-%E7%B1%BB%E6%88%90%E5%91%98%E6%98%AF%E5%BC%95%E7%94%A8%E6%97%B6"><span class="nav-number">1.13.</span> <span class="nav-text">c++类成员是引用时</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF%E7%9A%84%E5%AE%9A%E4%B9%89%E5%92%8C%E5%A3%B0%E6%98%8E%E6%9C%80%E5%A5%BD%E6%94%BE%E5%9C%A8%E5%90%8C%E4%B8%80%E6%96%87%E4%BB%B6%E4%B8%AD"><span class="nav-number">1.14.</span> <span class="nav-text">模板的定义和声明最好放在同一文件中</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8D%E6%87%82%EF%BC%9F%EF%BC%9F"><span class="nav-number">1.15.</span> <span class="nav-text">不懂？？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#try-catch-%E2%80%A6"><span class="nav-number">1.16.</span> <span class="nav-text">try{}catch(…){}</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#new%E6%95%B0%E7%BB%84-%E6%98%AF%E5%90%A6%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">1.17.</span> <span class="nav-text">new数组 是否初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0"><span class="nav-number">1.18.</span> <span class="nav-text">关于默认参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EPOLLRDHUP"><span class="nav-number">1.19.</span> <span class="nav-text">EPOLLRDHUP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#c-%E6%9E%9A%E4%B8%BE"><span class="nav-number">1.20.</span> <span class="nav-text">c++ 枚举</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9E%E8%BD%A6-%E6%8D%A2%E8%A1%8C"><span class="nav-number">1.21.</span> <span class="nav-text">回车 换行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#writev"><span class="nav-number">1.22.</span> <span class="nav-text">writev</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ET%E6%A8%A1%E5%BC%8F%E4%B8%8B-%E5%86%99%E8%A7%A6%E5%8F%91"><span class="nav-number">1.23.</span> <span class="nav-text">ET模式下 写触发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BF%99%E7%AD%89%E5%BE%85-%E4%B8%8E-%E9%98%BB%E5%A1%9E"><span class="nav-number">1.24.</span> <span class="nav-text">忙等待 与 阻塞</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%92%E6%96%A5"><span class="nav-number">1.25.</span> <span class="nav-text">互斥</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89-%E5%A3%B0%E6%98%8E"><span class="nav-number">1.26.</span> <span class="nav-text">定义 声明</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E9%92%88-%E5%BC%95%E7%94%A8-%E6%8C%87%E5%90%91%E6%8C%87%E9%92%88%E7%9A%84%E5%BC%95%E7%94%A8"><span class="nav-number">1.27.</span> <span class="nav-text">指针 引用 指向指针的引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E7%BB%84%E7%9A%84%E5%85%83%E7%B4%A0%E4%B8%8D%E8%83%BD%E6%98%AF%E5%BC%95%E7%94%A8"><span class="nav-number">1.28.</span> <span class="nav-text">数组的元素不能是引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cookie"><span class="nav-number">1.29.</span> <span class="nav-text">cookie</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C%E8%AF%AD%E8%A8%80%E9%A2%84%E5%AE%9A%E4%B9%89%E5%AE%8F"><span class="nav-number">1.30.</span> <span class="nav-text">C语言预定义宏</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E6%97%B6%E5%87%BD%E6%95%B0-clock"><span class="nav-number">1.31.</span> <span class="nav-text">计时函数 clock</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

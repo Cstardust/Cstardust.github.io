@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="sgi_stl 内存池图示 template&lt;typename T&gt; class my_allocator&amp;#123;&amp;#125;  OOP封装 对外接口 allocate、deallocate、reallocate、construct、destroy12345678910111213141516171819202122232425262728293031323334353637383">
+<meta property="og:type" content="article">
+<meta property="og:title" content="sgi_stl二级空间配置器移植代码">
+<meta property="og:url" content="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="sgi_stl 内存池图示 template&lt;typename T&gt; class my_allocator&amp;#123;&amp;#125;  OOP封装 对外接口 allocate、deallocate、reallocate、construct、destroy12345678910111213141516171819202122232425262728293031323334353637383">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/2022-05-01-20-40-33.png">
+<meta property="og:image" content="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/2022-05-01-20-41-44.png">
+<meta property="article:published_time" content="2022-04-30T09:23:21.000Z">
+<meta property="article:modified_time" content="2022-05-28T14:53:26.034Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="项目">
+<meta property="article:tag" content="空间配置器">
+<meta property="article:tag" content="内存池">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/2022-05-01-20-40-33.png">
+
+<link rel="canonical" href="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>sgi_stl二级空间配置器移植代码 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          sgi_stl二级空间配置器移植代码
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-04-30 17:23:21" itemprop="dateCreated datePublished" datetime="2022-04-30T17:23:21+08:00">2022-04-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-28 22:53:26" itemprop="dateModified" datetime="2022-05-28T22:53:26+08:00">2022-05-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%A1%B9%E7%9B%AE/" itemprop="url" rel="index"><span itemprop="name">项目</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="sgi-stl-内存池"><a href="#sgi-stl-内存池" class="headerlink" title="sgi_stl 内存池"></a>sgi_stl 内存池</h1><h2 id="图示"><a href="#图示" class="headerlink" title="图示"></a>图示</h2><ul>
+<li><code>template&lt;typename T&gt; class my_allocator&#123;&#125;</code><br><img src="/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/2022-05-01-20-40-33.png"><br><img src="/2022/04/30/sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/2022-05-01-20-41-44.png"></li>
+</ul>
+<h2 id="OOP封装"><a href="#OOP封装" class="headerlink" title="OOP封装"></a>OOP封装</h2><ul>
+<li>对外接口<ul>
+<li>allocate、deallocate、reallocate、construct、destroy<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br><span class="line">373</span><br><span class="line">374</span><br><span class="line">375</span><br><span class="line">376</span><br><span class="line">377</span><br><span class="line">378</span><br><span class="line">379</span><br><span class="line">380</span><br><span class="line">381</span><br><span class="line">382</span><br><span class="line">383</span><br><span class="line">384</span><br><span class="line">385</span><br><span class="line">386</span><br><span class="line">387</span><br><span class="line">388</span><br><span class="line">389</span><br><span class="line">390</span><br><span class="line">391</span><br><span class="line">392</span><br><span class="line">393</span><br><span class="line">394</span><br><span class="line">395</span><br><span class="line">396</span><br><span class="line">397</span><br><span class="line">398</span><br><span class="line">399</span><br><span class="line">400</span><br><span class="line">401</span><br><span class="line">402</span><br><span class="line">403</span><br><span class="line">404</span><br><span class="line">405</span><br><span class="line">406</span><br><span class="line">407</span><br><span class="line">408</span><br><span class="line">409</span><br><span class="line">410</span><br><span class="line">411</span><br><span class="line">412</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;cstdlib&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;mutex&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;memory&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 移植SGI STL二级空间配置器源码</span></span><br><span class="line"><span class="comment">* 不同于nginx内存池，二级空间配置器中使用到的内存池需要注意多线程问题</span></span><br><span class="line"><span class="comment">* nginx内存池，可以一个线程创建一个内存池</span></span><br><span class="line"><span class="comment">* 而二级空间配置器，是用来给容器使用的，如vector对象。而一个vector对象很有可能在多个线程并发使用</span></span><br><span class="line"><span class="comment">* </span></span><br><span class="line"><span class="comment">* </span></span><br><span class="line"><span class="comment">* 移植成功！一个线程安全的二级空间配置器 my_allocator</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="comment">//  一级空间配置器 将对象构造和内存开辟分开</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">first_level_my_allocator</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function">T* <span class="title">allocate</span><span class="params">(<span class="keyword">size_t</span> size)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		T* p = <span class="built_in">malloc</span>(<span class="built_in"><span class="keyword">sizeof</span></span>(T)*size);</span><br><span class="line">		<span class="keyword">return</span> p;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">deallocate</span><span class="params">(T *p)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="built_in">free</span>(p);</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(T* p, <span class="keyword">const</span> T&amp; _val)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">new</span> (p) <span class="built_in">T</span>(_val);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(T* p, T&amp;&amp; rval)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">new</span> (p) <span class="built_in">T</span>(std::<span class="built_in">move</span>(rval));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">destory</span><span class="params">(T* p)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		p-&gt;~<span class="built_in">T</span>();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> __inst&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> __<span class="title">malloc_alloc_template</span> &#123;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">void</span>* _S_oom_realloc(<span class="keyword">void</span>*, <span class="keyword">size_t</span>);</span><br><span class="line">	<span class="comment">//  预制的回调函数 _S_oom_malloc -&gt; __malloc_alloc_oom_handler</span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">void</span>* _S_oom_malloc(<span class="keyword">size_t</span>);</span><br><span class="line">	<span class="function"><span class="keyword">static</span> <span class="title">void</span> <span class="params">(*__malloc_alloc_oom_handler)</span><span class="params">()</span></span>;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="comment">//  尝试分配内存</span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> <span class="keyword">void</span>* <span class="title">allocate</span><span class="params">(<span class="keyword">size_t</span> __n)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">void</span>* __result = <span class="built_in">malloc</span>(__n);</span><br><span class="line">		<span class="keyword">if</span> (<span class="number">0</span> == __result) __result = _S_oom_malloc(__n);	<span class="comment">//  尝试释放nbytes内存，返回给result</span></span><br><span class="line">		<span class="keyword">return</span> __result;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  释放</span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">deallocate</span><span class="params">(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> <span class="comment">/* __n */</span>)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="built_in">free</span>(__p);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  重新分配new_sz大小内存 </span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> <span class="keyword">void</span>* <span class="title">reallocate</span><span class="params">(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> <span class="comment">/* old_sz */</span>, <span class="keyword">size_t</span> __new_sz)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">void</span>* __result = <span class="built_in">realloc</span>(__p, __new_sz);</span><br><span class="line">		<span class="keyword">if</span> (<span class="literal">nullptr</span> == __result) __result = _S_oom_realloc(__p, __new_sz);</span><br><span class="line">		<span class="keyword">return</span> __result;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">//  用户通过这个接口来预制自己的回调函数。用以释放内存来解决内存不足的问题</span></span><br><span class="line">	<span class="function"><span class="keyword">static</span> <span class="title">void</span> <span class="params">(*__set_malloc_handler(<span class="keyword">void</span> (*__f)()))</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="built_in"><span class="keyword">void</span></span> (*__old)() = __malloc_alloc_oom_handler;</span><br><span class="line">		__malloc_alloc_oom_handler = __f;</span><br><span class="line">		<span class="keyword">return</span>(__old);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  my_allocator中用到的__malloc_alloc_template中的两个函数和一个成员</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> __inst&gt;</span><br><span class="line"><span class="keyword">void</span>*</span><br><span class="line">__malloc_alloc_template&lt;__inst&gt;::_S_oom_malloc(<span class="keyword">size_t</span> __n)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="built_in"><span class="keyword">void</span></span> (*__my_malloc_handler)();</span><br><span class="line">	<span class="keyword">void</span>* __result;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (;;) &#123;</span><br><span class="line">		__my_malloc_handler = __malloc_alloc_oom_handler;</span><br><span class="line">		<span class="keyword">if</span> (<span class="literal">nullptr</span> == __my_malloc_handler) &#123; <span class="keyword">throw</span> std::<span class="built_in">bad_alloc</span>(); &#125;</span><br><span class="line">		(*__my_malloc_handler)();</span><br><span class="line">		__result = <span class="built_in">malloc</span>(__n);</span><br><span class="line">		<span class="keyword">if</span> (__result) <span class="keyword">return</span>(__result);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> __inst&gt;</span><br><span class="line"><span class="keyword">void</span>* __malloc_alloc_template&lt;__inst&gt;::_S_oom_realloc(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> __n)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="built_in"><span class="keyword">void</span></span> (*__my_malloc_handler)();</span><br><span class="line">	<span class="keyword">void</span>* __result;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (;;) &#123;</span><br><span class="line">		__my_malloc_handler = __malloc_alloc_oom_handler;</span><br><span class="line">		<span class="keyword">if</span> (<span class="literal">nullptr</span> == __my_malloc_handler) &#123; <span class="keyword">throw</span> std::<span class="built_in">bad_alloc</span>(); &#125;</span><br><span class="line">		(*__my_malloc_handler)();</span><br><span class="line">		__result = <span class="built_in">realloc</span>(__p, __n);</span><br><span class="line">		<span class="keyword">if</span> (__result) <span class="keyword">return</span>(__result);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> __inst&gt;</span><br><span class="line"><span class="built_in"><span class="keyword">void</span></span> (*__malloc_alloc_template&lt;__inst&gt;::__malloc_alloc_oom_handler)() = <span class="literal">nullptr</span>;</span><br><span class="line"><span class="keyword">using</span> malloc_alloc = __malloc_alloc_template&lt;<span class="number">0</span>&gt;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  二级空间配置器 对外接口为allocate、deallocate、reallocate、construct、destroy</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">my_allocator</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="keyword">using</span> value_type = T;</span><br><span class="line">	<span class="keyword">using</span> _Newfirst = T;</span><br><span class="line">	<span class="keyword">using</span> _From_primary = my_allocator;</span><br><span class="line">	<span class="function"><span class="keyword">constexpr</span> <span class="title">my_allocator</span><span class="params">()</span> <span class="keyword">noexcept</span> </span>&#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">constexpr</span> <span class="title">my_allocator</span><span class="params">(<span class="keyword">const</span> my_allocator&amp;)</span> <span class="keyword">noexcept</span> </span>= <span class="keyword">default</span>;</span><br><span class="line">	<span class="keyword">template</span> &lt;<span class="class"><span class="keyword">class</span> _<span class="title">Other</span>&gt;</span></span><br><span class="line">	<span class="function"><span class="keyword">constexpr</span> <span class="title">my_allocator</span><span class="params">(<span class="keyword">const</span> my_allocator&lt;_Other&gt;&amp;)</span> <span class="keyword">noexcept</span> </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  开辟内存</span></span><br><span class="line">	<span class="function">T* <span class="title">allocate</span><span class="params">(<span class="keyword">size_t</span> __n)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  释放内存</span></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">deallocate</span><span class="params">(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> __n)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  重新分配内存。并将原先的内存归还给操作系统。并且不要再使用p的原指向地址</span></span><br><span class="line">	<span class="function"><span class="keyword">void</span>* <span class="title">reallocate</span><span class="params">(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> __old_sz, <span class="keyword">size_t</span> __new_sz)</span></span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  构建对象</span></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(T* __p, <span class="keyword">const</span> T&amp; val)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">new</span> (__p) <span class="built_in">T</span>(val);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(T* __p, T&amp;&amp; val)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">new</span> (__p) <span class="built_in">T</span>(std::<span class="built_in">move</span>(val));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  释放内存</span></span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">(T* __p)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		__p-&gt;~<span class="built_in">T</span>();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">	<span class="comment">// Really we should use static const int x = N</span></span><br><span class="line">	<span class="comment">// instead of enum &#123; x = N &#125;, but few compilers accept the former.</span></span><br><span class="line">	<span class="class"><span class="keyword">enum</span> &#123;</span> _ALIGN = <span class="number">8</span> &#125;;								<span class="comment">//  自由链表从8bytes开始，以8bytes为对齐方式，一直扩充到128Bytes</span></span><br><span class="line">	<span class="class"><span class="keyword">enum</span> &#123;</span> _MAX_BYTES = <span class="number">128</span> &#125;;							<span class="comment">//  最大块大小   &gt;128就不会放到内存池里了，也即不会用二级空间配置器。会用一级空间配置器</span></span><br><span class="line">	<span class="class"><span class="keyword">enum</span> &#123;</span> _NFREELISTS = <span class="number">16</span> &#125;;  						<span class="comment">//  自由链表成员个数  _MAX_BYTES/_ALIGN</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">//  将byte上调至8的倍数</span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">size_t</span> _S_round_up(<span class="keyword">size_t</span> __bytes)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="keyword">return</span> (((__bytes)+(<span class="keyword">size_t</span>)_ALIGN - <span class="number">1</span>) &amp; ~((<span class="keyword">size_t</span>)_ALIGN - <span class="number">1</span>));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  计算出bytes大小的chunk应该挂载到自由链表free-list的哪个成员下</span></span><br><span class="line">	<span class="keyword">static</span>  <span class="keyword">size_t</span> _S_freelist_index(<span class="keyword">size_t</span> __bytes) &#123;</span><br><span class="line">		<span class="keyword">return</span> (((__bytes)+(<span class="keyword">size_t</span>)_ALIGN - <span class="number">1</span>) / (<span class="keyword">size_t</span>)_ALIGN - <span class="number">1</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  开辟内存池，挂载到freelist成员下，返回请求的内存块。</span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">void</span>* _S_refill(<span class="keyword">size_t</span> __n);</span><br><span class="line">	<span class="comment">//  从还没形成链表的原始内存中取内存分配给自由链表成员，去形成链表。如果原始空闲内存不够了，则再开辟</span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">char</span>* _S_chunk_alloc(<span class="keyword">size_t</span> __size, <span class="keyword">int</span>&amp; __nobjs);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	<span class="comment">//  每个chunk块的信息。_M_free_list_link指向下一个chunk块</span></span><br><span class="line">	<span class="class"><span class="keyword">union</span> _<span class="title">Obj</span> &#123;</span></span><br><span class="line">		<span class="class"><span class="keyword">union</span> _<span class="title">Obj</span>* _<span class="title">M_free_list_link</span>;</span></span><br><span class="line">		<span class="keyword">char</span> _M_client_data[<span class="number">1</span>];    <span class="comment">/* The client sees this.        */</span></span><br><span class="line">	&#125;;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  基于free-list的内存池，需要考虑线程安全</span></span><br><span class="line">	<span class="keyword">static</span> _Obj* <span class="keyword">volatile</span> _S_free_list[_NFREELISTS];	<span class="comment">//  防止被线程缓存</span></span><br><span class="line">	<span class="keyword">static</span> std::mutex mtx;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	<span class="comment">//  static：类内声明、类外定义。</span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">char</span>* _S_start_free;         <span class="comment">//   空闲free内存的起始start位置 </span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">char</span>* _S_end_free;           <span class="comment">//   空闲free内存的结束end位置 ) </span></span><br><span class="line">	<span class="keyword">static</span> <span class="keyword">size_t</span> _S_heap_size;         <span class="comment">//   总共malloc过的内存大小（因为malloc是从堆heap上请求的，所以叫heapsize）</span></span><br><span class="line">	</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  static 类内声明，类外定义/初始化</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">std::mutex my_allocator&lt;T&gt;::mtx;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">char</span>* my_allocator&lt;T&gt;::_S_start_free = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">char</span>* my_allocator&lt;T&gt;::_S_end_free = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">size_t</span> my_allocator&lt;T&gt;::_S_heap_size = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">typename</span> my_allocator&lt;T&gt;::_Obj* <span class="keyword">volatile</span></span><br><span class="line">my_allocator&lt;T&gt; ::_S_free_list[my_allocator&lt;T&gt;::_NFREELISTS] </span><br><span class="line">= &#123; <span class="literal">nullptr</span>,<span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, &#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line">T* my_allocator&lt;T&gt;::<span class="built_in">allocate</span>(<span class="keyword">size_t</span> __n)</span><br><span class="line">&#123;</span><br><span class="line">	__n = __n * <span class="built_in"><span class="keyword">sizeof</span></span>(T);		<span class="comment">//  因为vector容器传来的是元素个数</span></span><br><span class="line">	<span class="comment">//  std::cout &lt;&lt; &quot;user allocate &quot; &lt;&lt; __n &lt;&lt; std::endl;</span></span><br><span class="line">	<span class="keyword">void</span>* __ret = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">if</span> (__n &gt; (<span class="keyword">size_t</span>)_MAX_BYTES) &#123;</span><br><span class="line">		__ret = malloc_alloc::<span class="built_in">allocate</span>(__n);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		_Obj* <span class="keyword">volatile</span>* __my_free_list</span><br><span class="line">			= _S_free_list + _S_freelist_index(__n);</span><br><span class="line">		<span class="comment">// Acquire the lock here with a constructor call.</span></span><br><span class="line">		<span class="comment">// This ensures that it is released in exit or during stack</span></span><br><span class="line">		<span class="comment">// unwinding.</span></span><br><span class="line">		<span class="comment">//  _S_free_list 是所有线程共享的。加锁实现线程安全</span></span><br><span class="line">		<span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">guard</span><span class="params">(mtx)</span></span>;</span><br><span class="line"></span><br><span class="line">		_Obj* __result = *__my_free_list;</span><br><span class="line">		<span class="keyword">if</span> (__result == <span class="number">0</span>)</span><br><span class="line">			__ret = _S_refill(_S_round_up(__n));</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			*__my_free_list = __result-&gt;_M_free_list_link;</span><br><span class="line">			__ret = __result;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;T*&gt;(__ret);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">void</span>* my_allocator&lt;T&gt;::_S_refill(<span class="keyword">size_t</span> __n)  <span class="comment">//  n是一个chunk块的大小</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">//  分配指定大小的内存池    __nobjs：chunk内存块数量 ；这里的 __n：每个chunk内存块大小。</span></span><br><span class="line">	<span class="keyword">int</span> __nobjs = <span class="number">20</span>;</span><br><span class="line">	<span class="keyword">char</span>* __chunk = _S_chunk_alloc(__n, __nobjs);</span><br><span class="line">	_Obj* <span class="keyword">volatile</span>* __my_free_list;</span><br><span class="line">	_Obj* __result;</span><br><span class="line">	_Obj* __current_obj;</span><br><span class="line">	_Obj* __next_obj;</span><br><span class="line">	<span class="keyword">int</span> __i;</span><br><span class="line">	<span class="comment">//  __nobjs：申请到的chunk块数量。当只申请到一个时，直接返回该内存块给上一级使用。无需建立各个chunk的连接关系，无需挂载到相应的freelist成员下。（因为只有一个）</span></span><br><span class="line">	<span class="keyword">if</span> (<span class="number">1</span> == __nobjs) <span class="keyword">return</span>(__chunk);</span><br><span class="line"></span><br><span class="line">	__my_free_list = _S_free_list + _S_freelist_index(__n);     <span class="comment">//  根据内存块大小求出内存池应该在由freelist第几个成员管理（指向）</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">//  静态链表：把每个chunk块通过Obj*里的指针连接起来</span></span><br><span class="line">	<span class="comment">//  每个内存块，有一部分的内存时union联合体Obj，里面有一个Obj*指针，负责连接每个空闲内存块。</span></span><br><span class="line">	<span class="comment">/* Build free list in chunk */</span></span><br><span class="line">	__result = (_Obj*)__chunk;</span><br><span class="line">	*__my_free_list = __next_obj = (_Obj*)(__chunk + __n);    <span class="comment">//  __n：一个内存块的大小（因为第一个内存块要分配出去）</span></span><br><span class="line">	<span class="keyword">for</span> (__i = <span class="number">1</span>; ; __i++) &#123;</span><br><span class="line">		__current_obj = __next_obj;</span><br><span class="line">		__next_obj = (_Obj*)((<span class="keyword">char</span>*)__next_obj + __n);          <span class="comment">//   维护内存块间的连接  char* 因此+__n是偏移n个bytes +n是为了一次跑一个chunk块</span></span><br><span class="line">		<span class="keyword">if</span> (__nobjs - <span class="number">1</span> == __i) &#123;                               <span class="comment">//   空闲内存块数为0?</span></span><br><span class="line">			__current_obj-&gt;_M_free_list_link = <span class="number">0</span>;</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			__current_obj-&gt;_M_free_list_link = __next_obj;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span>(__result);   <span class="comment">//  返回第一个内存块</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* We allocate memory in large chunks in order to avoid fragmenting     */</span></span><br><span class="line"><span class="comment">/* the malloc heap too much.                                            */</span></span><br><span class="line"><span class="comment">/* We assume that size is properly aligned.                             */</span></span><br><span class="line"><span class="comment">/* We hold the allocation lock.                                         */</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">char</span>* my_allocator&lt;T&gt;::_S_chunk_alloc(<span class="keyword">size_t</span> __size,<span class="keyword">int</span>&amp; __nobjs)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">char</span>* __result;</span><br><span class="line">	<span class="keyword">size_t</span> __total_bytes = __size * __nobjs;            <span class="comment">//  本次总共需要请求的内存大小</span></span><br><span class="line">	<span class="keyword">size_t</span> __bytes_left = _S_end_free - _S_start_free;  <span class="comment">//  __default_alloc_template&lt;__threads, __inst&gt; 从开始到现在，请求的剩余空闲的的内存大小。不包括回收的。只是开辟的。</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (__bytes_left &gt;= __total_bytes) &#123;                <span class="comment">//  剩余的备用内存够支付本次请求的内存大小。</span></span><br><span class="line">		__result = _S_start_free;                       <span class="comment">//  __result 作为返回内存首地址</span></span><br><span class="line">		_S_start_free += __total_bytes;                 <span class="comment">//  移动_S_start_free</span></span><br><span class="line">		<span class="keyword">return</span>(__result);                               <span class="comment">//  [result , _S_start_free)  作为请求结果返回</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (__bytes_left &gt;= __size) &#123;                <span class="comment">//  剩余的不够支付total，但起码能支付一个内存块。（因为要返回的至少是一个内存块大小）</span></span><br><span class="line">		__nobjs = (<span class="keyword">int</span>)(__bytes_left / __size);</span><br><span class="line">		__total_bytes = __size * __nobjs;</span><br><span class="line">		__result = _S_start_free;</span><br><span class="line">		_S_start_free += __total_bytes;</span><br><span class="line">		<span class="keyword">return</span>(__result);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;                                            <span class="comment">//  剩余的free内存连一个内存块也不够支付</span></span><br><span class="line">		<span class="keyword">size_t</span> __bytes_to_get =                         <span class="comment">//  当剩余的空闲内存不够时，需要向操统malloc内存。这是计算出需要malloc内存的大小（至少malloc出来要求内存的(__total_bytes)两倍）</span></span><br><span class="line">			<span class="number">2</span> * __total_bytes + _S_round_up(_S_heap_size &gt;&gt; <span class="number">4</span>);</span><br><span class="line">		<span class="comment">// Try to make use of the left-over piece.</span></span><br><span class="line">		<span class="comment">// 剩余的备用内存bytes_left,又不够本次请求的一个chunk块大小，就把这块内存挂载到他能所属的freelist成员下。（头插法）</span></span><br><span class="line">		<span class="keyword">if</span> (__bytes_left &gt; <span class="number">0</span>) &#123;                         <span class="comment">//  </span></span><br><span class="line">			_Obj* <span class="keyword">volatile</span>* __my_free_list =</span><br><span class="line">				_S_free_list + _S_freelist_index(__bytes_left);</span><br><span class="line"></span><br><span class="line">			((_Obj*)_S_start_free)-&gt;_M_free_list_link = *__my_free_list;</span><br><span class="line">			*__my_free_list = (_Obj*)_S_start_free;</span><br><span class="line">		&#125;</span><br><span class="line">		_S_start_free = (<span class="keyword">char</span>*)<span class="built_in">malloc</span>(__bytes_to_get);  <span class="comment">//  向操统malloc内存</span></span><br><span class="line">		<span class="keyword">if</span> (<span class="literal">nullptr</span> == _S_start_free) &#123;                       <span class="comment">//  malloc失败</span></span><br><span class="line">			<span class="keyword">size_t</span> __i;</span><br><span class="line">			_Obj* <span class="keyword">volatile</span>* __my_free_list;</span><br><span class="line">			_Obj* __p;</span><br><span class="line">			<span class="comment">// Try to make do with what we have.  That can&#x27;t</span></span><br><span class="line">			<span class="comment">// hurt.  We do not try smaller requests, since that tends</span></span><br><span class="line">			<span class="comment">// to result in disaster on multi-process machines.</span></span><br><span class="line">            <span class="comment">//  从别的freelist成员管理的原始备用内存池中借用至少size大小的chunk块</span></span><br><span class="line">			<span class="keyword">for</span> (__i = __size;__i &lt;= (<span class="keyword">size_t</span>)_MAX_BYTES;__i += (<span class="keyword">size_t</span>)_ALIGN) </span><br><span class="line">			&#123;</span><br><span class="line">				__my_free_list = _S_free_list + _S_freelist_index(__i);</span><br><span class="line">				__p = *__my_free_list;</span><br><span class="line">				<span class="keyword">if</span> (<span class="literal">nullptr</span> != __p) &#123;</span><br><span class="line">					*__my_free_list = __p-&gt;_M_free_list_link;</span><br><span class="line">					_S_start_free = (<span class="keyword">char</span>*)__p;</span><br><span class="line">					_S_end_free = _S_start_free + __i;</span><br><span class="line">					<span class="keyword">return</span>(_S_chunk_alloc(__size, __nobjs));</span><br><span class="line">					<span class="comment">// Any leftover piece will eventually make it to the</span></span><br><span class="line">					<span class="comment">// right free list.</span></span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="comment">//  都没有时，只能allcoate</span></span><br><span class="line">			_S_end_free = <span class="literal">nullptr</span>;	<span class="comment">// In case of exception.</span></span><br><span class="line">			_S_start_free = (<span class="keyword">char</span>*)malloc_alloc::<span class="built_in">allocate</span>(__bytes_to_get);</span><br><span class="line">			<span class="comment">// This should either throw an</span></span><br><span class="line">			<span class="comment">// exception or remedy the situation.  Thus we assume it</span></span><br><span class="line">			<span class="comment">// succeeded.</span></span><br><span class="line">		&#125;</span><br><span class="line">		_S_heap_size += __bytes_to_get;               <span class="comment">//  _S_heap_size：迄今为止总共malloc了多少内存?</span></span><br><span class="line">		_S_end_free = _S_start_free + __bytes_to_get; <span class="comment">//  移动_S_end_free指针。指向空闲内存块末尾</span></span><br><span class="line">		<span class="keyword">return</span>(_S_chunk_alloc(__size, __nobjs));      <span class="comment">//  递归调用</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/* __p may not be 0 */</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">void</span> my_allocator&lt;T&gt;::<span class="built_in">deallocate</span>(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> __n)		<span class="comment">//  因为vector容器传来的是字节大小</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (__n &gt; (<span class="keyword">size_t</span>)_MAX_BYTES)	<span class="comment">//  n&gt;128 同一级空间配置器</span></span><br><span class="line">	&#123;</span><br><span class="line">		malloc_alloc::<span class="built_in">deallocate</span>(__p, __n);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> </span><br><span class="line">	&#123;</span><br><span class="line">		_Obj* <span class="keyword">volatile</span>* __my_free_list</span><br><span class="line">			= _S_free_list + _S_freelist_index(__n);  <span class="comment">//  找到相应freelist成员</span></span><br><span class="line">		_Obj* __q = (_Obj*)__p;       <span class="comment">//  </span></span><br><span class="line"></span><br><span class="line">		<span class="comment">// acquire lock</span></span><br><span class="line">		<span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">guard</span><span class="params">(mtx)</span></span>;</span><br><span class="line"></span><br><span class="line">		__q-&gt;_M_free_list_link = *__my_free_list;</span><br><span class="line">		*__my_free_list = __q;</span><br><span class="line">		<span class="comment">// lock is released here</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">void</span>* my_allocator&lt;T&gt;::<span class="built_in">reallocate</span>(<span class="keyword">void</span>* __p, <span class="keyword">size_t</span> __old_sz, <span class="keyword">size_t</span> __new_sz)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">void</span>* __result;</span><br><span class="line">	<span class="keyword">size_t</span> __copy_sz;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  old new都&gt;128byets，那么用的就应当是和一级空间配置器一样的方法malloc</span></span><br><span class="line">	<span class="keyword">if</span> (__old_sz &gt; (<span class="keyword">size_t</span>)_MAX_BYTES &amp;&amp; __new_sz &gt; (<span class="keyword">size_t</span>)_MAX_BYTES) &#123;</span><br><span class="line">		<span class="keyword">return</span>(<span class="built_in">realloc</span>(__p, __new_sz));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  如果即将分配的chunk块大小一致，那么不必，直接返回</span></span><br><span class="line">	<span class="keyword">if</span> (_S_round_up(__old_sz) == _S_round_up(__new_sz)) <span class="keyword">return</span>(__p);</span><br><span class="line"></span><br><span class="line">	<span class="comment">//  重新开辟new_size大小内存，并拷贝数据到新开辟的内存里</span></span><br><span class="line">	__result = <span class="built_in">allocate</span>(__new_sz);</span><br><span class="line">	__copy_sz = __new_sz &gt; __old_sz ? __old_sz : __new_sz;</span><br><span class="line">	<span class="built_in">memcpy</span>(__result, __p, __copy_sz); <span class="comment">//  拷贝数据</span></span><br><span class="line">	<span class="built_in">deallocate</span>(__p, __old_sz);  <span class="comment">//  释放</span></span><br><span class="line">	<span class="keyword">return</span>(__result);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="测试代码"><a href="#测试代码" class="headerlink" title="测试代码"></a>测试代码</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;vector&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&quot;myallocator.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	std::vector&lt;<span class="keyword">int</span>,my_allocator&lt;<span class="keyword">int</span>&gt;&gt; vec;</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">100</span>; ++i)</span><br><span class="line">	&#123;</span><br><span class="line">		vec.<span class="built_in">push_back</span>(i);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">auto</span> x : vec) &#123;</span><br><span class="line">		std::cout &lt;&lt; x &lt;&lt; std::endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/sgi_stl$ g++ *.cpp -o sgi_stl_allocator.out -Wall</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/sgi_stl$ ./sgi_stl_allocator.out </span><br><span class="line"><span class="number">0</span></span><br><span class="line">...</span><br><span class="line"><span class="number">98</span></span><br><span class="line"><span class="number">99</span></span><br></pre></td></tr></table></figure>
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E9%A1%B9%E7%9B%AE/" rel="tag"># 项目</a>
+              <a href="/tags/%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8/" rel="tag"># 空间配置器</a>
+              <a href="/tags/%E5%86%85%E5%AD%98%E6%B1%A0/" rel="tag"># 内存池</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/04/30/nginx%E5%86%85%E5%AD%98%E6%B1%A0%E7%A7%BB%E6%A4%8D/" rel="prev" title="nginx内存池移植代码">
+      <i class="fa fa-chevron-left"></i> nginx内存池移植代码
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/05/01/%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" rel="next" title="内存对齐">
+      内存对齐 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#sgi-stl-%E5%86%85%E5%AD%98%E6%B1%A0"><span class="nav-number">1.</span> <span class="nav-text">sgi_stl 内存池</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%BE%E7%A4%BA"><span class="nav-number">1.1.</span> <span class="nav-text">图示</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#OOP%E5%B0%81%E8%A3%85"><span class="nav-number">1.2.</span> <span class="nav-text">OOP封装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95%E4%BB%A3%E7%A0%81"><span class="nav-number">1.3.</span> <span class="nav-text">测试代码</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

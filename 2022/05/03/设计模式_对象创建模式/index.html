@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="对象创建模式 通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。 典型模式 Factory Method Abstract Factory Prototype Builder    简单工厂 简单工厂 Simple Factory :  把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建">
+<meta property="og:type" content="article">
+<meta property="og:title" content="对象创建模式">
+<meta property="og:url" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="对象创建模式 通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。 典型模式 Factory Method Abstract Factory Prototype Builder    简单工厂 简单工厂 Simple Factory :  把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-16-59-29.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-13-24.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-18-31.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-26-57.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-43-02.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-42-00.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-55-24.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-18-47-16.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-22-13-36-54.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-23-20-03-29.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-46-38.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-47-05.png">
+<meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-44-28.png">
+<meta property="article:published_time" content="2022-05-03T14:56:24.000Z">
+<meta property="article:modified_time" content="2022-05-28T14:54:47.681Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计算机基础">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-16-59-29.png">
+
+<link rel="canonical" href="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>对象创建模式 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          对象创建模式
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-05-03 22:56:24" itemprop="dateCreated datePublished" datetime="2022-05-03T22:56:24+08:00">2022-05-03</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-28 22:54:47" itemprop="dateModified" datetime="2022-05-28T22:54:47+08:00">2022-05-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" itemprop="url" rel="index"><span itemprop="name">设计模式</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="对象创建模式"><a href="#对象创建模式" class="headerlink" title="对象创建模式"></a>对象创建模式</h1><ul>
+<li>通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。</li>
+<li>典型模式<ul>
+<li>Factory Method</li>
+<li>Abstract Factory</li>
+<li>Prototype</li>
+<li>Builder</li>
+</ul>
+</li>
+</ul>
+<h2 id="简单工厂"><a href="#简单工厂" class="headerlink" title="简单工厂"></a>简单工厂</h2><ul>
+<li>简单工厂 Simple Factory : <ul>
+<li>把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建的对象</li>
+</ul>
+</li>
+<li>好处（是个工厂都有这好处）：客户不用自己负责new对象，不用了解对象创建的详细过程</li>
+<li>缺点：提供创建对象实例的接口函数不闭合，不能对修改关闭</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> 0</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">简单工厂 Simple Factory : </span></span><br><span class="line"><span class="comment">把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建的对象</span></span><br><span class="line"><span class="comment">客户不用自己负责new对象，不用了解对象创建的详细过程</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">提供创建对象实例的接口函数不闭合，不能对修改关闭</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">工厂方法 Factory Method</span></span><br><span class="line"><span class="comment">Factory基类，提供了一个纯虚函数（创建产品），定义派生类（具体产品的工厂）负责创建对应的</span></span><br><span class="line"><span class="comment">产品，可以做到不同的产品，在不同的工厂里面创建，能够对现有工厂，以及产品的修改关闭</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">实际上，很多产品是有关联关系的，属于一个产品簇，不应该放在不同的工厂里面去创建，这样</span></span><br><span class="line"><span class="comment">一是不符合实际的产品对象创建逻辑，二是工厂类太多了，不好维护</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">抽象工厂 Abstract Factory</span></span><br><span class="line"><span class="comment">把有关联关系的，属于一个产品簇的所有产品创建的接口函数，放在一个抽象工厂里面AbstractFactory</span></span><br><span class="line"><span class="comment">，派生类（具体产品的工厂）应该负责创建该产品簇里面所有的产品</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">工厂模式：主要是封装了对象的创建</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// 系列产品1</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Car</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Car</span>(string name) :_name(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">show</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">	string _name;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bmw</span> :</span> <span class="keyword">public</span> Car</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Bmw</span>(string name) :<span class="built_in">Car</span>(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		cout &lt;&lt; <span class="string">&quot;获取了一辆宝马汽车:&quot;</span> &lt;&lt; _name&lt;&lt;endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Audi</span> :</span> <span class="keyword">public</span> Car</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Audi</span>(string name) :<span class="built_in">Car</span>(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		cout &lt;&lt; <span class="string">&quot;获取了一辆奥迪汽车:&quot;</span> &lt;&lt; _name&lt;&lt;endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 简单工厂</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> <span class="title">CarType</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">	BMW,AUDI</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SimpleFactory</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function">Car* <span class="title">createCar</span><span class="params">(CarType ct)</span> <span class="comment">// 不符合软件设计 “开-闭”</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="built_in"><span class="keyword">switch</span></span> (ct)</span><br><span class="line">		&#123;</span><br><span class="line">		<span class="keyword">case</span> BMW:</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Bmw</span>(<span class="string">&quot;X1&quot;</span>);</span><br><span class="line">		<span class="keyword">case</span> AUDI:</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Audi</span>(<span class="string">&quot;A6&quot;</span>);</span><br><span class="line">		<span class="keyword">default</span>:</span><br><span class="line">			cerr &lt;&lt; <span class="string">&quot;传入工厂的参数不正确:&quot;</span> &lt;&lt; ct &lt;&lt; endl;</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="function">unique_ptr&lt;SimpleFactory&gt; <span class="title">factory</span><span class="params">(<span class="keyword">new</span> SimpleFactory())</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Car&gt; <span class="title">p1</span><span class="params">(factory-&gt;createCar(BMW))</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Car&gt; <span class="title">p2</span><span class="params">(factory-&gt;createCar(AUDI))</span></span>;</span><br><span class="line">	p1-&gt;<span class="built_in">show</span>();</span><br><span class="line">	p2-&gt;<span class="built_in">show</span>();</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="工厂方法模式"><a href="#工厂方法模式" class="headerlink" title="工厂方法模式"></a>工厂方法模式</h2><p>这也就是所谓工厂方法模式</p>
+<h3 id="动机"><a href="#动机" class="headerlink" title="动机"></a>动机</h3><ul>
+<li><p>在软件系统中，经常面临着创建对象的工作；由于需求的变化，需要创建的对象的具体类型<strong>经常变化</strong>。</p>
+</li>
+<li><p>如何应对这种变化？如何绕过常规的对象创建方法(new)，提供一种“封装机制”来避免客户程序和这种“具体对象创建工作”的紧耦合</p>
+<h3 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h3></li>
+<li><p><strong>工厂定义一个用于创建对象的接口，让子类决定实例化哪一个类。<code>Factory Method</code>使得一个类的实例化延迟（目的：解耦，手段：虚函数）到子类。</strong></p>
+<h3 id="过程推演"><a href="#过程推演" class="headerlink" title="过程推演"></a>过程推演</h3></li>
+<li><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-16-59-29.png"></p>
+</li>
+<li><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-13-24.png"></p>
+</li>
+<li><p>virtual：一种延迟，延迟绑定到运行时<br><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-18-31.png"></p>
+</li>
+<li><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-26-57.png"></p>
+</li>
+<li><p>C++语言本身没有提供多态new，但是我们通过virtual和指针，创造出了多态new</p>
+</li>
+<li><p>虽然之后还会在类外面new 具体的 factory，但是 MainForm里面，再也没有对具体Factory的依赖了。</p>
+</li>
+<li><p><strong>设计模式的松耦合设计，很多时候并不是把变化消灭，也即：并不是把依赖具体类的这个事情消灭掉，而是把它们转移到某个局部的地方。</strong></p>
+<ul>
+<li><strong>也就是，把“变化”这只猫关进笼子里，而不是让他在代码里跳来跳去</strong></li>
+</ul>
+</li>
+</ul>
+<h3 id="最终"><a href="#最终" class="headerlink" title="最终"></a>最终</h3><ul>
+<li><p>抽象类和工厂基类</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//抽象类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ISplitter</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">split</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">ISplitter</span>()&#123;&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">//工厂基类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SplitterFactory</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">CreateSplitter</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">SplitterFactory</span>()&#123;&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li><p>具体类和具体工厂</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//具体类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BinarySplitter</span> :</span> <span class="keyword">public</span> ISplitter&#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TxtSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PictureSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">VideoSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">//具体工厂</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BinarySplitterFactory</span>:</span> <span class="keyword">public</span> SplitterFactory&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">CreateSplitter</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">BinarySplitter</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TxtSplitterFactory</span>:</span> <span class="keyword">public</span> SplitterFactory&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">CreateSplitter</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">TxtSplitter</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PictureSplitterFactory</span>:</span> <span class="keyword">public</span> SplitterFactory&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">CreateSplitter</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">PictureSplitter</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">VideoSplitterFactory</span>:</span> <span class="keyword">public</span> SplitterFactory&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">CreateSplitter</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">VideoSplitter</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li><p>依赖代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MainForm</span> :</span> <span class="keyword">public</span> Form</span><br><span class="line">&#123;</span><br><span class="line">    SplitterFactory*  factory;<span class="comment">//工厂基类</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">MainForm</span>(SplitterFactory*  factory)&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;factory=factory;</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Button1_Click</span><span class="params">()</span></span>&#123;</span><br><span class="line">		ISplitter * splitter=</span><br><span class="line">            factory-&gt;<span class="built_in">CreateSplitter</span>(); <span class="comment">//多态new</span></span><br><span class="line">        splitter-&gt;<span class="built_in">split</span>();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li><p>为什么要有一个抽象ISplitter基类？因为需要这样一个抽象引用去接收实际的具体对象。</p>
+</li>
+<li><p>为什么要有一个抽象factory基类？因为需要依赖于抽象去动态绑定。</p>
+</li>
+<li><p>原本<br><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-43-02.png"></p>
+</li>
+<li><p>工厂模式之后，不再依赖于具体类（<strong>变化）</strong>，而是依赖于抽象类（<strong>稳定）</strong><br><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-42-00.png"></p>
+</li>
+</ul>
+<h3 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h3><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-55-24.png"></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li>Factory Method模式用于隔离类对象的使用者和具体类型之间的 耦合关系。面对一个经常变化的具体类型，紧耦合关系(new)会导 致软件的脆弱。</li>
+<li>Factory Method模式通过面向对象的手法，将所要创建的具体对象工作<strong>延迟</strong>到子类（virtual函数），从而实现一种<strong>扩展（而非更改）</strong>的策略，较好地解决了这种紧耦合关系。</li>
+<li>Factory Method模式解决“单个对象”的需求变化。缺点在于要 求创建方法/参数相同。</li>
+</ul>
+<h2 id="抽象工厂（家族工厂，这个工厂可以创造一家子相关操作）"><a href="#抽象工厂（家族工厂，这个工厂可以创造一家子相关操作）" class="headerlink" title="抽象工厂（家族工厂，这个工厂可以创造一家子相关操作）"></a>抽象工厂（家族工厂，这个工厂可以创造一家子相关操作）</h2><ul>
+<li>工厂模式的基础上，将有关系的内容都放到一个工厂里，一起生产出来。<h3 id="动机-1"><a href="#动机-1" class="headerlink" title="动机"></a>动机</h3></li>
+<li>在软件系统中，经常面临着“<strong>一系列相互依赖的对象</strong>”的创建工作；同时，由于需求的变化，往往<strong>存在更多系列对象的创建工作</strong>。（一系列：Oracle有一系列数据库访问操作，MySql有一系列数据库访问操作，其他甲数据库又有一系列数据库访问操作）</li>
+<li>如何应对这种变化？如何绕过常规的对象创建方法(new)，提供一种“封装机制”来避免客户程序和这种“多系列具体对象创建工作”的紧耦合？</li>
+</ul>
+<h3 id="定义-1"><a href="#定义-1" class="headerlink" title="定义"></a>定义</h3><ul>
+<li>提供一个接口，让该接口负责创建<strong>一系列“相关或者相互依赖的对象”</strong>，（如数据库访问的一系列关联操作），无需指定它们具体的类。</li>
+</ul>
+<h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//数据库访问有关的基类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBConnection</span>&#123;</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBCommand</span>&#123;</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDataReader</span>&#123;</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  （创建数据库访问相关的）基类工厂（可创建一系列数据库访问，如SQL数据库访问，Oracle数据路访问）</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBFactory</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDBConnection* <span class="title">CreateDBConnection</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDBCommand* <span class="title">CreateDBCommand</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDataReader* <span class="title">CreateDataReader</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">//支持SQL Server</span></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">SqlConnection</span>:</span> <span class="keyword">public</span> IDBConnection&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">SqlCommand</span>:</span> <span class="keyword">public</span> IDBCommand&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">SqlDataReader</span>:</span> <span class="keyword">public</span> IDataReader&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">SqlDBFactory</span>:</span><span class="keyword">public</span> IDBFactory&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDBConnection* <span class="title">CreateDBConnection</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDBCommand* <span class="title">CreateDBCommand</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDataReader* <span class="title">CreateDataReader</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">//支持Oracle的相关访问操作</span></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">OracleConnection</span>:</span> <span class="keyword">public</span> IDBConnection&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">OracleCommand</span>:</span> <span class="keyword">public</span> IDBCommand&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">OracleDataReader</span>:</span> <span class="keyword">public</span> IDataReader&#123;</span><br><span class="line">        </span><br><span class="line">    &#125;;</span><br><span class="line">    <span class="comment">//  负责 创建Oracle数据库访问的一系列操作 的工厂</span></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">OracleDBFactory</span>:</span><span class="keyword">public</span> IDBFactory&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDBConnection* <span class="title">CreateDBConnection</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDBCommand* <span class="title">CreateDBCommand</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">        <span class="function"><span class="keyword">virtual</span> IDataReader* <span class="title">CreateDataReader</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EmployeeDAO</span>&#123;</span></span><br><span class="line">    <span class="comment">//  只需要一个基类工厂就可以。</span></span><br><span class="line">    IDBFactory* dbFactory;      <span class="comment">//  创建一系列操作的工厂（针对某一数据库的一系列访问操作）</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">vector&lt;EmployeeDO&gt; <span class="title">GetEmployees</span><span class="params">()</span></span>&#123;</span><br><span class="line">        IDBConnection* connection =</span><br><span class="line">            dbFactory-&gt;<span class="built_in">CreateDBConnection</span>();    <span class="comment">//  sql/oracle 工厂创建出 sql/oracle 连接操作 </span></span><br><span class="line">        connection-&gt;<span class="built_in">ConnectionString</span>(<span class="string">&quot;...&quot;</span>);</span><br><span class="line"></span><br><span class="line">        IDBCommand* command =</span><br><span class="line">            dbFactory-&gt;<span class="built_in">CreateDBCommand</span>();       <span class="comment">//  sql/oracle 工厂创建出 sql/oracle 命令操作</span></span><br><span class="line">        command-&gt;<span class="built_in">CommandText</span>(<span class="string">&quot;...&quot;</span>);</span><br><span class="line">        command-&gt;<span class="built_in">SetConnection</span>(connection);     <span class="comment">//  体现出connection与command的关联性</span></span><br><span class="line"></span><br><span class="line">        IDBDataReader* reader = command-&gt;<span class="built_in">ExecuteReader</span>(); <span class="comment">//  command与reader的关联性</span></span><br><span class="line">        <span class="keyword">while</span> (reader-&gt;<span class="built_in">Read</span>())&#123;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="结构总结"><a href="#结构总结" class="headerlink" title="结构总结"></a>结构总结</h3><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-18-47-16.png"></p>
+<h3 id="要点总结"><a href="#要点总结" class="headerlink" title="要点总结"></a>要点总结</h3><ul>
+<li>如果没有应对“多系列对象构建”的需求变化，则没有必要使用Abstract Factory模式，这时候使用简单的工厂完全可以。</li>
+<li><strong>“系列对象”指的是在某一特定系列下的对象之间有相互依赖、或作用的关系。不同系列的对象之间不能相互依赖</strong>。</li>
+<li>Abstract Factory模式主要在于<strong>应对“新系列”的需求</strong>变动。其缺点在于<strong>难以应对“新对象”的需求变动</strong><ul>
+<li>也就是 工厂基类（IDBFactory）不能够增添操作（纯虚函数。）。因为我们假定他是稳定的，也就是这个模式就是在利用那个基类的稳定性，如果变了，那么我们该采用其他模式。</li>
+</ul>
+</li>
+</ul>
+<h3 id="工厂方法到抽象工厂"><a href="#工厂方法到抽象工厂" class="headerlink" title="工厂方法到抽象工厂"></a>工厂方法到抽象工厂</h3><ul>
+<li>工厂模式是抽象工厂的一种特殊情况！（也即，工厂基类里的方法只有一个而非多个，只负责创建一个对象而非一系列相互依赖的对象）<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//数据库访问有关的基类 以及相应基类工厂</span></span><br><span class="line"><span class="comment">//  如果不用抽象工厂，那么，三个相关基类，三个相关工厂。</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBConnection</span>&#123;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBConnectionFactory</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDBConnection* <span class="title">CreateDBConnection</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBCommand</span>&#123;</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDBCommandFactory</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDBCommand* <span class="title">CreateDBCommand</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDataReader</span>&#123;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">IDataReaderFactory</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> IDataReader* <span class="title">CreateDataReader</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//支持SQL Server</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlConnection</span>:</span> <span class="keyword">public</span> IDBConnection&#123;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlConnectionFactory</span>:</span><span class="keyword">public</span> IDBConnectionFactory&#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlCommand</span>:</span> <span class="keyword">public</span> IDBCommand&#123;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlCommandFactory</span>:</span><span class="keyword">public</span> IDBCommandFactory&#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlDataReader</span>:</span> <span class="keyword">public</span> IDataReader&#123;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SqlDataReaderFactory</span>:</span><span class="keyword">public</span> IDataReaderFactory&#123;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//支持Oracle</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OracleConnection</span>:</span> <span class="keyword">public</span> IDBConnection&#123;&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OracleFactory</span>:</span><span class="keyword">public</span> OralceFactory&#123;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OracleCommand</span>:</span> <span class="keyword">public</span> IDBCommand&#123;&#125;;</span><br><span class="line">OracleCommand工厂</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">OracleDataReader</span>:</span> <span class="keyword">public</span> IDataReader&#123;&#125;;</span><br><span class="line">OracleDataReader工厂</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EmployeeDAO</span>&#123;</span></span><br><span class="line">    <span class="comment">//  三个基类指针 指向 工厂</span></span><br><span class="line">    IDBConnectionFactory* dbConnectionFactory;</span><br><span class="line">    IDBCommandFactory* dbCommandFactory;</span><br><span class="line">    IDataReaderFactory* dataReaderFactory;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  可以看出这三个工厂所要创作的三个对象相互依赖相互关联。是一系列一系列的操作。因此，可以把他们放入同一工厂。由同一工厂生产。</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function">vector&lt;EmployeeDO&gt; <span class="title">GetEmployees</span><span class="params">()</span></span>&#123;</span><br><span class="line">        IDBConnection* connection =</span><br><span class="line">            dbConnectionFactory-&gt;<span class="built_in">CreateDBConnection</span>();</span><br><span class="line">        connection-&gt;<span class="built_in">ConnectionString</span>(<span class="string">&quot;...&quot;</span>);</span><br><span class="line"></span><br><span class="line">        IDBCommand* command =</span><br><span class="line">            dbCommandFactory-&gt;<span class="built_in">CreateDBCommand</span>();</span><br><span class="line">        command-&gt;<span class="built_in">CommandText</span>(<span class="string">&quot;...&quot;</span>);</span><br><span class="line">        command-&gt;<span class="built_in">SetConnection</span>(connection); <span class="comment">//关联性</span></span><br><span class="line"></span><br><span class="line">        IDBDataReader* reader = command-&gt;<span class="built_in">ExecuteReader</span>(); <span class="comment">//关联性</span></span><br><span class="line">        <span class="keyword">while</span> (reader-&gt;<span class="built_in">Read</span>())&#123;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="最终代码-施磊"><a href="#最终代码-施磊" class="headerlink" title="最终代码(施磊)"></a>最终代码(施磊)</h3><ul>
+<li>子类必须实现父类的纯虚函数，不然无法new<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 系列产品1</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Car</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Car</span>(string name) :_name(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">show</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Car</span>()&#123;&#125;        <span class="comment">//  基类的虚构函数写成虚的！</span></span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">	string _name;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bmw</span> :</span> <span class="keyword">public</span> Car</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Bmw</span>(string name) :<span class="built_in">Car</span>(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		cout &lt;&lt; <span class="string">&quot;获取了一辆宝马汽车:&quot;</span> &lt;&lt; _name&lt;&lt;endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Audi</span> :</span> <span class="keyword">public</span> Car</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="built_in">Audi</span>(string name) :<span class="built_in">Car</span>(name) &#123;&#125;</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		cout &lt;&lt; <span class="string">&quot;获取了一辆奥迪汽车:&quot;</span> &lt;&lt; _name&lt;&lt;endl;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 系列产品2</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Light</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">show</span><span class="params">()</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BmwLight</span> :</span> <span class="keyword">public</span> Light</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span> </span>&#123; cout &lt;&lt; <span class="string">&quot;BMW light!&quot;</span> &lt;&lt; endl; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AudiLight</span> :</span> <span class="keyword">public</span> Light</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">show</span><span class="params">()</span> </span>&#123; cout &lt;&lt; <span class="string">&quot;Audi light!&quot;</span> &lt;&lt; endl; &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 工厂方法 =&gt; 抽象工厂(对有一组关联关系的产品簇提供产品对象的统一创建)</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AbstractFactory</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> Car* <span class="title">createCar</span><span class="params">(string name)</span> </span>= <span class="number">0</span>; <span class="comment">// 工厂方法 创建汽车</span></span><br><span class="line">	<span class="function"><span class="keyword">virtual</span> Light* <span class="title">createCarLight</span><span class="params">()</span> </span>= <span class="number">0</span>; <span class="comment">// 工厂方法 创建汽车关联的产品，车灯</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 宝马工厂</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BMWFactory</span> :</span> <span class="keyword">public</span> AbstractFactory</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function">Car* <span class="title">createCar</span><span class="params">(string name)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Bmw</span>(name);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="function">Light* <span class="title">createCarLight</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">BmwLight</span>();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// 奥迪工厂</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AudiFactory</span> :</span> <span class="keyword">public</span> AbstractFactory</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">	<span class="function">Car* <span class="title">createCar</span><span class="params">(string name)</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">Audi</span>(name);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="function">Light* <span class="title">createCarLight</span><span class="params">()</span></span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">AudiLight</span>();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="comment">// 现在考虑产品  一类产品（有关联关系的系列产品）</span></span><br><span class="line">	<span class="function">unique_ptr&lt;AbstractFactory&gt; <span class="title">bmwfty</span><span class="params">(<span class="keyword">new</span> BMWFactory())</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;AbstractFactory&gt; <span class="title">audifty</span><span class="params">(<span class="keyword">new</span> AudiFactory())</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Car&gt; <span class="title">p1</span><span class="params">(bmwfty-&gt;createCar(<span class="string">&quot;X6&quot;</span>))</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Car&gt; <span class="title">p2</span><span class="params">(audifty-&gt;createCar(<span class="string">&quot;A8&quot;</span>))</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Light&gt; <span class="title">l1</span><span class="params">(bmwfty-&gt;createCarLight())</span></span>;</span><br><span class="line">	<span class="function">unique_ptr&lt;Light&gt; <span class="title">l2</span><span class="params">(audifty-&gt;createCarLight())</span></span>;</span><br><span class="line"></span><br><span class="line">	p1-&gt;<span class="built_in">show</span>();</span><br><span class="line">	l1-&gt;<span class="built_in">show</span>();</span><br><span class="line"></span><br><span class="line">	p2-&gt;<span class="built_in">show</span>();</span><br><span class="line">	l2-&gt;<span class="built_in">show</span>();</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>讲给h<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">工厂模式：简要来说就是：一个抽象类（字母），以及诸多具体类（a,b,c,d）。+ 一个工厂基类，以及诸多具体工厂类（对应生产a,b,c,d）。当需要a对象时，在相应代码段处，通过工厂基类指针，使用a工厂来创建a对象，用抽象基类（字母类型来接收）</span><br><span class="line">宗旨：避免依赖具体的类（尽量依赖抽象类），将本要使用具体类的代码段和具体类分离开（通过使用抽象类和工厂）。</span><br><span class="line">情景：假设现在要在一个类的成员函数FUNC（）内使用对象a/b/c/d。但是，由于需求的变化，我们所要创建的对象的具体类型经常变化，所以，我们要找一个机制来避开常规的<span class="keyword">new</span>语句。</span><br><span class="line">因为，如果正常的<span class="keyword">new</span>，就意味着我们必须在这个函数的代码段内明确说出要创建的对象的类型，那么就会造成紧耦合（如 A *p = <span class="keyword">new</span> <span class="built_in">A</span>()，指明了=号左侧的A和右侧的A类型）。</span><br><span class="line">所以，对于a,b,c,d类，我们需要有一个他们的抽象基类：字母类，来接收具体的a、b、c对象。（因为抽象，所以稳定）。</span><br><span class="line">如 字母 *p = <span class="keyword">new</span> <span class="built_in">A</span>()。那么，=号的左边就解决了。使用抽象类来接收具体的对象。</span><br><span class="line">但是，在=号右边。我们还是要指明具体的A类型，也就是说还是依赖一个具体的类。</span><br><span class="line">所以，为了不依赖它，我们得把<span class="keyword">new</span> <span class="built_in">A</span>()这个语句从本函数拿出来。</span><br><span class="line">所以，我们新建一个类，把这个<span class="keyword">new</span>的任务交给那个新类去处理，那个新类就叫做a工厂类，称为AFactory，内有create方法。</span><br><span class="line">那么，现在的语句就变成 字母* p = pointer_to_AFactory-&gt;<span class="built_in">create</span>();	</span><br><span class="line">但是，此时我们还是需要指出，这个工厂的名字叫做AFactory。那么对于b，c，d来说，我们还是需要指出使用BFactory，CFactory...这还是需要依赖具体的类，所以还需要继续改进。</span><br><span class="line">所以，我们设置一个抽象基类 BaseFactory 里面有纯虚函数 <span class="built_in">create</span>()，BaseFactory的指针/引用，可以用来接收A/B/CFactory。</span><br><span class="line">那么，这条语句就变成 字母 *p = pointer_to_BaseFactory -&gt; <span class="built_in">create</span>();</span><br><span class="line">create（）函数的调用利用了多态的机制，将本应该编译时绑定的函数延迟到运行时进行绑定。</span><br><span class="line">（这也就是通过面向对象的手法，将所要创建的具体对象延迟到子类中去进行。（延迟到子类中的C++中的<span class="keyword">virtual</span>函数，Java中子类实现父类的函数），从而实现一种扩展（而非更改）的策略，较好地解决了原本的紧耦合关系）</span><br><span class="line">这个pointer_to_BaseFactory，就是调用本语句所在的函数时传入的参数。这样，在FUNC（）内，就不回依赖于具体的类（易变化），只依赖于抽象类（稳定）。</span><br><span class="line">将对具体类的依赖从本成员函数内转移到其他代码处。</span><br><span class="line"></span><br><span class="line">之前讲得工厂模式 是 一个工厂类里只负责一个对象的创建。</span><br><span class="line">抽象工厂，就是一个工厂类负责多个对象的创建。其中，这多个对象有相互依赖、相互影响的关系。</span><br><span class="line">如，我们要做访问数据库，对于每种数据库都会有三个操作，connection连接，read读取以及command发出命令。而connection又会影响read和command。</span><br><span class="line">但是，每种数据库之间的具体操作又不同，如Oracle和mySQL之间的connection，read，command方式不会相同。</span><br><span class="line">所以，我们可以看出，在要访问数据库时，我们需要生成负责connection的对象，负责read的对象和负责command的对象。</span><br><span class="line">而这些对象之间又相互依赖相互影响。也即，我们实际需要connection、read、command对象是一系列一系列的。（也可以说是一组一组的）</span><br><span class="line">所以，对于访问mySQL数据库，我们需要一个mySQLFactory&#123;&#125;，里面负责生成mySQL数据库系列的connection、read、command对象。</span><br><span class="line">对于Oralce数据库，同理，需要一个OracleFactory&#123;&#125;，里面负责生成Oracle数据库系列的connection、read、command对象。</span><br><span class="line"></span><br><span class="line">剩下的还是和工厂模式一样，一个数据库抽象基类，一个工厂的抽象基类，就是抽象工厂类负责一系列相关对象</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h2><h3 id="动机-2"><a href="#动机-2" class="headerlink" title="动机"></a>动机</h3><ul>
+<li>特殊的类，必须保证他们在系统中只存在一个实例，才能保证他们的逻辑正确性、以及良好的效率。</li>
+</ul>
+<h3 id="定义-2"><a href="#定义-2" class="headerlink" title="定义"></a>定义</h3><ul>
+<li>保证一个类仅有一个实例，并提供一个该实例的全局访问点</li>
+</ul>
+<h3 id="懒汉-推演"><a href="#懒汉-推演" class="headerlink" title="懒汉 推演"></a>懒汉 推演</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Singleton</span>&#123;</span></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">Singleton</span>();</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="keyword">const</span> Singleton&amp; other);</span><br><span class="line">    <span class="keyword">static</span> Singleton* m_instance;   </span><br><span class="line"><span class="comment">//  注意必须是静态！ 定义一个唯一的类的实例对象（不然就会依赖于对象）</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line"><span class="comment">//  必须是静态！不然要调用非静态方法需要通过对象调用，但是对象还没有。</span></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Singleton* <span class="title">getInstance</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Singleton* Singleton::m_instance=<span class="literal">nullptr</span>;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>单线程用这个即可。线程不安全<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//线程非安全版本</span></span><br><span class="line"><span class="function">Singleton* <span class="title">Singleton::getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (m_instance == <span class="literal">nullptr</span>) &#123;</span><br><span class="line">        m_instance = <span class="keyword">new</span> <span class="built_in">Singleton</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> m_instance;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>多线程最初：线程安全但性能差<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//线程安全版本，但锁的代价过高</span></span><br><span class="line"><span class="function">Singleton* <span class="title">Singleton::getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Lock lock;          <span class="comment">//  当对象已经创建出来、多个线程都只需要读时，会付出不必要的代价来等待锁</span></span><br><span class="line">    <span class="keyword">if</span> (m_instance == <span class="literal">nullptr</span>) &#123;    </span><br><span class="line">        m_instance = <span class="keyword">new</span> <span class="built_in">Singleton</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> m_instance;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>多线程改进：<strong>双检查锁</strong>。看似正确，很有可能出<strong>reorder问题</strong>。<strong>不能用！！</strong><ul>
+<li><strong>锁前检查</strong>：避免当两个线程都是读取操作时，发生不必要的上锁解锁以及等待来提高效率</li>
+<li><strong>锁后检查</strong>：避免重复new对象。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//双检查锁，但由于内存读写reorder不安全</span></span><br><span class="line"><span class="function">Singleton* <span class="title">Singleton::getInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span>(m_instance==<span class="literal">nullptr</span>)&#123;</span><br><span class="line">        Lock lock;</span><br><span class="line">        <span class="keyword">if</span> (m_instance == <span class="literal">nullptr</span>) &#123;</span><br><span class="line">            m_instance = <span class="keyword">new</span> <span class="built_in">Singleton</span>();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> m_instance;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-22-13-36-54.png"></li>
+</ul>
+</li>
+<li><strong>漏洞：</strong><ul>
+<li>正常应该是 <ul>
+<li>先malloc 再 构造 再返回地址给 m_instance，</li>
+</ul>
+</li>
+<li>但是，编译器出于优化，可能会发生这样：<ul>
+<li>先malloc，然后返回地址，之后再构造</li>
+</ul>
+</li>
+<li>就会造成，假设有2个线程，一个进入 <code>m_instance = new Singleton</code>。但是编译器优化，返回了地址却没调用构造函数，就会出<strong>现<code>m_instance!=nullptr</code> 但是 <code>m_instance</code>指向的对象还没被构造</strong>，而另一个线程在锁前检查发现不是<code>nullptr</code>，就直接返回<code>m_instance</code>，也即<strong>返回了一个不能使用的对象</strong></li>
+</ul>
+</li>
+<li>C++11之后支持<strong>volatile</strong><ul>
+<li>volatile（vaoleitou） 易变的；无定性的；不稳定的</li>
+<li>volatile是一个特征修饰符（type specifier）.volatile的作用是作为指令关键字，确保本条指令不会因编译器的优化而省略，且要求每次直接读值。volatile是说这变量可能会被意想不到地改变，这样，编译器就不会去假设这个变量的值了。也即，编译器在用到这个变量时必须每次都小心地重新读取这个变量的值，而不是使用保存在寄存器里的备份。编译器会逐一地进行编译并产生相应的机器代码。</li>
+<li><a target="_blank" rel="noopener" href="https://www.runoob.com/w3cnote/c-volatile-keyword.html">volatile</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>volatile在多线程的作用。也是因为这个让编译器从内存读取变量的值而非寄存器/缓存</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">volatile作用在变量上。不把变量存储在寄存器中，每次使用该变量都从内存中读取。这样做的目的是告诉编译器该变量的值可能会随时改变，因此需要从内存中而非寄存器中读取以确保变量的值准确。</span><br><span class="line">在一些多线程的程序里一些全局变量可能会被其他线程修改，这时候要用volatile确保这个变量的值正确。(但是光用volatile也不够，但这就是另一个topic了)</span><br></pre></td></tr></table></figure></li>
+<li><p>我总结：volatile的作用就是防止编译器对指令进行优化</p>
+<ul>
+<li>从而防止编译器从寄存器而非内存中读值（避免多线程情况下发生错误）</li>
+<li>从而防止单例模式中new对象时改变指令顺序返回空对象</li>
+</ul>
+</li>
+<li><p><strong>好博客：<a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1177406">博客</a></strong></p>
+</li>
+</ul>
+<h3 id="懒汉最终：懒汉模式线程安全-有效率-无reorder"><a href="#懒汉最终：懒汉模式线程安全-有效率-无reorder" class="headerlink" title="懒汉最终：懒汉模式线程安全+有效率+无reorder"></a><strong>懒汉最终：懒汉模式线程安全+有效率+无reorder</strong></h3><h4 id="1"><a href="#1" class="headerlink" title="1"></a>1</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Singleton</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> Singleton* <span class="title">getSingleton</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span>(m_instance==<span class="literal">nullptr</span>) <span class="comment">//  提高效率</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">guard</span><span class="params">(mtx)</span></span>;</span><br><span class="line">            <span class="keyword">if</span>(m_instance==<span class="literal">nullptr</span>)     <span class="comment">//  防止重复new</span></span><br><span class="line">            &#123;</span><br><span class="line">                m_instance =  <span class="keyword">new</span> <span class="built_in">Singleton</span>();  <span class="comment">// 访问volatile变量 汇编指令顺序不变。保证先malloc，然后构造，最后返回。</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> m_instance;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">static</span> Singleton * <span class="keyword">volatile</span> m_instance;</span><br><span class="line">    <span class="comment">//  volatile：使得编译器在编译访问m_instance代码时，对指令（的顺序）就不再优化。也即m_instance = new Singleton()的汇编顺序不会改变</span></span><br><span class="line">    <span class="built_in">Singleton</span>()&#123;&#125;</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="keyword">const</span> Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    Singleton&amp; <span class="keyword">operator</span>=(<span class="keyword">const</span> Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    <span class="comment">//  构造函数、拷贝构造、复制重载私有化或删除</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">Singleton* <span class="keyword">volatile</span> Singleton:: m_instance = <span class="literal">nullptr</span>;  <span class="comment">//  static变量需要在类外初始化</span></span><br></pre></td></tr></table></figure>
+<h4 id="2（通过static局部变量）"><a href="#2（通过static局部变量）" class="headerlink" title="2（通过static局部变量）"></a>2（通过static局部变量）</h4><ul>
+<li>对于static静态局部变量的初始化，编译器会自动对它的初始化进行加锁lock和解锁unlock控制，使静态局部变量的初始化成为线程安全的操作，不用担心多个线程都会初始化静态局部变量，因此如下的懒汉单例模式是线程安全的单例模式</li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/QIANGWEIYUAN/article/details/88544524?spm=1001.2014.3001.5502">shilei</a></li>
+<li>static instance：C++11在static局部变量初始化时自动进行加锁和解锁控制</li>
+<li>static 函数：为了在没有对象时就可调用<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  懒汉式单例模式另一种写法</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Singleton</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Singleton* <span class="title">getSingleton</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="comment">//  static局部变量</span></span><br><span class="line">        <span class="comment">//  static：生命周期为全局</span></span><br><span class="line">        <span class="comment">//  static + 局部 ：汇编层面已经自动添加线程互斥指令</span></span><br><span class="line">        <span class="keyword">static</span> Singleton instance;</span><br><span class="line">        <span class="keyword">return</span> &amp;instance;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="built_in">Singleton</span>()&#123;&#125;</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="keyword">const</span> Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    Single&amp; <span class="keyword">operator</span>=(Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="饿汉"><a href="#饿汉" class="headerlink" title="饿汉"></a>饿汉</h3><ul>
+<li>饿汉不用考虑线程安全问题，天生线程安全。因为单例对象在线程产生时就已经创建出来了。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Singleton</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">static</span> Singleton* <span class="title">getSingleton</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> &amp;m_instance;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">static</span> Singleton m_instance;</span><br><span class="line">    <span class="built_in">Singleton</span>()&#123;&#125;</span><br><span class="line">    <span class="built_in">Singleton</span>(<span class="keyword">const</span> Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">    Singleton&amp; <span class="keyword">operator</span>=(<span class="keyword">const</span> Singleton&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">&#125;;</span><br><span class="line">Singleton Singleton:: m_instance;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-23-20-03-29.png"></li>
+</ul>
+<h3 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h3><ul>
+<li><ol>
+<li>构造函数私有化</li>
+</ol>
+</li>
+<li>2/3. 定义一个唯一的类的实例对象</li>
+<li>3/2. 获取类的唯一实例对象的接口方法</li>
+</ul>
+<p>可重入：可以在多线程下运行，且不会发生静态条件。</p>
+<h2 id="原型模式-Prototype"><a href="#原型模式-Prototype" class="headerlink" title="原型模式 Prototype"></a>原型模式 Prototype</h2><p>一个小模式，不常用，是factory的变体</p>
+<ul>
+<li>为了获取相同状态的对象。</li>
+<li>当对象的创建复杂繁琐时。</li>
+</ul>
+<h3 id="动机-3"><a href="#动机-3" class="headerlink" title="动机"></a>动机</h3><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-46-38.png"></p>
+<h3 id="结构-1"><a href="#结构-1" class="headerlink" title="结构"></a>结构</h3><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-47-05.png"></p>
+<h3 id="要点总结-1"><a href="#要点总结-1" class="headerlink" title="要点总结"></a>要点总结</h3><p><img src="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-44-28.png"></p>
+<h3 id="代码-1"><a href="#代码-1" class="headerlink" title="代码"></a>代码</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//  抽象类</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ISplitter</span>&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">split</span><span class="params">()</span></span>=<span class="number">0</span>;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">clone</span><span class="params">()</span></span>=<span class="number">0</span>; <span class="comment">//通过克隆自己来创建对象</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">ISplitter</span>()&#123;&#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  具体类</span></span><br><span class="line"><span class="comment">//  调用父类克隆函数</span></span><br><span class="line"><span class="comment">//  每回调用clone就是返回了一个clone欸到对象</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BinarySplitter</span> :</span> <span class="keyword">public</span> ISplitter&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">clone</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">BinarySplitter</span>(*<span class="keyword">this</span>);   </span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TxtSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">clone</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">TxtSplitter</span>(*<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PictureSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">clone</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">PictureSplitter</span>(*<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">VideoSplitter</span>:</span> <span class="keyword">public</span> ISplitter&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> ISplitter* <span class="title">clone</span><span class="params">()</span></span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">new</span> <span class="built_in">VideoSplitter</span>(*<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  用户代码</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MainForm</span> :</span> <span class="keyword">public</span> Form</span><br><span class="line">&#123;</span><br><span class="line">    ISplitter*  prototype;<span class="comment">//原型对象</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">MainForm</span>(ISplitter*  prototype)&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;prototype=prototype;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">	<span class="function"><span class="keyword">void</span> <span class="title">Button1_Click</span><span class="params">()</span></span>&#123;</span><br><span class="line">		ISplitter * splitter=</span><br><span class="line">            prototype-&gt;<span class="built_in">clone</span>(); <span class="comment">//克隆原型</span></span><br><span class="line">        splitter-&gt;<span class="built_in">split</span>();</span><br><span class="line">	&#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" rel="tag"># 计算机基础</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%8D%95%E4%B8%80%E8%81%8C%E8%B4%A3%E6%A8%A1%E5%BC%8F/" rel="prev" title="单一职责模式">
+      <i class="fa fa-chevron-left"></i> 单一职责模式
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/05/04/MySQL%E6%95%B0%E6%8D%AE%E5%BA%93%E8%BF%9E%E6%8E%A5%E6%B1%A0/" rel="next" title="MySQL数据库连接池">
+      MySQL数据库连接池 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.</span> <span class="nav-text">对象创建模式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E5%8D%95%E5%B7%A5%E5%8E%82"><span class="nav-number">1.1.</span> <span class="nav-text">简单工厂</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B7%A5%E5%8E%82%E6%96%B9%E6%B3%95%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.2.</span> <span class="nav-text">工厂方法模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A8%E6%9C%BA"><span class="nav-number">1.2.1.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89"><span class="nav-number">1.2.2.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%87%E7%A8%8B%E6%8E%A8%E6%BC%94"><span class="nav-number">1.2.3.</span> <span class="nav-text">过程推演</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E7%BB%88"><span class="nav-number">1.2.4.</span> <span class="nav-text">最终</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.5.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">1.2.6.</span> <span class="nav-text">总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%BD%E8%B1%A1%E5%B7%A5%E5%8E%82%EF%BC%88%E5%AE%B6%E6%97%8F%E5%B7%A5%E5%8E%82%EF%BC%8C%E8%BF%99%E4%B8%AA%E5%B7%A5%E5%8E%82%E5%8F%AF%E4%BB%A5%E5%88%9B%E9%80%A0%E4%B8%80%E5%AE%B6%E5%AD%90%E7%9B%B8%E5%85%B3%E6%93%8D%E4%BD%9C%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">抽象工厂（家族工厂，这个工厂可以创造一家子相关操作）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A8%E6%9C%BA-1"><span class="nav-number">1.3.1.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89-1"><span class="nav-number">1.3.2.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81"><span class="nav-number">1.3.3.</span> <span class="nav-text">代码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84%E6%80%BB%E7%BB%93"><span class="nav-number">1.3.4.</span> <span class="nav-text">结构总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93"><span class="nav-number">1.3.5.</span> <span class="nav-text">要点总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%A5%E5%8E%82%E6%96%B9%E6%B3%95%E5%88%B0%E6%8A%BD%E8%B1%A1%E5%B7%A5%E5%8E%82"><span class="nav-number">1.3.6.</span> <span class="nav-text">工厂方法到抽象工厂</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E7%BB%88%E4%BB%A3%E7%A0%81-%E6%96%BD%E7%A3%8A"><span class="nav-number">1.3.7.</span> <span class="nav-text">最终代码(施磊)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.4.</span> <span class="nav-text">单例模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A8%E6%9C%BA-2"><span class="nav-number">1.4.1.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89-2"><span class="nav-number">1.4.2.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%87%92%E6%B1%89-%E6%8E%A8%E6%BC%94"><span class="nav-number">1.4.3.</span> <span class="nav-text">懒汉 推演</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%87%92%E6%B1%89%E6%9C%80%E7%BB%88%EF%BC%9A%E6%87%92%E6%B1%89%E6%A8%A1%E5%BC%8F%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8-%E6%9C%89%E6%95%88%E7%8E%87-%E6%97%A0reorder"><span class="nav-number">1.4.4.</span> <span class="nav-text">懒汉最终：懒汉模式线程安全+有效率+无reorder</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1"><span class="nav-number">1.4.4.1.</span> <span class="nav-text">1</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2%EF%BC%88%E9%80%9A%E8%BF%87static%E5%B1%80%E9%83%A8%E5%8F%98%E9%87%8F%EF%BC%89"><span class="nav-number">1.4.4.2.</span> <span class="nav-text">2（通过static局部变量）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A5%BF%E6%B1%89"><span class="nav-number">1.4.5.</span> <span class="nav-text">饿汉</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.4.6.</span> <span class="nav-text">步骤</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8E%9F%E5%9E%8B%E6%A8%A1%E5%BC%8F-Prototype"><span class="nav-number">1.5.</span> <span class="nav-text">原型模式 Prototype</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%A8%E6%9C%BA-3"><span class="nav-number">1.5.1.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84-1"><span class="nav-number">1.5.2.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A6%81%E7%82%B9%E6%80%BB%E7%BB%93-1"><span class="nav-number">1.5.3.</span> <span class="nav-text">要点总结</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81-1"><span class="nav-number">1.5.4.</span> <span class="nav-text">代码</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

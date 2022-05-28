@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"gitment","storage":true,"lazyload":false,"nav":{"gitment":{"order":-1}}},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TCP基本认识 什么是TCP连接  ⽤于保证可靠性和流量控制维护的某些状态信息，这些信息的组合，包括Socket、序列号和窗⼝⼤⼩称为连接。 Socket：ip地址+端口号 序列号：解决乱序问题 窗口：流量控制   TCP四元组可以唯一确定一个TCP连接  源ip地址 源port 目的ip地址 目的port   TCP头部  ACK：TCP报文中，当ACK&#x3D;1时，ack才有效。TCP规定，在连接建">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP杂记(预习)">
+<meta property="og:url" content="http://example.com/2022/02/22/TCP/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="TCP基本认识 什么是TCP连接  ⽤于保证可靠性和流量控制维护的某些状态信息，这些信息的组合，包括Socket、序列号和窗⼝⼤⼩称为连接。 Socket：ip地址+端口号 序列号：解决乱序问题 窗口：流量控制   TCP四元组可以唯一确定一个TCP连接  源ip地址 源port 目的ip地址 目的port   TCP头部  ACK：TCP报文中，当ACK&#x3D;1时，ack才有效。TCP规定，在连接建">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-24-10-14-28.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-22-09-23-35.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-22-10-13-24.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-24-11-18-30.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-24-11-00-58.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-24-11-38-59.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-02-24-16-50-15.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-03-02-09-18-24.png">
+<meta property="og:image" content="http://example.com/2022/02/22/TCP/2022-03-21-16-02-04.png">
+<meta property="article:published_time" content="2022-02-22T00:42:06.000Z">
+<meta property="article:modified_time" content="2022-05-28T14:50:36.287Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计算机基础">
+<meta property="article:tag" content="杂记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/02/22/TCP/2022-02-24-10-14-28.png">
+
+<link rel="canonical" href="http://example.com/2022/02/22/TCP/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>TCP杂记(预习) | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-schedule">
+
+    <a href="/schedule/" rel="section"><i class="fa fa-calendar fa-fw"></i>日程表</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/02/22/TCP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="小窝">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          TCP杂记(预习)
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-02-22 08:42:06" itemprop="dateCreated datePublished" datetime="2022-02-22T08:42:06+08:00">2022-02-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2022-05-28 22:50:36" itemprop="dateModified" datetime="2022-05-28T22:50:36+08:00">2022-05-28</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/" itemprop="url" rel="index"><span itemprop="name">计算机网络</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="TCP基本认识"><a href="#TCP基本认识" class="headerlink" title="TCP基本认识"></a>TCP基本认识</h1><ul>
+<li><p><strong>什么是TCP连接</strong></p>
+<ul>
+<li>⽤于保证可靠性和流量控制维护的某些状态信息，这些信息的组合，包括Socket、序列号和窗⼝⼤⼩称为连接。</li>
+<li><strong>Socket：ip地址+端口号</strong></li>
+<li><strong>序列号：解决乱序问题</strong></li>
+<li><strong>窗口：流量控制</strong></li>
+</ul>
+</li>
+<li><p>TCP四元组可以唯一确定一个TCP连接</p>
+<ul>
+<li>源ip地址</li>
+<li>源port</li>
+<li>目的ip地址</li>
+<li>目的port</li>
+</ul>
+</li>
+<li><p>TCP头部<br><img src="/2022/02/22/TCP/2022-02-24-10-14-28.png"></p>
+</li>
+<li><p>ACK：TCP报文中，当ACK=1时，ack才有效。TCP规定，在连接建立后的所有报文中，ACK都置为1。（也就是说如果正常的话，除了第一个请求建立连接的SYN报文之外，其余的ACK均=1）</p>
+<h1 id="TCP建立连接"><a href="#TCP建立连接" class="headerlink" title="TCP建立连接"></a>TCP建立连接</h1></li>
+<li><p><strong>三次握手建立连接</strong></p>
+<ul>
+<li><img src="/2022/02/22/TCP/2022-02-22-09-23-35.png"></li>
+</ul>
+</li>
+<li><p><strong>普通数据传输</strong></p>
+<ul>
+<li><img src="/2022/02/22/TCP/2022-02-22-10-13-24.png"></li>
+</ul>
+</li>
+<li><p>序列号这种东西本来是给数据准备的，每个字节占一个序列号，来防止乱序。但是SYN报文和ACK+SYN报文虽然不可以携带数据，但是也消耗一个序号。ACK报文可以携带数据，不携带则不消耗序列号。</p>
+</li>
+<li><p><strong>序列号作用：</strong></p>
+<ul>
+<li>可以去除重复接受的数据。</li>
+<li>使得接收方可以按序接收。</li>
+<li>可以标识发出去的数据包中，那些是对方已经收到的。（对于发送方来说，接受方回应的ACK报文的ack序列号之前的选好的数据包就是对方已经收到的）</li>
+</ul>
+</li>
+<li><p><strong>ACK报文不消耗序列号</strong><br><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/24792770">https://www.zhihu.com/question/24792770</a></p>
+</li>
+</ul>
+<h2 id="为什么三次握手？（三次握手让双方具有接收发送的能力，那么为什么三次握手才可以初始化socket，序列号，窗口大小并建立TCP连接？）"><a href="#为什么三次握手？（三次握手让双方具有接收发送的能力，那么为什么三次握手才可以初始化socket，序列号，窗口大小并建立TCP连接？）" class="headerlink" title="为什么三次握手？（三次握手让双方具有接收发送的能力，那么为什么三次握手才可以初始化socket，序列号，窗口大小并建立TCP连接？）"></a><strong>为什么三次握手？</strong>（三次握手让双方具有接收发送的能力，那么为什么三次握手才可以初始化socket，序列号，窗口大小并建立TCP连接？）</h2><ul>
+<li><p>两次握手时，Server端不知道自己发送的SYN+ACK报文是否被收到，所以每收到一个SYN就只能先分配资源主动建立连接。</p>
+</li>
+<li><p><strong>三次握手可以阻止重复历史连接的初始化造成混乱（主要原因）</strong>。</p>
+<ul>
+<li><strong>自己</strong>：第三次握手是为了判断接受的SYN+ACK报文是否是回应历史连接请求的。（通过SYN+ACK报文中的ack序列号，看是否与本方的seq相等）</li>
+<li><strong>图解</strong></li>
+<li>网络拥堵时，Client发出的一个旧的SYN报文比新的SYN报文先到达。</li>
+<li>Server端对旧的SYN报文做出SYN+ACK报文应答，给Client端。</li>
+<li>Client端发现接收到的ack序列号和自己期望收到的ack序列号不同。故判断出这是历史连接。（序列号过期或者超时）</li>
+<li>于是Client端向Server端发送RST报文，表示终止连接。</li>
+<li>如果是两次握手，就没法判断是否是历史连接。（Client）在第二次握手时，（Client）有足够的上下文来判断是否是历史连接。<ul>
+<li>是，则发送RST报文，终止连接</li>
+<li>不是，则发送ACK报文，建立连接。</li>
+</ul>
+</li>
+<li><img src="/2022/02/22/TCP/2022-02-24-11-18-30.png"></li>
+</ul>
+</li>
+<li><p><strong>三次握手可以同步化序列号</strong></p>
+<ul>
+<li><strong>自己</strong>：Client第三次握手是为了回应第二次握手Server端发来的ACK+SYN报文（带有Seq），即为了确定收到序列号。</li>
+<li><strong>图解</strong>：序列号在 TCP 连接中占据着⾮常重要的作⽤，所以当客户端发送携带「初始序列号」的 SYN 报⽂的时候，需要服务端回⼀个 ACK 应答报⽂，表示客户端的 SYN 报⽂已被服务端成功接收，那当服务端发送「初始序列号」给客户端的时候，依然也要得到客户端的应答回应，这样⼀来⼀回，才能确保双⽅的初始序列号能被可靠的同步。</li>
+<li>四次握⼿其实也能够可靠的同步双⽅的初始化序号，但由于第⼆步和第三步可以优化成⼀步，所以就成了「三次握⼿」</li>
+<li><img src="/2022/02/22/TCP/2022-02-24-11-00-58.png"></li>
+</ul>
+</li>
+<li><p><strong>三次握手可以避免资源浪费</strong></p>
+<ul>
+<li><strong>图解</strong></li>
+<li>由于没有第三次握⼿，服务器不清楚客户端是否收到了⾃⼰发送的建⽴连接的 ACK 确认信号，所以每收到⼀个 SYN 就只能先主动建⽴⼀个连接，这会造成什么情况呢？</li>
+<li>TCP连接建立之后，Client不回应ACK报文，Server主动建立连接，在两次握手消息滞留情况下，会重复接收无用请求连接SYN报文，重复分配资源。</li>
+<li><img src="/2022/02/22/TCP/2022-02-24-11-38-59.png"></li>
+</ul>
+</li>
+</ul>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><ul>
+<li>TCP 建⽴连接时，通过三次握⼿能防⽌历史连接的建⽴，能减少双⽅不必要的资源开销，能帮助双⽅同步初始化序列号。序列号能够保证数据包不重复、不丢弃和按序传输。</li>
+<li>不使⽤「两次握⼿」和「四次握⼿」的原因：<ul>
+<li>「两次握⼿」：无法防止历史连接建立，无法同步序列号，无法避免资源浪费。</li>
+<li>「四次握⼿」：三次握⼿就已经理论上最少可靠连接建⽴，所以不需要使⽤更多的通信次数。</li>
+</ul>
+</li>
+</ul>
+<h2 id="为什么客户端和服务端的初始序列号-ISN-是不相同的？？？？"><a href="#为什么客户端和服务端的初始序列号-ISN-是不相同的？？？？" class="headerlink" title="为什么客户端和服务端的初始序列号 ISN 是不相同的？？？？??"></a>为什么客户端和服务端的初始序列号 ISN 是不相同的？？？？??</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/ZQ51SmLopj-4OPhNkSL8Fw">https://mp.weixin.qq.com/s/ZQ51SmLopj-4OPhNkSL8Fw</a></li>
+<li>还是有一点点不懂。在本文举的例子中，因为网络拥堵而延后收到的数据包的序列号是否在服务端的接收窗口内的这件事情，似乎是与前后两次TCP连接中，客户端初始化的ISN是否相同有关，而和客户端的ISN与服务端的ISN是否相同无关。mo-[委屈]（如第二幅TCP三次握手的图中，被延迟的数据包的seq=101，这个seq是根据客户端最开始随机初始化的ISN得出的（100+1），然后第第二次建立连接时，服务端接收窗口的”501~600“中的501，也是由客户端一开始随机初始化的ISN得出的（500+1 = 501）；而101不在这个范围内，因此不会被接收。所以这不是和前后两次客户端随机初始化的ISN是否相同有关吗。mo-[委屈]）</li>
+</ul>
+<h2 id="既然-IP-层会分⽚，为什么-TCP-层还需要-MSS-呢？"><a href="#既然-IP-层会分⽚，为什么-TCP-层还需要-MSS-呢？" class="headerlink" title="既然 IP 层会分⽚，为什么 TCP 层还需要 MSS 呢？??"></a>既然 IP 层会分⽚，为什么 TCP 层还需要 MSS 呢？??</h2><ul>
+<li>有点不懂</li>
+<li><img src="/2022/02/22/TCP/2022-02-24-16-50-15.png"></li>
+<li>MTU: 最大传输单元是Maxitum Transmission Unit的简写，是OSI五层网络模型中链路层(datalink layer)对一次可以发送的最大数据的限制。<br><img src="/2022/02/22/TCP/2022-03-02-09-18-24.png"></li>
+</ul>
+<h2 id="关于ping"><a href="#关于ping" class="headerlink" title="关于ping"></a>关于ping</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/45110873">ping</a></li>
+</ul>
+<h2 id="curl命令"><a href="#curl命令" class="headerlink" title="curl命令"></a>curl命令</h2><ul>
+<li><a target="_blank" rel="noopener" href="http://www.ruanyifeng.com/blog/2019/09/curl-reference.html">curl</a></li>
+</ul>
+<h2 id="TCP粘包"><a href="#TCP粘包" class="headerlink" title="TCP粘包"></a>TCP粘包</h2><hr>
+<p>当前web和web-like应用中一般都是在三次握手后开始数据传输（第三次可以开始传输），相比于UDP，多了一个RTT的时延，即使当前很多应用使用长连接来处理这种情况，但是仍然由一定比例的短连接，这额外多出的一个RTT仍然对应用的时延有非常大的影响。TFO就是在这种背景下面提出来的。<br>TFO(TCP fast open)是TCP协议的experimental update，它允许服务器和客户端在连接建立握手阶段交换数据，从而使应用节省了一个RTT的时延。但是TFO会引起一些问题，因此协议要求TCP实现必须默认禁止TFO。需要在某个服务端口上启用TFO功能的时候需要应用程序显示启用。</p>
+<ul>
+<li>聊天记录 ip层不分片 因为TCP的mss小于ip层的mtu<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line">小林:</span><br><span class="line">我也不懂，难道数数不是123？难道是124？</span><br><span class="line"></span><br><span class="line">sunny:</span><br><span class="line">哈哈，我回答3个后，他就问我服务器回应syn和ack是两个包里的还是一个包里的，把我唬住了</span><br><span class="line"></span><br><span class="line">sunny:</span><br><span class="line">还没复习计网呢</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">拆包看看</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">最近刚粗略的看完计网，感觉上，我觉得是在一个包的</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">肯定在一个包啊，不然为什么叫三次握手</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">[动画表情]</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">emmmmm</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">但是发送的时候是以流发送的。。。</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">最后拆到的信息是成一信息的。。</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">对于tcp来说，是流，但是对于ip来说不是</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">嗯呢</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">但是发送的时候，会进行切片的吧</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">这个是在数据传输阶段，握手的时候不是流数据</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line">发送应该就是豹纹吧</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">应用层通过socket到传输层，传输层进行一次分割，如果切的太大，ip还会再分</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line">报文</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">tcp报文不会在ip分片</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line">tcp进行了整合 以流的形式进行分片send 或整合接收？</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">学到了</span><br><span class="line"></span><br><span class="line">Monster:</span><br><span class="line">学到了</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line">老林的文章有提过 ip层不会重传 所以ip分片后有片丢失只能全包重传 所以是不现实的</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">不到叫啥名:</span><br><span class="line">[图片]</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">优秀</span><br><span class="line"></span><br><span class="line">Phil:</span><br><span class="line">UDP才会在IP分片，TCP不会</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">不是说超过网络层的分包大小，网络层也会进行拆分么</span><br><span class="line"></span><br><span class="line">Dezy:</span><br><span class="line">哦哦，这样啊</span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">tcp比较特殊，tcp层自己有个最大报文的大小（mss），超过了mss，就会直接在tcp层切片，mss的大小是小于mtu的，所以tcp切片后的包，到ip层就不会被切片了</span><br><span class="line"></span><br><span class="line">Phil:</span><br><span class="line">[动画表情]</span><br><span class="line"></span><br><span class="line">远山呜莫:</span><br><span class="line">就是说tcp保证在ip层不会被切片的意思？</span><br><span class="line"></span><br><span class="line">duduSmida:</span><br><span class="line">网络链路中有些节点的mtu如果特别小怎么办 </span><br><span class="line"></span><br><span class="line">小林:</span><br><span class="line">如果ip包头设置了不允许切片，那传到mtu特别小的节点后，该节点就会回icmp报文，如果ip包头设置了允许切片，那传到mtu特别小的节点后，就自然分片，由下一个节点的ip组装成报文。</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="IP"><a href="#IP" class="headerlink" title="IP"></a>IP</h1><ul>
+<li>ARP：Address Resolution Protocol      地址解析协议。由IP知MAC<ul>
+<li>它是将32bit的IP地址解析成48bit的MAC地址。当一台机器向另外一台机器发生数据时，需要知道对端网卡的硬件地址(48 bit的MAC地址)，才能将数据在硬件之间进行交互</li>
+</ul>
+</li>
+<li>RARP：Reserve Address Resolution Protocol 逆地址解析协议 由MAX请求IP分配<ul>
+<li>反向地址转换协议就是将 局域网中某个 主机的 物理地址转换为 IP地址</li>
+</ul>
+</li>
+<li>DHCP：dynamic host configuration protocol 动态主机配置协议<ul>
+<li>为客户端动态获取IP地址</li>
+</ul>
+</li>
+</ul>
+<p>路由器不会转发广播包<br>广播包只会在一个局域网内广播</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">受限的广播地址：255.255.255.255。</span><br><span class="line"></span><br><span class="line">该地址用于主机配置过程中IP数据报的目的地址。</span><br><span class="line"></span><br><span class="line">此时，主机可能还不知道它所在网络的网络掩码，甚至连它的IP地址也不知道。在任何情况下，路由器都不转发目的地址为受限的广播地址的数据报，这样的数据报仅出现在本地网络中。</span><br><span class="line">  </span><br><span class="line">255.255.255.255255.255.255.255是一个特殊的广播地址，意味着所有的主机，</span><br><span class="line">有同学会好奇地问，是否是指互联网上所有主机？</span><br><span class="line">No！因为255.255.255.255传播范围非常有限，</span><br><span class="line">到了广播域的边界（网关）会自动终结，</span><br><span class="line">如果把广播比作谣言，那么网关是什么呢？“谣言止于智者”中的智者！</span><br></pre></td></tr></table></figure>
+
+
+<p>C10问题</p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/267097519">https://www.zhihu.com/question/267097519</a></p>
+<p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/134312674">路由器科普</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/381339068/answer/1109050175">ip是否可以告诉别人</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/20210025">TCP 没有粘包！</a><br><img src="/2022/02/22/TCP/2022-03-21-16-02-04.png"></p>
+<ul>
+<li>面向连接就是中的连接就是三次握手！三次握手就叫连接。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E5%9F%BA%E7%A1%80/" rel="tag"># 计算机基础</a>
+              <a href="/tags/%E6%9D%82%E8%AE%B0/" rel="tag"># 杂记</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/12/07/Linux-socket/" rel="prev" title="Linux-socket">
+      <i class="fa fa-chevron-left"></i> Linux-socket
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/03/01/c++_%E9%9A%8F%E7%AC%94/" rel="next" title="C++_随笔">
+      C++_随笔 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP%E5%9F%BA%E6%9C%AC%E8%AE%A4%E8%AF%86"><span class="nav-number">1.</span> <span class="nav-text">TCP基本认识</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP%E5%BB%BA%E7%AB%8B%E8%BF%9E%E6%8E%A5"><span class="nav-number">2.</span> <span class="nav-text">TCP建立连接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%EF%BC%9F%EF%BC%88%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E8%AE%A9%E5%8F%8C%E6%96%B9%E5%85%B7%E6%9C%89%E6%8E%A5%E6%94%B6%E5%8F%91%E9%80%81%E7%9A%84%E8%83%BD%E5%8A%9B%EF%BC%8C%E9%82%A3%E4%B9%88%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E6%89%8D%E5%8F%AF%E4%BB%A5%E5%88%9D%E5%A7%8B%E5%8C%96socket%EF%BC%8C%E5%BA%8F%E5%88%97%E5%8F%B7%EF%BC%8C%E7%AA%97%E5%8F%A3%E5%A4%A7%E5%B0%8F%E5%B9%B6%E5%BB%BA%E7%AB%8BTCP%E8%BF%9E%E6%8E%A5%EF%BC%9F%EF%BC%89"><span class="nav-number">2.1.</span> <span class="nav-text">为什么三次握手？（三次握手让双方具有接收发送的能力，那么为什么三次握手才可以初始化socket，序列号，窗口大小并建立TCP连接？）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">2.2.</span> <span class="nav-text">小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%92%8C%E6%9C%8D%E5%8A%A1%E7%AB%AF%E7%9A%84%E5%88%9D%E5%A7%8B%E5%BA%8F%E5%88%97%E5%8F%B7-ISN-%E6%98%AF%E4%B8%8D%E7%9B%B8%E5%90%8C%E7%9A%84%EF%BC%9F%EF%BC%9F%EF%BC%9F%EF%BC%9F"><span class="nav-number">2.3.</span> <span class="nav-text">为什么客户端和服务端的初始序列号 ISN 是不相同的？？？？??</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A2%E7%84%B6-IP-%E5%B1%82%E4%BC%9A%E5%88%86%E2%BD%9A%EF%BC%8C%E4%B8%BA%E4%BB%80%E4%B9%88-TCP-%E5%B1%82%E8%BF%98%E9%9C%80%E8%A6%81-MSS-%E5%91%A2%EF%BC%9F"><span class="nav-number">2.4.</span> <span class="nav-text">既然 IP 层会分⽚，为什么 TCP 层还需要 MSS 呢？??</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8Eping"><span class="nav-number">2.5.</span> <span class="nav-text">关于ping</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#curl%E5%91%BD%E4%BB%A4"><span class="nav-number">2.6.</span> <span class="nav-text">curl命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP%E7%B2%98%E5%8C%85"><span class="nav-number">2.7.</span> <span class="nav-text">TCP粘包</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#IP"><span class="nav-number">3.</span> <span class="nav-text">IP</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">小窝</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">28</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
