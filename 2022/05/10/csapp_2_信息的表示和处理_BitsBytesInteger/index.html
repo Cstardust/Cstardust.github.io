@@ -20,12 +20,12 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="整形补码和无符号数关系 补码和无符号数关系 无符号数和有符号数并列。 有符号数 的一种表示形式是 补码   转化(位数为[w-1,0]) 补码 -&gt; 无符号 T2U(x) &#x3D; x + 2^w   (x&lt;0) T2U(x) &#x3D; x         (x&gt;&#x3D;0)   无符号 -&gt; 补码 U2T(u) &#x3D; u (u&lt;&#x3D;TMax) U2T(u) &#x3D; u-2^w (u&gt;T">
+  <meta name="description" content="无符号数、有符号数（补码）浮点型、IEEE">
 <meta property="og:type" content="article">
 <meta property="og:title" content="CSAPP_2_信息的表示和处理">
 <meta property="og:url" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/index.html">
 <meta property="og:site_name" content="不落辰">
-<meta property="og:description" content="整形补码和无符号数关系 补码和无符号数关系 无符号数和有符号数并列。 有符号数 的一种表示形式是 补码   转化(位数为[w-1,0]) 补码 -&gt; 无符号 T2U(x) &#x3D; x + 2^w   (x&lt;0) T2U(x) &#x3D; x         (x&gt;&#x3D;0)   无符号 -&gt; 补码 U2T(u) &#x3D; u (u&lt;&#x3D;TMax) U2T(u) &#x3D; u-2^w (u&gt;T">
+<meta property="og:description" content="无符号数、有符号数（补码）浮点型、IEEE">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-18-09-28-30.png">
 <meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-20-09-42-42.png">
@@ -46,7 +46,7 @@
 <meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-51.png">
 <meta property="og:image" content="http://example.com/2022/05/10/csapp_2_%E4%BF%A1%E6%81%AF%E7%9A%84%E8%A1%A8%E7%A4%BA%E5%92%8C%E5%A4%84%E7%90%86_BitsBytesInteger/2022-05-23-09-17-58.png">
 <meta property="article:published_time" content="2022-05-10T08:40:13.000Z">
-<meta property="article:modified_time" content="2022-05-28T14:10:58.958Z">
+<meta property="article:modified_time" content="2022-05-29T11:17:56.938Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="计算机基础">
 <meta property="article:tag" content="CSAPP">
@@ -224,7 +224,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-28 22:10:58" itemprop="dateModified" datetime="2022-05-28T22:10:58+08:00">2022-05-28</time>
+                <time title="修改时间：2022-05-29 19:17:56" itemprop="dateModified" datetime="2022-05-29T19:17:56+08:00">2022-05-29</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -256,7 +256,7 @@
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>11 分钟</span>
+              <span>12 分钟</span>
             </span>
 
         </div>
@@ -268,7 +268,10 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="整形"><a href="#整形" class="headerlink" title="整形"></a>整形</h1><h2 id="补码和无符号数"><a href="#补码和无符号数" class="headerlink" title="补码和无符号数"></a>补码和无符号数</h2><h3 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h3><ul>
+        <p>无符号数、有符号数（补码）<br>浮点型、IEEE</p>
+<span id="more"></span>
+
+<h1 id="整形"><a href="#整形" class="headerlink" title="整形"></a>整形</h1><h2 id="补码和无符号数"><a href="#补码和无符号数" class="headerlink" title="补码和无符号数"></a>补码和无符号数</h2><h3 id="关系"><a href="#关系" class="headerlink" title="关系"></a>关系</h3><ul>
 <li>补码和无符号数关系<ul>
 <li>无符号数和有符号数并列。</li>
 <li>有符号数 的一种表示形式是 补码</li>

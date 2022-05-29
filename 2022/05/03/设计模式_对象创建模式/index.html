@@ -20,12 +20,12 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="对象创建模式 通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。 典型模式 Factory Method Abstract Factory Prototype Builder    简单工厂 简单工厂 Simple Factory :  把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建">
+  <meta name="description" content="对象创建模式：工厂模式、单例模式、原型模式">
 <meta property="og:type" content="article">
 <meta property="og:title" content="对象创建模式">
 <meta property="og:url" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/index.html">
 <meta property="og:site_name" content="不落辰">
-<meta property="og:description" content="对象创建模式 通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。 典型模式 Factory Method Abstract Factory Prototype Builder    简单工厂 简单工厂 Simple Factory :  把对象的创建封装在一个接口函数里面，通过传入不同的标识，返回创建">
+<meta property="og:description" content="对象创建模式：工厂模式、单例模式、原型模式">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-16-59-29.png">
 <meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-03-20-17-13-24.png">
@@ -41,7 +41,7 @@
 <meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-47-05.png">
 <meta property="og:image" content="http://example.com/2022/05/03/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_%E5%AF%B9%E8%B1%A1%E5%88%9B%E5%BB%BA%E6%A8%A1%E5%BC%8F/2022-04-01-20-44-28.png">
 <meta property="article:published_time" content="2022-05-03T14:56:24.000Z">
-<meta property="article:modified_time" content="2022-05-28T14:54:47.681Z">
+<meta property="article:modified_time" content="2022-05-29T11:12:27.529Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="计算机基础">
 <meta name="twitter:card" content="summary">
@@ -217,7 +217,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-28 22:54:47" itemprop="dateModified" datetime="2022-05-28T22:54:47+08:00">2022-05-28</time>
+                <time title="修改时间：2022-05-29 19:12:27" itemprop="dateModified" datetime="2022-05-29T19:12:27+08:00">2022-05-29</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -261,7 +261,10 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="对象创建模式"><a href="#对象创建模式" class="headerlink" title="对象创建模式"></a>对象创建模式</h1><ul>
+        <p>对象创建模式：工厂模式、单例模式、原型模式</p>
+<span id="more"></span>
+
+<h1 id="对象创建模式"><a href="#对象创建模式" class="headerlink" title="对象创建模式"></a>对象创建模式</h1><ul>
 <li>通过“对象创建” 模式绕开new，来避免对象创建（new）过程中所导致的紧耦合（依赖具体类），从而支持对象创建的稳定。它是接口抽象之后的第一步工作。</li>
 <li>典型模式<ul>
 <li>Factory Method</li>
