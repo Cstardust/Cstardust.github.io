@@ -29,8 +29,9 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-26-12-11-00.png">
 <meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png">
 <meta property="article:published_time" content="2022-05-24T00:31:55.000Z">
-<meta property="article:modified_time" content="2022-05-29T11:21:42.161Z">
+<meta property="article:modified_time" content="2022-05-30T02:13:42.165Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="计算机基础">
 <meta property="article:tag" content="CSAPP">
@@ -183,7 +184,7 @@
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
       <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="小窝">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
@@ -208,7 +209,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-29 19:21:42" itemprop="dateModified" datetime="2022-05-29T19:21:42+08:00">2022-05-29</time>
+                <time title="修改时间：2022-05-30 10:13:42" itemprop="dateModified" datetime="2022-05-30T10:13:42+08:00">2022-05-30</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -233,7 +234,7 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.3k</span>
+              <span>3.8k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
@@ -307,7 +308,7 @@
 <li>操作%eax就是操作%rax的低32位</li>
 </ul>
 </li>
-<li>另一特殊寄存器%rip：instruction pointer。包含当前执行指令的地址。不是我们可以正常访问的寄存器，它只是告诉我们程序执行到了哪里。<h3 id="操作数-Operand"><a href="#操作数-Operand" class="headerlink" title="操作数(Operand)"></a>操作数(Operand)</h3></li>
+<li>另一特殊寄存器%rip：instruction pointer。包含当前执行指令的地址。不是我们可以正常访问的寄存器（但也有一些技巧可以获得），它只是告诉我们程序执行到了哪里。<h3 id="操作数-Operand"><a href="#操作数-Operand" class="headerlink" title="操作数(Operand)"></a>操作数(Operand)</h3></li>
 <li>立即数（immediate）<ul>
 <li>Example：$0400,$-533</li>
 <li>Like C constant ,but prefixed with $</li>
@@ -327,7 +328,8 @@
 </li>
 </ul>
 <h3 id="经典指令"><a href="#经典指令" class="headerlink" title="经典指令"></a>经典指令</h3><ul>
-<li>mov指令<ul>
+<li><p>mov指令</p>
+<ul>
 <li>mov的src和dst顺序<ul>
 <li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/2397528/">https://stackoverflow.com/questions/2397528/</a></li>
 <li>mov dest, src称为 Intel syntax 。 (例如mov eax, 123)</li>
@@ -338,13 +340,17 @@
 <li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png"></li>
 </ul>
 </li>
-<li>机器不允许直接将数据从一个内存位置复制到另一个内存位置。需要使用两个指令。<ul>
+<li><p>机器不允许直接将数据从一个内存位置复制到另一个内存位置。需要使用两个指令。</p>
+<ul>
 <li>先将内存的值移到寄存器中</li>
 <li>再将寄存器中的值移到内存中</li>
 </ul>
 </li>
-</ul>
+<li><p>understanding swap</p>
 <ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png"></li>
+</ul>
+</li>
 <li><p>小问题：movq、leaq、addq、subq…中的q是什么？quad word（Intel术语）：4字=8Bytes=64位</p>
 </li>
 <li><p>addq,subq,imulq,salq，sarq,shrq,xorq,andq,orq等，都是src在前，dest在后。</p>
@@ -386,7 +392,7 @@
 </ul>
 <ul>
 <li>lea指令：load effective address。将src表达的地址值赋值给Dst<ul>
-<li>leaq Src Dst<ul>
+<li>leaq Src Dst（AT&amp;T syntax）<ul>
 <li>src is address mode expression</li>
 <li>set dest to address denoted by expression</li>
 </ul>
@@ -396,15 +402,14 @@
 <li>计算数值 x + k*y</li>
 </ul>
 </li>
-<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">func</span><span class="params">(<span class="keyword">long</span> x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> x*<span class="number">12</span>;    </span><br><span class="line">  <span class="comment">// convert to asm by complier</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rdi,<span class="number">2</span>) , %rax  ：%rax = reg[%rdi]+reg[%rdi]*<span class="number">2</span> = <span class="number">3</span> * %rdi</span><br><span class="line">  salq $<span class="number">2</span> , %rax             ：%rax &lt;&lt; <span class="number">2</span> = %rax * <span class="number">4</span> = <span class="number">12</span> &amp; %rdi</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">func</span><span class="params">(<span class="keyword">long</span> x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> x*<span class="number">12</span>;    </span><br><span class="line">  <span class="comment">// convert to asm by complier</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rdi,<span class="number">2</span>),%rax  ：%rax = reg[%rdi]+reg[%rdi]*<span class="number">2</span> = <span class="number">3</span> * %rdi</span><br><span class="line">  salq $<span class="number">2</span> , %rax             ：%rax &lt;&lt; <span class="number">2</span> = %rax * <span class="number">4</span> = <span class="number">12</span> &amp; %rdi</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 </ul>
 </li>
 </ul>
 <ul>
 <li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">arith</span><span class="params">(<span class="keyword">long</span> x,<span class="keyword">long</span> y,<span class="keyword">long</span> z)</span></span></span><br><span class="line"><span class="function"></span>&#123;  </span><br><span class="line">  <span class="keyword">long</span> t1 = x+y;    t1 ：</span><br><span class="line">  <span class="keyword">long</span> t2 = z+t1;   t2 ：</span><br><span class="line">  <span class="keyword">long</span> t3 = x+<span class="number">4</span>;    </span><br><span class="line">  <span class="keyword">long</span> t4 = y*<span class="number">48</span>;</span><br><span class="line">  <span class="keyword">long</span> t5 = t3+t4;</span><br><span class="line">  <span class="keyword">long</span> rval = t2*t5;</span><br><span class="line">  <span class="keyword">return</span> rval;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">arith：</span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rsi),%rax     ---&gt; %rax = %rdi+%rsi   <span class="comment">//  t1</span></span><br><span class="line">  addq %rdx,%rax            ---&gt; %rax += %rdx       <span class="comment">//  t2</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rsi,%rsi,<span class="number">2</span>),%rdx   ---&gt; %rdx = <span class="number">2</span>*rsi + %rsi = <span class="number">3</span>*%rsi   </span><br><span class="line">  salq $<span class="number">4</span> , %rdx            ---&gt; %rdx &lt;&lt;= <span class="number">4</span>         <span class="comment">//  t4</span></span><br><span class="line">  leaq <span class="number">4</span>(%rdi,%rdx),%rcx    ---&gt; %rcx = %rdx + %rdi + <span class="number">4</span> <span class="comment">//  t5   t3 = %rdi + 4</span></span><br><span class="line">  imulq %rdx,%rax           ---&gt; %rax = %rax * %rcx <span class="comment">// rval</span></span><br><span class="line">  ret       </span><br><span class="line"></span><br><span class="line">%rdi x</span><br><span class="line">%rsi y</span><br><span class="line">%rax t1 t2 val</span><br><span class="line">%rdx t4</span><br></pre></td></tr></table></figure></li>
 </ul>
-<h1 id="Control"><a href="#Control" class="headerlink" title="Control"></a>Control</h1><ul>
-<li>与程序运行状态相关的信息</li>
+<h1 id="Control"><a href="#Control" class="headerlink" title="Control"></a>Control</h1><h2 id="information-about-currently-executing-program"><a href="#information-about-currently-executing-program" class="headerlink" title="information about currently executing program"></a>information about currently executing program</h2><ul>
 <li>temproary data（临时量）：<ul>
 <li>%rax…</li>
 </ul>
@@ -423,7 +428,24 @@
 </ul>
 </li>
 </ul>
-
+<h3 id="Condition-Codes"><a href="#Condition-Codes" class="headerlink" title="Condition Codes"></a>Condition Codes</h3><h4 id="Implicitly-Setting"><a href="#Implicitly-Setting" class="headerlink" title="Implicitly Setting"></a>Implicitly Setting</h4><ul>
+<li>Single bit register<ul>
+<li>CF：Carry Flag（for unisgned）（carry：进位）</li>
+<li>ZF：Zero Flag</li>
+<li>SF：Sign Flag（for signed）</li>
+<li>OF：Overflow Flag（for signed）</li>
+</ul>
+</li>
+<li>他们在算数过程中是如何被设置的？如 addq Src,Dest &lt;-&gt; t=a+b。他们的设置可以被认为是算数运算的副作用。<ul>
+<li>CF：unsigned 溢出(au bu 并且 t溢出)</li>
+<li>ZF：t=0</li>
+<li>SF：t&lt;0（signed）</li>
+<li>OF：signed（补码）溢出：<code>a&gt;0&amp;&amp;b&gt;0&amp;&amp;t&lt;0 || a&lt;0&amp;&amp;b&lt;0&amp;&amp;t&gt;0</code></li>
+</ul>
+</li>
+<li>lea指令不会设置这些标志位</li>
+</ul>
+<h4 id="Explicitly-Setting-Compare"><a href="#Explicitly-Setting-Compare" class="headerlink" title="Explicitly Setting: Compare"></a>Explicitly Setting: Compare</h4>
     </div>
 
     
@@ -509,14 +531,14 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Basic"><span class="nav-number">1.</span> <span class="nav-text">Basic</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AF%E8%AF%AD"><span class="nav-number">1.1.</span> <span class="nav-text">术语</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#x86%E5%B8%B8%E8%AF%86"><span class="nav-number">1.2.</span> <span class="nav-text">x86常识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8D%E6%B1%87%E7%BC%96"><span class="nav-number">1.2.1.</span> <span class="nav-text">反汇编</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8-Register"><span class="nav-number">1.2.2.</span> <span class="nav-text">寄存器(Register)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E6%95%B0-Operand"><span class="nav-number">1.2.3.</span> <span class="nav-text">操作数(Operand)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%8F%E5%85%B8%E6%8C%87%E4%BB%A4"><span class="nav-number">1.2.4.</span> <span class="nav-text">经典指令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Control"><span class="nav-number">2.</span> <span class="nav-text">Control</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Basic"><span class="nav-number">1.</span> <span class="nav-text">Basic</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AF%E8%AF%AD"><span class="nav-number">1.1.</span> <span class="nav-text">术语</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#x86%E5%B8%B8%E8%AF%86"><span class="nav-number">1.2.</span> <span class="nav-text">x86常识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8D%E6%B1%87%E7%BC%96"><span class="nav-number">1.2.1.</span> <span class="nav-text">反汇编</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8-Register"><span class="nav-number">1.2.2.</span> <span class="nav-text">寄存器(Register)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E6%95%B0-Operand"><span class="nav-number">1.2.3.</span> <span class="nav-text">操作数(Operand)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%8F%E5%85%B8%E6%8C%87%E4%BB%A4"><span class="nav-number">1.2.4.</span> <span class="nav-text">经典指令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Control"><span class="nav-number">2.</span> <span class="nav-text">Control</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#information-about-currently-executing-program"><span class="nav-number">2.1.</span> <span class="nav-text">information about currently executing program</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Condition-Codes"><span class="nav-number">2.1.1.</span> <span class="nav-text">Condition Codes</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Implicitly-Setting"><span class="nav-number">2.1.1.1.</span> <span class="nav-text">Implicitly Setting</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Explicitly-Setting-Compare"><span class="nav-number">2.1.1.2.</span> <span class="nav-text">Explicitly Setting: Compare</span></a></li></ol></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
       <div class="site-overview-wrap sidebar-panel">
         <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
   <p class="site-author-name" itemprop="name">Cstardust</p>
-  <div class="site-description" itemprop="description">小窝</div>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
 </div>
 <div class="site-state-wrap motion-element">
   <nav class="site-state">
@@ -573,7 +595,7 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">554k</span>
+    <span title="站点总字数">555k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
