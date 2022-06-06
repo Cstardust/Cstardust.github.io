@@ -20,24 +20,64 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
-  <meta name="description" content="Basic术语 architecture（计算机的体系结构，架构） also ISA：instruction set architecture 指令集架构 当我们谈论指令和指令集，这是编译器的目标，为你提供一系列指令，告诉机器确切第做了什么 事实证明，关于指令如何实现，硬件的实现者已经想好了。有的速度快，需要很多硬件；有的速度慢，但需要很少的硬件。 所以，人们创建了instruction set">
+  <meta name="description" content="Basic x86-64常识以及基本指令Control 条件码相关、循环、跳转表">
 <meta property="og:type" content="article">
 <meta property="og:title" content="CSAPP_3_程序的机器级表示">
 <meta property="og:url" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/index.html">
 <meta property="og:site_name" content="不落辰">
-<meta property="og:description" content="Basic术语 architecture（计算机的体系结构，架构） also ISA：instruction set architecture 指令集架构 当我们谈论指令和指令集，这是编译器的目标，为你提供一系列指令，告诉机器确切第做了什么 事实证明，关于指令如何实现，硬件的实现者已经想好了。有的速度快，需要很多硬件；有的速度慢，但需要很少的硬件。 所以，人们创建了instruction set">
+<meta property="og:description" content="Basic x86-64常识以及基本指令Control 条件码相关、循环、跳转表">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-26-12-11-00.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-43-35.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-15-44-54.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-11-45-13.png">
 <meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png">
 <meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-28-33.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-32-37.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-32-48.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-14-31-20.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-13-58-45.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-45-18.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-20-47-55.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-42-37.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-29-03.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-43-55.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-18-01-14.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-18-04-22.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-16-27-09.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-16-32-31.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-13-25-41.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-18-19-36.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-18-43-20.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-19-56-49.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-19-58-08.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-20-17-53.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-49-45.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-12.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-21.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-44.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-14.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-42.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-56.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-52-33.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-52-48.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-16-08.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-25-28.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-34-23.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-16-38-11.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-16-54-28.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-24.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-30.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-42.png">
+<meta property="og:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-47.png">
 <meta property="article:published_time" content="2022-05-24T00:31:55.000Z">
-<meta property="article:modified_time" content="2022-05-30T02:13:42.165Z">
+<meta property="article:modified_time" content="2022-06-06T15:09:13.765Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="计算机基础">
 <meta property="article:tag" content="CSAPP">
 <meta property="article:tag" content="学习笔记">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-26-12-11-00.png">
+<meta name="twitter:image" content="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-43-35.png">
 
 <link rel="canonical" href="http://example.com/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/">
 
@@ -209,7 +249,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-30 10:13:42" itemprop="dateModified" datetime="2022-05-30T10:13:42+08:00">2022-05-30</time>
+                <time title="修改时间：2022-06-06 23:09:13" itemprop="dateModified" datetime="2022-06-06T23:09:13+08:00">2022-06-06</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -234,14 +274,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.8k</span>
+              <span>13k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
+              <span>12 分钟</span>
             </span>
 
         </div>
@@ -253,7 +293,9 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="Basic"><a href="#Basic" class="headerlink" title="Basic"></a>Basic</h1><h2 id="术语"><a href="#术语" class="headerlink" title="术语"></a>术语</h2><ul>
+        <p>Basic x86-64常识以及基本指令<br>Control 条件码相关、循环、跳转表</p>
+<span id="more"></span>
+<h1 id="Basic"><a href="#Basic" class="headerlink" title="Basic"></a>Basic</h1><h2 id="抽象"><a href="#抽象" class="headerlink" title="抽象"></a>抽象</h2><h3 id="指令集架构：ISA"><a href="#指令集架构：ISA" class="headerlink" title="指令集架构：ISA"></a>指令集架构：ISA</h3><ul>
 <li>architecture（计算机的体系结构，架构）<ul>
 <li>also ISA：instruction set architecture 指令集架构</li>
 <li>当我们谈论指令和指令集，这是编译器的目标，为你提供一系列指令，告诉机器确切第做了什么</li>
@@ -263,16 +305,18 @@
 <li>如何最好的实现他是硬件研究者需要负责的</li>
 </ul>
 </li>
+<li>处理器实际执行指令是并发执行的，但可以采取措施保证整体行为与ISA指定的顺序执行的行为完全一致。<h3 id="虚拟地址"><a href="#虚拟地址" class="headerlink" title="虚拟地址"></a>虚拟地址</h3></li>
 </ul>
 </li>
+<li>机器级变成使用多个内存地址是虚拟地址，提供的内存模型看上去是一个非常大的字节数组。</li>
+<li>程序用虚拟地址寻址，操作系统负责管理虚拟地址空间，将虚拟地址翻译成实际处理器内存的物理地址</li>
 </ul>
 <p>text c program —Complier—-&gt; text 汇编asm program —–Assembler—–&gt; binary 文本表示的指令转化成了实际的字节object program ——linker—–&gt; binary executable program</p>
-<h2 id="x86常识"><a href="#x86常识" class="headerlink" title="x86常识"></a>x86常识</h2><h3 id="反汇编"><a href="#反汇编" class="headerlink" title="反汇编"></a>反汇编</h3><ul>
+<h2 id="x86-64常识"><a href="#x86-64常识" class="headerlink" title="x86-64常识"></a>x86-64常识</h2><h3 id="反汇编"><a href="#反汇编" class="headerlink" title="反汇编"></a>反汇编</h3><ul>
 <li><p>汇编中</p>
 <ul>
 <li>%开头 代表寄存器的实际名称</li>
-<li>句点.开头，表示他们事实上不是指令而是一些别的东西</li>
-<li>他们与一些被需要的东西有关， <ul>
+<li>句点.开头，表示他们事实上不是实际指令，而是直到汇编器和链接器工作的伪指令。<ul>
 <li>一些信息提供给调试器，使它能够定位程序的各个部分</li>
 <li>一些信息提供给链接器，告诉他这是一个全局定义的函数</li>
 <li>还有很多其他信息，在一开始的时候不需要考虑他们太多，因此先删掉 </li>
@@ -280,35 +324,70 @@
 </li>
 </ul>
 </li>
-<li><p>gcc -Og -S sum.c</p>
+<li><p>例子</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/code/csapp_try$ ll</span><br><span class="line">总用量 36</span><br><span class="line">drwxrwxr-x  2 shc shc 4096 5月  31 20:36 ./</span><br><span class="line">drwxr-xr-x 20 shc shc 4096 5月  31 19:43 ../</span><br><span class="line">-rw-rw-r--  1 shc shc  194 5月  31 20:36 main.c</span><br><span class="line">-rw-rw-r--  1 shc shc  102 5月  31 19:46 mstore.c</span><br><span class="line">-rw-rw-r--  1 shc shc 1400 5月  31 20:01 mstore.o</span><br><span class="line">-rw-rw-r--  1 shc shc  393 5月  31 19:46 mstore.s</span><br><span class="line">-rwxrwxr-x  1 shc shc 8456 5月  31 20:36 prog*</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>gcc -Og -S mstore.c</strong></p>
 <ul>
 <li>O : Optimize 优化</li>
-<li>S : stop 只做第一阶段的事情</li>
+<li>mstore.c-&gt;mstore.s：c语言编译器产生汇编代码<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/csapp_try$ cat mstore.s</span><br><span class="line">  .file	<span class="string">&quot;mstore.c&quot;</span></span><br><span class="line">  .text</span><br><span class="line">  .globl	multstore</span><br><span class="line">  .type	multstore, @function</span><br><span class="line">multstore:</span><br><span class="line">.LFB0:</span><br><span class="line">  .cfi_startproc</span><br><span class="line">  pushq	%rbx</span><br><span class="line">  .cfi_def_cfa_offset <span class="number">16</span></span><br><span class="line">  .cfi_offset <span class="number">3</span>, <span class="number">-16</span></span><br><span class="line">  movq	%rdx, %rbx</span><br><span class="line">  call	mult2@PLT</span><br><span class="line">  movq	%rax, (%rbx)</span><br><span class="line">  popq	%rbx</span><br><span class="line">  .cfi_def_cfa_offset <span class="number">8</span></span><br><span class="line">  ret</span><br><span class="line">  .cfi_endproc</span><br><span class="line">.LFE0:</span><br><span class="line">  .size	multstore, .-multstore</span><br><span class="line">  .ident	<span class="string">&quot;GCC: (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0&quot;</span></span><br><span class="line">  .section	.note.GNU-stack,<span class="string">&quot;&quot;</span>,@progbits</span><br></pre></td></tr></table></figure></li>
 </ul>
 </li>
-<li><p>objdump 会输出代码反汇编的结果。</p>
+<li><p><strong>gcc -Og -c mstore.c</strong></p>
 <ul>
-<li>objdump -d</li>
+<li>mstore.c-&gt;mstore.o。gcc编译并汇编，生成目标代码文件（机器代码文件）。二进制格式，无法vim直接查看</li>
+<li><strong>gdb查看.o文件</strong><ul>
+<li><strong>disassemble 函数名</strong>：查看函数二进制代码<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/csapp_try$ gdb mstore.o</span><br><span class="line">...</span><br><span class="line">For help, type <span class="string">&quot;help&quot;</span>.</span><br><span class="line">Type <span class="string">&quot;apropos word&quot;</span> to search <span class="keyword">for</span> commands related to <span class="string">&quot;word&quot;</span>...</span><br><span class="line">Reading symbols from mstore.o...(no debugging symbols found)...done.</span><br><span class="line">(gdb) disassemble multstore</span><br><span class="line">Dump of assembler code <span class="keyword">for</span> function multstore:</span><br><span class="line">  <span class="number">0x0000000000000000</span> &lt;+<span class="number">0</span>&gt;:	push   %rbx</span><br><span class="line">  <span class="number">0x0000000000000001</span> &lt;+<span class="number">1</span>&gt;:	mov    %rdx,%rbx</span><br><span class="line">  <span class="number">0x0000000000000004</span> &lt;+<span class="number">4</span>&gt;:	callq  <span class="number">0x9</span> &lt;multstore+<span class="number">9</span>&gt;</span><br><span class="line">  <span class="number">0x0000000000000009</span> &lt;+<span class="number">9</span>&gt;:	mov    %rax,(%rbx)</span><br><span class="line">  <span class="number">0x000000000000000c</span> &lt;+<span class="number">12</span>&gt;:	pop    %rbx</span><br><span class="line">  <span class="number">0x000000000000000d</span> &lt;+<span class="number">13</span>&gt;:	retq   </span><br><span class="line">End of assembler dump.</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>反汇编器：objdump</strong></p>
+<ul>
+<li><strong>objdump -d mstore.o</strong><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/csapp_try$ objdump -d mstore.o</span><br><span class="line"></span><br><span class="line">mstore.o：     文件格式 elf64-x86<span class="number">-64</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Disassembly of section .text:</span><br><span class="line"></span><br><span class="line"><span class="number">0000000000000000</span> &lt;multstore&gt;:</span><br><span class="line">  <span class="number">0</span>:	<span class="number">53</span>                   	push   %rbx</span><br><span class="line">  <span class="number">1</span>:	<span class="number">48</span> <span class="number">89</span> d3             	mov    %rdx,%rbx</span><br><span class="line">  <span class="number">4</span>:	e8 <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>       	callq  <span class="number">9</span> &lt;multstore+<span class="number">0x9</span>&gt;</span><br><span class="line">  <span class="number">9</span>:	<span class="number">48</span> <span class="number">89</span> <span class="number">03</span>             	mov    %rax,(%rbx)</span><br><span class="line">  c:	<span class="number">5b</span>                   	pop    %rbx</span><br><span class="line">  d:	c3                   	retq   </span><br></pre></td></tr></table></figure></li>
+<li><strong>机器代码.o及其反汇编表示的特性</strong><ul>
+<li>x86-64的指令长度为1~15字节</li>
+<li>设计指令格式方式：从某个给定位置开始，可以唯一的将字节解码成机器指令。</li>
 <li>反汇编程序无法访问源代码，甚至无法访问汇编代码，他只是通过实际代码文件中的字节辨别出来的。</li>
+<li>反汇编器使用的指令命名规则与gcc生成的汇编代码使用的有细微差别。反汇编器可能省略指令结尾的后缀q（大小指示符）　　　　　</li>
 </ul>
 </li>
-<li><p>gdb</p>
+</ul>
+</li>
+</ul>
 <ul>
-<li>disassemble 函数名：查看函数二进制代码</li>
+<li><strong>gcc -Og -o prog main.c store.c</strong><ul>
+<li>链接：对一组目标代码文件运行链接器。</li>
+<li>prog 比.o大，因为还包含了启动和终止程序的代码。</li>
+<li><strong>objdump -d prog。可执行文件也可以进行反汇编。</strong><ul>
+<li><strong>与机器代码文件mstore.o反汇编的代码几乎完全一样。但也有不同点</strong>：<ul>
+<li><strong>重定位</strong>：链接器将这段代码地址移到了一段不同的地址范围中。</li>
+<li>链接器填上了mult2的地址：<strong>链接器的任务之一就是为函数调用找到匹配的函数的可执行代码的位置。</strong></li>
+<li>多行nop。（为了让下一个函数的地址是16的倍数？）存储性能高。　<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="number">0000000000000739</span> &lt;mult2&gt;:</span><br><span class="line"><span class="number">739</span>:	<span class="number">48</span> <span class="number">89</span> f8             	mov    %rdi,%rax</span><br><span class="line"><span class="number">73</span>c:	<span class="number">48</span> <span class="number">0f</span> af c6          	imul   %rsi,%rax</span><br><span class="line"><span class="number">740</span>:	c3                   	retq   </span><br><span class="line"></span><br><span class="line"><span class="number">0000000000000741</span> &lt;multstore&gt;:</span><br><span class="line"><span class="number">741</span>:	<span class="number">53</span>                   	push   %rbx</span><br><span class="line"><span class="number">742</span>:	<span class="number">48</span> <span class="number">89</span> d3             	mov    %rdx,%rbx</span><br><span class="line"><span class="number">745</span>:	e8 ef ff ff ff       	callq  <span class="number">739</span> &lt;mult2&gt;</span><br><span class="line"><span class="number">74</span>a:	<span class="number">48</span> <span class="number">89</span> <span class="number">03</span>             	mov    %rax,(%rbx)</span><br><span class="line"><span class="number">74</span>d:	<span class="number">5b</span>                   	pop    %rbx</span><br><span class="line"><span class="number">74</span>e:	c3                   	retq   </span><br><span class="line"><span class="number">74f</span>:	<span class="number">90</span>                   	nop</span><br><span class="line">...</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 <h3 id="寄存器-Register"><a href="#寄存器-Register" class="headerlink" title="寄存器(Register)"></a>寄存器(Register)</h3><ul>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-26-12-11-00.png"></li>
-<li>%rsp比较特殊，我们不能随意改变，因为这里面存的是栈指针，指向当前栈顶（stack top）</li>
-<li>左边一列是原先就有的，右边一列是新增的</li>
-<li>%rax和%eax的关系<ul>
-<li>%rax是64位寄存器</li>
-<li>%eax是32位寄存器</li>
-<li>操作%eax就是操作%rax的低32位</li>
+<li><strong>整数寄存器x86-64 Integer Register</strong><ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-43-35.png"></li>
+<li>有的用来存储地址/整数数据；有的记录某些重要的程序状态；有的用来保存临时数据（参数、局部变量、函数返回值）</li>
+<li><strong>%rsp</strong>比较特殊，我们不能随意改变，因为这里面存的是栈指针，指向当前栈顶（stack top）</li>
+<li>1word = 2bytes。quad word：4字、8bytes、64位。</li>
 </ul>
 </li>
-<li>另一特殊寄存器%rip：instruction pointer。包含当前执行指令的地址。不是我们可以正常访问的寄存器（但也有一些技巧可以获得），它只是告诉我们程序执行到了哪里。<h3 id="操作数-Operand"><a href="#操作数-Operand" class="headerlink" title="操作数(Operand)"></a>操作数(Operand)</h3></li>
+<li><strong>程序计数器</strong>：通常写作PC，x86-64中用%rip表示（instruction pointer）。给出将要执行的下一条指令再内存中的地址。不是我们可以正常访问的寄存器（但也有一些技巧可以获得），它只是告诉我们程序执行到了哪里。</li>
+<li><strong>条件码寄存器</strong>：保存最近执行的算术或者逻辑指令的状态信息。（用于实现if等条件控制语句）</li>
+<li>一组向量寄存器可以存放1或多个整数或浮点数值</li>
+<li>%rax和%eax和%ax的关系<ul>
+<li>%rax是64位寄存器</li>
+<li>%eax是32位寄存器</li>
+<li>%ax是16位寄存器</li>
+<li>操作%eax就是操作%rax的低32位；同理%ax<h3 id="操作数-Operand"><a href="#操作数-Operand" class="headerlink" title="操作数(Operand)"></a>操作数(Operand)</h3></li>
+</ul>
+</li>
 <li>立即数（immediate）<ul>
 <li>Example：$0400,$-533</li>
 <li>Like C constant ,but prefixed with $</li>
@@ -319,51 +398,42 @@
 <li>example：%rax，%r13</li>
 <li>but % rsp reserved for special use</li>
 <li>Others have special uses for particular instructions</li>
+<li>用ra表示任意寄存器a；R[ra]、Reg[ra]表示它存的值</li>
 </ul>
 </li>
-<li>内存（memory）:8 consecutive bytes of memory at address given by register<ul>
+<li>内存（memory）:x consecutive bytes of memory at address given by register<ul>
 <li>example：(%rax)</li>
 <li>various other “address mode”</li>
+<li>Mb[Addr]：表示对存储在内存中开始的b个字节值得引用，通常省略b。或者mem[addr]。（因此mem[reg[addr]] 就是用寄存器存储的值作为地址进行寻址）</li>
 </ul>
 </li>
 </ul>
-<h3 id="经典指令"><a href="#经典指令" class="headerlink" title="经典指令"></a>经典指令</h3><ul>
-<li><p>mov指令</p>
-<ul>
-<li>mov的src和dst顺序<ul>
-<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/2397528/">https://stackoverflow.com/questions/2397528/</a></li>
-<li>mov dest, src称为 Intel syntax 。 (例如mov eax, 123)</li>
-<li>mov src, dest称为 AT&amp;T syntax 。 (例如mov $123, %eax)</li>
-<li>包括GNU汇编器在内的UNIX汇编器使用AT＆T语法，所有其他x86汇编器都使用Intel语法</li>
+<h3 id="数据格式"><a href="#数据格式" class="headerlink" title="数据格式"></a>数据格式</h3><ul>
+<li><blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-15-44-54.png"></p>
+</blockquote>
+</li>
+<li>mov后缀 <ul>
+<li>movb：传送字节</li>
+<li>movw：传送字</li>
+<li>mobl：传送双字（long word 32位被称为长字）</li>
+<li>movq：传送四字</li>
+<li>1字 = 2bytes。1byte=8bit</li>
 </ul>
 </li>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png"></li>
 </ul>
+<h3 id="内存地址编码方式"><a href="#内存地址编码方式" class="headerlink" title="内存地址编码方式"></a>内存地址编码方式</h3><ul>
+<li><blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-11-45-13.png"></p>
+</blockquote>
 </li>
-<li><p>机器不允许直接将数据从一个内存位置复制到另一个内存位置。需要使用两个指令。</p>
-<ul>
-<li>先将内存的值移到寄存器中</li>
-<li>再将寄存器中的值移到内存中</li>
-</ul>
-</li>
-<li><p>understanding swap</p>
-<ul>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png"></li>
-</ul>
-</li>
-<li><p>小问题：movq、leaq、addq、subq…中的q是什么？quad word（Intel术语）：4字=8Bytes=64位</p>
-</li>
-<li><p>addq,subq,imulq,salq，sarq,shrq,xorq,andq,orq等，都是src在前，dest在后。</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">addq src dst  dst = dst + src</span><br><span class="line">subq src dst  dst = dst - src</span><br><span class="line">imulq src dst dst = dst * src</span><br><span class="line">salq src dst  dst = dst &lt;&lt; src</span><br><span class="line">sarq src dst  dst = dst &gt;&gt; src  <span class="comment">// 算数右移</span></span><br><span class="line">shrq src dst  dst = dst &gt;&gt; src  <span class="comment">// 逻辑右移</span></span><br><span class="line">xorq src dst  dst = dst ^ src</span><br><span class="line">andq src dst  dst = dst &amp; src</span><br><span class="line">orq  src dst  dst = dst | src  </span><br></pre></td></tr></table></figure></li>
-<li><p>内存地址编码方式</p>
-<ul>
 <li>Simple Memory addressing modes。<ul>
 <li>normal：(R)  —- mem[reg[R]]<ul>
 <li>寄存器R中存的就是内存地址</li>
 <li>movq (%rcx),%rax ：%rax = *(%rcx)</li>
 </ul>
 </li>
-<li>displacement：mem[reg[R]+D]<ul>
+<li>displacement：D(R) —- mem[reg[R]+D]<ul>
 <li>R中存储内存基地址，向高偏移D个Bytes，得到目标地址</li>
 <li>movq 8(%rbp),%rdx ：%rdx = *(%rbp+8)</li>
 </ul>
@@ -371,7 +441,7 @@
 </ul>
 </li>
 <li>Complete Memory Addressing Modes<ul>
-<li>most genernal form ：D(R) —- mem[reg[Rb] + S*reg[Rb] + D]<ul>
+<li>most genernal form ： D(Rb,Ri,S) —- mem[reg[Rb] + S*reg[Ri] + D]<ul>
 <li> 数组引用常见形式</li>
 <li>D：偏移量。1 / 2 / 4 Bytes</li>
 <li>Rb：该寄存器存储目标内存基地址   </li>
@@ -380,21 +450,100 @@
 </ul>
 </li>
 <li>special cases<ul>
-<li>(Rb,Ri) —- mem[reg[Rb]+reg[Ri]]。mem[寄存器] 就是寄存器存储的地址对应的存储单元的存储的值</li>
+<li>(Rb,Ri) —- mem[reg[Rb]+reg[Ri]]。</li>
 <li>D(Rb,Ri) —- mem[reg[Rb]+Reg[Ri]+D]</li>
 <li>(Rb,Ri,S) —- mem[reg[Rb]+S*reg[Ri]]</li>
 </ul>
 </li>
 </ul>
 </li>
+<li>附：<ul>
+<li>用ra表示任意寄存器a；R[ra]、Reg[ra]表示它存的值</li>
+<li>Mb[Addr] 表示对存储在内存中开始的b个字节值得引用。通常省略b</li>
+<li>基址寄存器rb和变址寄存器ri必须都是64位寄存器。（因为64位系统）</li>
+</ul>
+</li>
+</ul>
+<h3 id="指令类"><a href="#指令类" class="headerlink" title="指令类"></a>指令类</h3><ul>
+<li>在这些指令中，有很多负责和生成1、2、4、8字节值。当这些指令以寄存器为目标时，对于生成小于8字节结果的指令，寄存器中剩下的字节会怎么样。对此有如下规则<ul>
+<li>生成1byte和2bytes的指令会保持剩下的高位字节不变。</li>
+<li>生成4bytes的指令会把高位4个bytes置为0。</li>
+</ul>
+</li>
+</ul>
+<h4 id="ATT与Intel区别"><a href="#ATT与Intel区别" class="headerlink" title="ATT与Intel区别"></a>ATT与Intel区别</h4><ul>
+<li>ATT与Intel格式区别（终于解决了我之前看学c++时看反汇编的迷惑）<ul>
+<li>ATT：用于gcc、objdump</li>
+<li>Intel：用于微软、Intel</li>
+<li>Intel代码省略指示大小的后缀q。（ATT：pushq；Intel：push）</li>
+<li>Intel代码省略寄存器名字前面的%。（ATT：%eax；Intel：eax）</li>
+<li>二者用不同方式描述内存位置<ul>
+<li>ATT：(%rbx) 使用%rbx寄存中的内容作为addr去寻址</li>
+<li>Intel：QWORD PTR [rbx]</li>
+</ul>
+</li>
+<li>多操作数时，顺序相反。</li>
+</ul>
+</li>
+</ul>
+<h4 id="MOV类：数据传送指令"><a href="#MOV类：数据传送指令" class="headerlink" title="MOV类：数据传送指令"></a>MOV类：数据传送指令</h4><ul>
+<li>mov的src和dst<ul>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/2397528/">https://stackoverflow.com/questions/2397528/</a></li>
+<li>mov dest, src称为 Intel syntax 。 (例如mov eax, 123)</li>
+<li>mov src, dest称为 AT&amp;T syntax 。 (例如mov $123, %eax)</li>
+<li>包括GNU汇编器在内的UNIX汇编器使用AT＆T语法，所有其他x86汇编器都使用Intel语法</li>
+<li>mov指令的两个操作数src和dst必须同样大小（没使用movz类和movs类时）</li>
+<li><blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>机器不允许直接将数据从一个内存位置复制到另一个内存位置。需要使用两个指令。<ul>
+<li>先将内存的值移到寄存器中</li>
+<li>再将寄存器中的值移到内存中</li>
+</ul>
+</li>
+<li>understanding swap<ul>
+<li><blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="MOVS类-MOVZ类"><a href="#MOVS类-MOVZ类" class="headerlink" title="MOVS类 MOVZ类"></a>MOVS类 MOVZ类</h4><ul>
+<li>MOVZ类：把目的中剩余的字节填充为0</li>
+<li>MOVS类：把目的中剩余的字节通过符号扩展填充</li>
+<li>MOVS和MOVZ都是以寄存器或内存地址作为src，寄存器作为dest</li>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-28-33.png"></li>
+<li>例子<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-32-37.png"></li>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-32-48.png"></li>
 </ul>
 </li>
 </ul>
 <ul>
+<li>三连错。。啧啧</li>
+<li>练习题3.2<br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-14-31-20.png"><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1.</span> movl, 因为%eax为<span class="number">2</span>字<span class="number">4b</span>ytes32位寄存器</span><br><span class="line"><span class="number">2.</span> movw, 因为%dx为<span class="number">1</span>字<span class="number">16</span>位寄存器</span><br><span class="line"><span class="number">3.</span> movb, 因为%bl为<span class="number">1b</span>yte寄存器</span><br><span class="line"><span class="number">4.</span> movb, 因为%dl为<span class="number">1b</span>yte寄存器</span><br><span class="line"><span class="number">5.</span> movq, 因为%rax为<span class="number">4</span>字<span class="number">64</span>位寄存器</span><br><span class="line"><span class="number">6.</span> movw, 因为%dx为<span class="number">1</span>字<span class="number">16</span>位寄存器</span><br><span class="line">从题中可以看出一个重要特性，x86<span class="number">-64</span> 中的内存引用总是用四字长寄存器给出，例如 %rax，哪怕操作数只是一个字节、一个字或是一个双字</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>练习题3.3<br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-13-58-45.png"><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1.</span> x86<span class="number">-64</span>中的内存引用总是用<span class="number">4</span>字长<span class="number">64</span>位寄存器给出，如%rax。所以改为movb $<span class="number">0xF</span>,(%rbx)</span><br><span class="line"><span class="number">2.</span> %rax是<span class="number">64</span>位寄存器，应当用movq %rax ,(%rsp)</span><br><span class="line"><span class="number">3.</span> <span class="built_in">movw</span> (%rax),<span class="number">4</span>(%rsp)。mov的src和dst不能同时都是地址</span><br><span class="line"><span class="number">4.</span> 没有寄存器叫%sl</span><br><span class="line"><span class="number">5.</span> immediate不能作为dst</span><br><span class="line"><span class="number">6.</span> <span class="number">64</span>位%eax和<span class="number">32</span>位%rdx大小不一致。改为movl %eax,%edx；或者movq %rax,%rdx</span><br><span class="line"><span class="number">7.</span> %si是<span class="number">2</span>字<span class="number">16b</span>ytes寄存器，应当改为 movl %si,<span class="number">8</span>(%rbp) 或者 movb %sil,<span class="number">8</span>(%rbp)</span><br></pre></td></tr></table></figure></li>
+<li>练习题3.4<br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-21-45-18.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-01-20-47-55.png"><ul>
+<li>注意点<ul>
+<li>movz、movs指令以寄存器或内存地址作为源，以寄存器作为目的</li>
+<li>发生的是有符号扩展还是无符号扩展，也即使用的是movs类还是movz类，是看源操作数是什么，也就是由将发生符号扩展(类型转换)的数本身是什么类型决定的，而不是看目的数是什么类型</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="lea：加载有效地址"><a href="#lea：加载有效地址" class="headerlink" title="lea：加载有效地址"></a>lea：加载有效地址</h4><p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-42-37.png"></p>
+<ul>
 <li>lea指令：load effective address。将src表达的地址值赋值给Dst<ul>
 <li>leaq Src Dst（AT&amp;T syntax）<ul>
-<li>src is address mode expression</li>
-<li>set dest to address denoted by expression</li>
+<li>src is address mode expression andset dest to address denoted by expression</li>
+<li>第一个操作数src看上去是一个内存引用，但实际上根本没有引用内存。该lea指令不是从指定的内存地址读取数据，而是将这个(地址表达式)作为结果写入dest寄存器。</li>
 </ul>
 </li>
 <li>作用：<ul>
@@ -402,12 +551,63 @@
 <li>计算数值 x + k*y</li>
 </ul>
 </li>
-<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">func</span><span class="params">(<span class="keyword">long</span> x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> x*<span class="number">12</span>;    </span><br><span class="line">  <span class="comment">// convert to asm by complier</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rdi,<span class="number">2</span>),%rax  ：%rax = reg[%rdi]+reg[%rdi]*<span class="number">2</span> = <span class="number">3</span> * %rdi</span><br><span class="line">  salq $<span class="number">2</span> , %rax             ：%rax &lt;&lt; <span class="number">2</span> = %rax * <span class="number">4</span> = <span class="number">12</span> &amp; %rdi</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">func</span><span class="params">(<span class="keyword">long</span> x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> x*<span class="number">12</span>;    </span><br><span class="line">  <span class="comment">// convert to asm by complier</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rdi,<span class="number">2</span>),%rax  ：reg[%rax] = reg[%rdi]+reg[%rdi]*<span class="number">2</span> = <span class="number">3</span> * %rdi</span><br><span class="line">  salq $<span class="number">2</span> , %rax             ：%rax &lt;&lt; <span class="number">2</span> = %rax * <span class="number">4</span> = <span class="number">12</span> &amp; %rdi</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
 </ul>
 </li>
 </ul>
 <ul>
 <li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">arith</span><span class="params">(<span class="keyword">long</span> x,<span class="keyword">long</span> y,<span class="keyword">long</span> z)</span></span></span><br><span class="line"><span class="function"></span>&#123;  </span><br><span class="line">  <span class="keyword">long</span> t1 = x+y;    t1 ：</span><br><span class="line">  <span class="keyword">long</span> t2 = z+t1;   t2 ：</span><br><span class="line">  <span class="keyword">long</span> t3 = x+<span class="number">4</span>;    </span><br><span class="line">  <span class="keyword">long</span> t4 = y*<span class="number">48</span>;</span><br><span class="line">  <span class="keyword">long</span> t5 = t3+t4;</span><br><span class="line">  <span class="keyword">long</span> rval = t2*t5;</span><br><span class="line">  <span class="keyword">return</span> rval;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">arith：</span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rsi),%rax     ---&gt; %rax = %rdi+%rsi   <span class="comment">//  t1</span></span><br><span class="line">  addq %rdx,%rax            ---&gt; %rax += %rdx       <span class="comment">//  t2</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rsi,%rsi,<span class="number">2</span>),%rdx   ---&gt; %rdx = <span class="number">2</span>*rsi + %rsi = <span class="number">3</span>*%rsi   </span><br><span class="line">  salq $<span class="number">4</span> , %rdx            ---&gt; %rdx &lt;&lt;= <span class="number">4</span>         <span class="comment">//  t4</span></span><br><span class="line">  leaq <span class="number">4</span>(%rdi,%rdx),%rcx    ---&gt; %rcx = %rdx + %rdi + <span class="number">4</span> <span class="comment">//  t5   t3 = %rdi + 4</span></span><br><span class="line">  imulq %rdx,%rax           ---&gt; %rax = %rax * %rcx <span class="comment">// rval</span></span><br><span class="line">  ret       </span><br><span class="line"></span><br><span class="line">%rdi x</span><br><span class="line">%rsi y</span><br><span class="line">%rax t1 t2 val</span><br><span class="line">%rdx t4</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="push、pop：压入、弹出栈数据"><a href="#push、pop：压入、弹出栈数据" class="headerlink" title="push、pop：压入、弹出栈数据"></a>push、pop：压入、弹出栈数据</h4><ul>
+<li>栈底：高地址。栈顶：低地址。栈由高地址向低地址增长。栈底在上，就是栈顶向下方向增长；栈底在下，就是栈顶向上增长。</li>
+<li>栈指针：%rsp。栈顶元素的地址是栈中元素最低的。<ul>
+<li>%rsp中的指针指向的内存空间有内容，该指针指向的是栈顶地址最低的归本栈帧（有内容）的内存单元</li>
+</ul>
+</li>
+<li>pushq：pushq %rbp<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">subq $<span class="number">8</span>,%rsp</span><br><span class="line">movq %rbp,(%rsp)</span><br></pre></td></tr></table></figure></li>
+<li>popq：popq %rax<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">movq</span> (%rsp),%rax</span><br><span class="line">addq $<span class="number">8</span>,%rsp</span><br></pre></td></tr></table></figure>
+<img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-29-03.png"></li>
+</ul>
+<h4 id="移位"><a href="#移位" class="headerlink" title="移位"></a>移位</h4><ul>
+<li>左移不分算数、逻辑；右移分算数、逻辑<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">salq src dst  dst = dst &lt;&lt; src  </span><br><span class="line">shlq src dst  dst = dst &lt;&lt; src  <span class="comment">//  和上一行相同，两者作用一样 都是向左移动。右边填0；只有右移操作需要区分有符号数无符号数。</span></span><br><span class="line">sarq src dst  dst = dst &gt;&gt; src  <span class="comment">// 算数右移</span></span><br><span class="line">shrq src dst  dst = dst &gt;&gt; src  <span class="comment">// 逻辑右移</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="其他指令"><a href="#其他指令" class="headerlink" title="其他指令"></a>其他指令</h4><p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-17-43-55.png"></p>
+<ul>
+<li><p>addq,subq,imulq,salq，sarq,shrq,xorq,andq,orq等，都是src在前，dest在后。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">addq src dst  dst = dst + src</span><br><span class="line">subq src dst  dst = dst - src</span><br><span class="line">imulq src dst dst = dst * src</span><br><span class="line">xorq src dst  dst = dst ^ src</span><br><span class="line">andq src dst  dst = dst &amp; src</span><br><span class="line">orq  src dst  dst = dst | src  </span><br></pre></td></tr></table></figure></li>
+<li><p>xorq %rdx,%rdx作用</p>
+<ul>
+<li>将%rdx置0；等价于movq $0,%rdx</li>
+<li>xorq版本只用3个Bytes。movq版本需要7个Bytes</li>
+<li>其他将%rdx置0的方法都依赖于该属性:任何更新寄存器低4Bytes的的操作，都会将高位Bytes置为0。因此，可以使用 xorl %edx,%edx（2Bytes） ；或者 movl $0,%edx（5Bytes）</li>
+</ul>
+</li>
+<li><p>乘法：(i)mulq</p>
+<ul>
+<li>imulq src,dst ：dst = src*dst</li>
+<li>imulq S：R[%rax] = R[%rax]*S</li>
+<li>存储128位乘积时需要两次mov。<ul>
+<li>movq %rax,(%rdi)</li>
+<li>movq %rdx,8(%rdi)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>除法：(i)divq</p>
+<ul>
+<li>被除数：%rdx AND %rax</li>
+<li>余数：%rdx</li>
+<li>商：%rax</li>
+</ul>
+</li>
+<li><p>例子<br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-18-01-14.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-02-18-04-22.png"></p>
+<ul>
+<li>cqto：隐含读出%rax的符号位，并复制到%rdx的所有位</li>
+<li>无符号除法（divq）时，不用cqto，而是一般先将%rdx设置为0，其他我认为都一样。</li>
+</ul>
+</li>
+<li><p>涉及到内存（存储器）才有大小端问题，寄存器里没有大小端呀，顶多叫高位字节 低位字节</p>
+</li>
 </ul>
 <h1 id="Control"><a href="#Control" class="headerlink" title="Control"></a>Control</h1><h2 id="information-about-currently-executing-program"><a href="#information-about-currently-executing-program" class="headerlink" title="information about currently executing program"></a>information about currently executing program</h2><ul>
 <li>temproary data（临时量）：<ul>
@@ -419,33 +619,212 @@
 </ul>
 </li>
 <li>location of current code control point<ul>
-<li>%rip（当前程序运行到哪里）：包含当前执行指令的地址。不是我们可以正常访问的寄存器，它只是告诉我们程序执行到了哪里。</li>
+<li>%rip（当前程序运行到哪里）：给出将要执行的下一条指令再内存中的地址。不是我们可以正常访问的寄存器（但也有一些技巧可以获得），它只是告诉我们程序执行到了哪里。</li>
 </ul>
 </li>
-<li>status of recent tests<ul>
-<li>condition codes：CF，ZF，SF，OF</li>
-<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/zenny_chen/article/details/121829354">https://blog.csdn.net/zenny_chen/article/details/121829354</a></li>
+<li><strong>条件码 Single bit register</strong><ul>
+<li><strong>CF</strong>：进位标志。最近的操作使得最高位发生进位。可用来检查<strong>无符号溢出</strong><ul>
+<li>据群友讨论 CF = （最高位是否向更高发生进位） ^ （加法0 减法1）。（计算规则为采用补码，也即减法时需要先将-x变为+(-x)补）</li>
+<li>csapp里只说了最高位发生进位，说得应当是减法时，仍用-x，而不使用-x的补码形式来相加。</li>
 </ul>
 </li>
-</ul>
-<h3 id="Condition-Codes"><a href="#Condition-Codes" class="headerlink" title="Condition Codes"></a>Condition Codes</h3><h4 id="Implicitly-Setting"><a href="#Implicitly-Setting" class="headerlink" title="Implicitly Setting"></a>Implicitly Setting</h4><ul>
-<li>Single bit register<ul>
-<li>CF：Carry Flag（for unisgned）（carry：进位）</li>
-<li>ZF：Zero Flag</li>
-<li>SF：Sign Flag（for signed）</li>
-<li>OF：Overflow Flag（for signed）</li>
+<li><strong>ZF</strong>：零表示。最近的操作结果为0</li>
+<li><strong>SF</strong>：符号标志。最近的操作得到的结果为负数</li>
+<li><strong>OF</strong>：溢出标志。最近的操作导致<strong>补码溢出</strong>–正溢出或负溢出<h2 id="Condition-Codes"><a href="#Condition-Codes" class="headerlink" title="Condition Codes"></a>Condition Codes</h2><h3 id="Set-Condition-Code"><a href="#Set-Condition-Code" class="headerlink" title="Set Condition Code"></a>Set Condition Code</h3><h4 id="Implicitly-Setting：addq、subq一类…"><a href="#Implicitly-Setting：addq、subq一类…" class="headerlink" title="Implicitly Setting：addq、subq一类…"></a>Implicitly Setting：addq、subq一类…</h4></li>
 </ul>
 </li>
 <li>他们在算数过程中是如何被设置的？如 addq Src,Dest &lt;-&gt; t=a+b。他们的设置可以被认为是算数运算的副作用。<ul>
-<li>CF：unsigned 溢出(au bu 并且 t溢出)</li>
-<li>ZF：t=0</li>
+<li>CF：(unsigned) t&lt;(unsigned) a</li>
+<li>ZF：t=-0</li>
 <li>SF：t&lt;0（signed）</li>
-<li>OF：signed（补码）溢出：<code>a&gt;0&amp;&amp;b&gt;0&amp;&amp;t&lt;0 || a&lt;0&amp;&amp;b&lt;0&amp;&amp;t&gt;0</code></li>
+<li>OF：a&gt;0&amp;&amp;b&gt;0&amp;&amp;t&lt;0 || a&lt;0&amp;&amp;b&lt;0&amp;&amp;t&gt;=0</li>
 </ul>
 </li>
-<li>lea指令不会设置这些标志位</li>
+<li>lea指令不会设置这些标志位，</li>
 </ul>
-<h4 id="Explicitly-Setting-Compare"><a href="#Explicitly-Setting-Compare" class="headerlink" title="Explicitly Setting: Compare"></a>Explicitly Setting: Compare</h4>
+<h4 id="Explicitly-Setting-Compare"><a href="#Explicitly-Setting-Compare" class="headerlink" title="Explicitly Setting: Compare"></a>Explicitly Setting: Compare</h4><p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-16-27-09.png"></p>
+<ul>
+<li>cmpq b,a（cmpq Src2,Src1）<ul>
+<li>like computing a-b without setting destination</li>
+</ul>
+</li>
+<li>CF：最高位进位。（当src为unsigned时，该寄存器有意义）</li>
+<li>ZF：if a==b</li>
+<li>SF：if(a-b)&lt;0 (as signed)</li>
+<li>OF：(a&gt;0&amp;&amp;b&lt;0&amp;&amp;(a-b)&lt;0) || (a&lt;0&amp;&amp;b&gt;0&amp;&amp;(a-b)&gt;0)</li>
+</ul>
+<h4 id="Explicitly-Setting-Test"><a href="#Explicitly-Setting-Test" class="headerlink" title="Explicitly Setting: Test"></a>Explicitly Setting: Test</h4><ul>
+<li>testq b,a（testq Src2，Src1）<ul>
+<li>like computing a&amp;b without setting destination</li>
+</ul>
+</li>
+<li>sets condition codes based on value of a&amp;b（根据a&amp;b的结果设置条件码）</li>
+<li>useful to have one of operands be a mask（适用于有一个操作数是掩码的时候）</li>
+<li>ZF set when a&amp;b==0</li>
+<li>SF set when a&amp;b&lt;0</li>
+<li>典型用法：testq %rax,%rax ：测试%rax是&gt;0 &lt;0 还是=0。<ul>
+<li>该指令时有 CF=0，OF=0。</li>
+<li>%rax=0时，也即%rax&amp;%rax==0时，才有ZF=1；否则ZF=0。</li>
+<li>%rax&gt;0时，%rax&amp;%rax&gt;0，有SF=0；%rax&lt;0时，%rax&amp;%rax&lt;0，有SF=1.</li>
+</ul>
+</li>
+</ul>
+<h3 id="Condition-Code-使用"><a href="#Condition-Code-使用" class="headerlink" title="Condition Code 使用"></a>Condition Code 使用</h3><ul>
+<li><p>根据条件码组合，将一个字节设置为0或者1</p>
+</li>
+<li><p>可以<strong>条件跳转</strong>到程序的某个其他部分</p>
+</li>
+<li><p>可以<strong>条件传送数据</strong></p>
+<h4 id="SetX指令"><a href="#SetX指令" class="headerlink" title="SetX指令"></a>SetX指令</h4></li>
+<li><p>set后面跟的后缀符号指的是所考虑的条件码的组合，而非什么操作数大小。当setX相对应的条件码组合为1时，将所操作的寄存器低位byte赋值为1。</p>
+</li>
+<li><p>根据条件码设置某一寄存器的最低字节，寄存器的其他高位bytes不变。</p>
+</li>
+<li><p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-16-32-31.png"><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-13-25-41.png"></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cmpq b,a    <span class="comment">//  Compare a:b  t = a - b</span></span><br><span class="line">setX %al</span><br><span class="line">movzbl %al,%eax</span><br></pre></td></tr></table></figure></li>
+<li><p>有符号数比较的set指令</p>
+<ul>
+<li>sete : ZF <ul>
+<li>a=b时，t=a-b=0</li>
+</ul>
+</li>
+<li>setl : SF^OF<ul>
+<li>OF=0（未发生signed溢出）<ul>
+<li>SF=1：t=a-b&lt;0 —&gt; a&lt;b</li>
+<li>SF=0：t=a-b&gt;=0 —&gt; a&gt;=b</li>
+</ul>
+</li>
+<li>OF=1（发生signed溢出）<ul>
+<li>SF=1：t=a-b&lt;0 —&gt; a&gt;0,b&lt;0 发生上溢</li>
+<li>SF=0：t=a-b&gt;0 —&gt; a&lt;0,b&gt;0 发生下溢（下溢最夸张也就到1,到不了0：Tmin-Tmax）。有a&lt;b</li>
+</ul>
+</li>
+<li>也即SF^OF代表刚刚的算术结果是个负数</li>
+</ul>
+</li>
+<li>所以有符号的其他比较基于SF^OF和ZF的组合  </li>
+<li>setge : ~(SF^OF)</li>
+<li>setg : ~(SF^OF)&amp;(~ZF)</li>
+<li>setle : (DF^OF)|ZF</li>
+</ul>
+</li>
+<li><p>无符号数比较的set指令</p>
+<ul>
+<li>sete : ZF<ul>
+<li>a=b时,t=a-b=0</li>
+</ul>
+</li>
+<li>setb : CF<ul>
+<li>CF：进位标志。CF = （最高位是否向更高发生进位） ^ （加法0 减法1）。（计算规则为采用补码，也即减法时需要先将-x变为+(-x)补）</li>
+<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">au = <span class="number">101</span> = <span class="number">5</span></span><br><span class="line">bu = <span class="number">111</span> = <span class="number">7</span>   -bu -&gt; 补码 = ~bu+<span class="number">1</span> = <span class="number">001</span></span><br><span class="line">au - bu = </span><br><span class="line">  <span class="number">101</span></span><br><span class="line">- <span class="number">111</span></span><br><span class="line">-------</span><br><span class="line">  <span class="number">101</span></span><br><span class="line">+ <span class="number">001</span></span><br><span class="line">-------</span><br><span class="line">  <span class="number">110</span>     = 补码意义下的<span class="number">-2</span>，无符号数意义下的<span class="number">6</span></span><br><span class="line">  由上述知: CF = <span class="number">0</span>^<span class="number">1</span> = <span class="number">1</span></span><br><span class="line">  判断发生溢出，符合预期</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>所以无符号数的set比较基于CF和ZF的组合</li>
+<li>seta: ~CF &amp; ~ZF</li>
+<li>setbe: CF|ZF</li>
+<li>setae: ~CF</li>
+<li>setb: CF</li>
+</ul>
+</li>
+<li><p>复习au-bu：计算机中的无符号数减法如何进行 </p>
+<ul>
+<li>也是按照有符号数补码的计算规则进行（计算机内部就都是补码运算，只不过整数的补码等于其本身，详情间补码原码反码运算博客）</li>
+<li>计算出(-bu)的补码，在与au相加，也即 au + (-bu)补。其中(-bu)补 = ~(bu)原+1。（又对于无符号数bu原=b真值）</li>
+<li>但是-bu的类型还是无符号数！！！不是有符号数。他只是在按照规则进行位级操作而已，对位的意义如何解释是由-bu的类型决定的，而-bu还是无符号数。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span> x = <span class="number">1</span>;</span><br><span class="line">cout&lt;&lt;x&lt;&lt;endl;</span><br><span class="line">cout&lt;&lt;-x&lt;&lt;endl;</span><br><span class="line">cout&lt;&lt;abi::__cxa_demangle(<span class="built_in"><span class="keyword">typeid</span></span>(x).<span class="built_in">name</span>(),<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span> )&lt;&lt;endl;</span><br><span class="line">cout&lt;&lt;abi::__cxa_demangle(<span class="built_in"><span class="keyword">typeid</span></span>(-x).<span class="built_in">name</span>(),<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span> )&lt;&lt;endl;</span><br><span class="line"><span class="number">1</span></span><br><span class="line"><span class="number">4294967295</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>练习题</p>
+</li>
+<li><p>cmpl testl setl 的l所指的东西不一样。前两者指的是操作数的大小。setl的l指的是要进行less比较。</p>
+</li>
+</ul>
+<h4 id="条件跳转"><a href="#条件跳转" class="headerlink" title="条件跳转"></a>条件跳转</h4><p>请见p145-146</p>
+<h5 id="跳转指令"><a href="#跳转指令" class="headerlink" title="跳转指令"></a>跳转指令</h5><p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-18-19-36.png"></p>
+<ul>
+<li>jmp：无条件跳转<ul>
+<li>直接跳转：jmp *%rax。以%rax的值作为跳转目标</li>
+<li>间接跳转：jmp *(%rax)。以%rax的值寻址，从内存中读出跳转目标</li>
+</ul>
+</li>
+<li>条件跳转：根据条件码的组合跳转<ul>
+<li>只能直接跳转</li>
+</ul>
+</li>
+<li>跳转指令中，执行PC相对寻址时，程序计数器的值是jX跳转指令<strong>后面</strong>的那条指令的地址，而不是jX本身的地址<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-18-43-20.png"></li>
+<li>```bash<br>test %rax,%rax<br>jg .L3<br>jg作用：当%rax&gt;0时，跳转到.L3<br>jg：<del>(SF^OF)&amp;</del>ZF<br>SF^OF：由test%rax,%rax知一定未溢出。故SF^OF代表运算结果为负数<br>ZF：test计算结果为0<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">- 练习题</span><br><span class="line">  - ![](csapp_3_程序的机器级表示/2022-06-04-18-58-22.png)</span><br><span class="line"></span><br><span class="line">##### 条件控制实现条件分支</span><br><span class="line">- C的if-else</span><br><span class="line">  ```c++</span><br><span class="line">  if(test-expr)</span><br><span class="line">    then-statement</span><br><span class="line">  else </span><br><span class="line">    else-statement</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>汇编形式<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">t = test-expr;</span><br><span class="line"><span class="keyword">if</span>(!t)</span><br><span class="line">  <span class="keyword">goto</span> <span class="literal">false</span>;</span><br><span class="line">  then-statement</span><br><span class="line">  <span class="keyword">goto</span> done;</span><br><span class="line"><span class="literal">false</span>:</span><br><span class="line">  elses-statement</span><br><span class="line">done;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="分支预测"><a href="#分支预测" class="headerlink" title="分支预测"></a>分支预测</h4><ul>
+<li><p>抄书 加深下印象。解决了计组里的疑惑。</p>
+</li>
+<li><p>处理器通过<strong>流水线</strong>获得高性能，这种方法通过重叠连续指令的步骤来获得高性能。为此，就要实现能确定要执行的指令的顺序，这样才能保证流水线中充满待执行的指令。当机器遇到条件跳转（分支）时，只有当分支条件求值完成后，才能决定分支往哪里走。处理器采用非常精密的<strong>分支预测逻辑</strong>来猜测每条跳转指令是否会执行。只要他的猜测还比较可靠（现代微处理器设计试图达到90%以上的成功率），指令流水线就会充满指令。另一方面，错误预测一个跳转，要求处理器丢掉它为该跳转指令后所有指令已做的工作。然后再开始用从正确位置处起始的指令去填充流水线。正如我们看到的，这样一个错误预测会招致很严重的惩罚，浪费大约15~30个时钟周期，导致程序性能严重下降。</p>
+</li>
+<li><p>惩罚</p>
+<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-19-56-49.png"></li>
+</ul>
+</li>
+<li><p>惩罚分析</p>
+<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-19-58-08.png"></li>
+<li>A. Tavg = (1-p)*Tok + p*(Tok+Tmp) = Tok + p<em>Tmp<br>   可预测时：p=0；Tok = 16<br>   随机时：31 = Tok + p</em>Tmp = 16 + 0.5*Tmp；Tmp = 30。</li>
+<li>B. Trun = Tok + Tmp = 46</li>
+</ul>
+</li>
+</ul>
+<h4 id="条件传送指令"><a href="#条件传送指令" class="headerlink" title="条件传送指令"></a>条件传送指令</h4><ul>
+<li>一定情况下，基于条件数据传送的代码会比基于条件控制转移的代码性能要好。<h5 id="用条件传送实现条件分支"><a href="#用条件传送实现条件分支" class="headerlink" title="用条件传送实现条件分支"></a>用条件传送实现条件分支</h5></li>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-04-20-17-53.png"></li>
+<li>与setX和jX一样，取决于条件码的组合。</li>
+<li>与条件跳转不同，处理器无需预测测试结果就可执行条件传送，处理器只是读源值，检查条件码，然后要么更新目的寄存器，要么保持不变。</li>
+<li>对比<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">v = test-expr ? then-expr:<span class="keyword">else</span>-expr</span><br><span class="line"></span><br><span class="line">条件控制转移</span><br><span class="line">  <span class="keyword">if</span>(!test_expr)</span><br><span class="line">      <span class="keyword">goto</span> <span class="literal">false</span>;</span><br><span class="line">  v = then-expr</span><br><span class="line">  <span class="keyword">goto</span> done;</span><br><span class="line"><span class="literal">false</span>:</span><br><span class="line">  v = <span class="keyword">else</span>-expr</span><br><span class="line">done:</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">条件传送代码</span><br><span class="line">v = then-expr</span><br><span class="line">ve = <span class="keyword">else</span>-expr</span><br><span class="line">t = test-expr</span><br><span class="line"><span class="keyword">if</span>(!t) v= ve  <span class="comment">//  该条语句用条件传送实现，只有当测试条件t不满足时，才mov</span></span><br></pre></td></tr></table></figure></li>
+<li>当对then-expr和else-expr求值会产生错误条件或者副作用时，不能采用条件传送。</li>
+<li>使用条件传送也不总是会提高代码效率。如果then-expr或者else-expr需要大量计算，那么相对应的条件不满足时，所对应工作就白费了。编译器必须考虑浪费的计算和由于分支预测错误所造成的性能处罚之间的相对性能。说实话，编译器并不具有足够信息来做出可靠决定；例如，他们不知道分支会多好的遵循可预测的模式。我们对gcc的实验表明，只有当两个表达式都很容易计算时，例如分支表达式分别都只是条加法指令，他才会使用条件传送。根据我们的经验，即使许多分支预测错误的开销会超过复杂的计算，gcc还是会使用条件控制转移。</li>
+<li>总的来说，条件数据传送提供了一种条件控制转移来实现条件操作的替代策略，他们只能用于受限情况，但还是很常见的，且与现代处理器运行方式更契合。</li>
+<li>练习<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-49-45.png"></li>
+<li>有符号数除法和无符号除法都是用补码除法的规则，只不过无符号数一定&gt;=0，所以不会有bias的情况。<h3 id="Loop-P149"><a href="#Loop-P149" class="headerlink" title="Loop P149"></a>Loop P149</h3></li>
+</ul>
+</li>
+<li>do-while<blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-12.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-21.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-37-44.png"></p>
+</blockquote>
+</li>
+<li>while<blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-14.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-42.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-51-56.png"></p>
+</blockquote>
+</li>
+<li>for<blockquote>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-52-33.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-12-52-48.png"></p>
+</blockquote>
+</li>
+</ul>
+<h3 id="switch"><a href="#switch" class="headerlink" title="switch"></a>switch</h3><ul>
+<li>使用跳转表是一种非常有效的实现多重分支的方式</li>
+<li>switch语句：根据一个整数（无符号数）的索引值进行分支跳转。</li>
+<li><strong>跳转表</strong><ul>
+<li>一个数组，其中的每一个元素都是一个代码段的起始地址</li>
+<li>根据提供的索引值i会从跳转表中确定目标代码段地址，执行一个跳转。</li>
+<li>优点：执行switch语句的时间与case的数量无关。</li>
+<li>GCC会根据case的数量和值的情况来决定如何翻译switch语句。case数量多且值跨度小时，翻译为跳转表方式。</li>
+</ul>
+</li>
+<li>switch语句例子<ul>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-16-08.png"></li>
+<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-25-28.png"></li>
+<li><strong>跳转表</strong><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-06-06-13-34-23.png"></li>
+<li>跳转表的地址数组索引应当尽量从0开始，所以翻译成汇编时会有相应的偏置值相加减。quad 表示这里需要个8bytes的值。</li>
+<li>课堂例子<img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-16-38-11.png"></li>
+</ul>
+</li>
+</ul>
+<hr>
+<p>未完<br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-16-54-28.png"></p>
+<p><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-24.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-30.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-42.png"><br><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-31-17-04-47.png"></p>
+
     </div>
 
     
@@ -531,7 +910,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Basic"><span class="nav-number">1.</span> <span class="nav-text">Basic</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AF%E8%AF%AD"><span class="nav-number">1.1.</span> <span class="nav-text">术语</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#x86%E5%B8%B8%E8%AF%86"><span class="nav-number">1.2.</span> <span class="nav-text">x86常识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8D%E6%B1%87%E7%BC%96"><span class="nav-number">1.2.1.</span> <span class="nav-text">反汇编</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8-Register"><span class="nav-number">1.2.2.</span> <span class="nav-text">寄存器(Register)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E6%95%B0-Operand"><span class="nav-number">1.2.3.</span> <span class="nav-text">操作数(Operand)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%8F%E5%85%B8%E6%8C%87%E4%BB%A4"><span class="nav-number">1.2.4.</span> <span class="nav-text">经典指令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Control"><span class="nav-number">2.</span> <span class="nav-text">Control</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#information-about-currently-executing-program"><span class="nav-number">2.1.</span> <span class="nav-text">information about currently executing program</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Condition-Codes"><span class="nav-number">2.1.1.</span> <span class="nav-text">Condition Codes</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Implicitly-Setting"><span class="nav-number">2.1.1.1.</span> <span class="nav-text">Implicitly Setting</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Explicitly-Setting-Compare"><span class="nav-number">2.1.1.2.</span> <span class="nav-text">Explicitly Setting: Compare</span></a></li></ol></li></ol></li></ol></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Basic"><span class="nav-number">1.</span> <span class="nav-text">Basic</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%BD%E8%B1%A1"><span class="nav-number">1.1.</span> <span class="nav-text">抽象</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E4%BB%A4%E9%9B%86%E6%9E%B6%E6%9E%84%EF%BC%9AISA"><span class="nav-number">1.1.1.</span> <span class="nav-text">指令集架构：ISA</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80"><span class="nav-number">1.1.2.</span> <span class="nav-text">虚拟地址</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#x86-64%E5%B8%B8%E8%AF%86"><span class="nav-number">1.2.</span> <span class="nav-text">x86-64常识</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8D%E6%B1%87%E7%BC%96"><span class="nav-number">1.2.1.</span> <span class="nav-text">反汇编</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8-Register"><span class="nav-number">1.2.2.</span> <span class="nav-text">寄存器(Register)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E6%95%B0-Operand"><span class="nav-number">1.2.3.</span> <span class="nav-text">操作数(Operand)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E6%A0%BC%E5%BC%8F"><span class="nav-number">1.2.4.</span> <span class="nav-text">数据格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E5%9C%B0%E5%9D%80%E7%BC%96%E7%A0%81%E6%96%B9%E5%BC%8F"><span class="nav-number">1.2.5.</span> <span class="nav-text">内存地址编码方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%87%E4%BB%A4%E7%B1%BB"><span class="nav-number">1.2.6.</span> <span class="nav-text">指令类</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ATT%E4%B8%8EIntel%E5%8C%BA%E5%88%AB"><span class="nav-number">1.2.6.1.</span> <span class="nav-text">ATT与Intel区别</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MOV%E7%B1%BB%EF%BC%9A%E6%95%B0%E6%8D%AE%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4"><span class="nav-number">1.2.6.2.</span> <span class="nav-text">MOV类：数据传送指令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MOVS%E7%B1%BB-MOVZ%E7%B1%BB"><span class="nav-number">1.2.6.3.</span> <span class="nav-text">MOVS类 MOVZ类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#lea%EF%BC%9A%E5%8A%A0%E8%BD%BD%E6%9C%89%E6%95%88%E5%9C%B0%E5%9D%80"><span class="nav-number">1.2.6.4.</span> <span class="nav-text">lea：加载有效地址</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#push%E3%80%81pop%EF%BC%9A%E5%8E%8B%E5%85%A5%E3%80%81%E5%BC%B9%E5%87%BA%E6%A0%88%E6%95%B0%E6%8D%AE"><span class="nav-number">1.2.6.5.</span> <span class="nav-text">push、pop：压入、弹出栈数据</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%A7%BB%E4%BD%8D"><span class="nav-number">1.2.6.6.</span> <span class="nav-text">移位</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E6%8C%87%E4%BB%A4"><span class="nav-number">1.2.6.7.</span> <span class="nav-text">其他指令</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Control"><span class="nav-number">2.</span> <span class="nav-text">Control</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#information-about-currently-executing-program"><span class="nav-number">2.1.</span> <span class="nav-text">information about currently executing program</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Condition-Codes"><span class="nav-number">2.2.</span> <span class="nav-text">Condition Codes</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Set-Condition-Code"><span class="nav-number">2.2.1.</span> <span class="nav-text">Set Condition Code</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Implicitly-Setting%EF%BC%9Aaddq%E3%80%81subq%E4%B8%80%E7%B1%BB%E2%80%A6"><span class="nav-number">2.2.1.1.</span> <span class="nav-text">Implicitly Setting：addq、subq一类…</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Explicitly-Setting-Compare"><span class="nav-number">2.2.1.2.</span> <span class="nav-text">Explicitly Setting: Compare</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Explicitly-Setting-Test"><span class="nav-number">2.2.1.3.</span> <span class="nav-text">Explicitly Setting: Test</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Condition-Code-%E4%BD%BF%E7%94%A8"><span class="nav-number">2.2.2.</span> <span class="nav-text">Condition Code 使用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#SetX%E6%8C%87%E4%BB%A4"><span class="nav-number">2.2.2.1.</span> <span class="nav-text">SetX指令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9D%A1%E4%BB%B6%E8%B7%B3%E8%BD%AC"><span class="nav-number">2.2.2.2.</span> <span class="nav-text">条件跳转</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E8%B7%B3%E8%BD%AC%E6%8C%87%E4%BB%A4"><span class="nav-number">2.2.2.2.1.</span> <span class="nav-text">跳转指令</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%94%AF%E9%A2%84%E6%B5%8B"><span class="nav-number">2.2.2.3.</span> <span class="nav-text">分支预测</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E6%8C%87%E4%BB%A4"><span class="nav-number">2.2.2.4.</span> <span class="nav-text">条件传送指令</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%94%A8%E6%9D%A1%E4%BB%B6%E4%BC%A0%E9%80%81%E5%AE%9E%E7%8E%B0%E6%9D%A1%E4%BB%B6%E5%88%86%E6%94%AF"><span class="nav-number">2.2.2.4.1.</span> <span class="nav-text">用条件传送实现条件分支</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Loop-P149"><span class="nav-number">2.2.3.</span> <span class="nav-text">Loop P149</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#switch"><span class="nav-number">2.2.4.</span> <span class="nav-text">switch</span></a></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -545,7 +924,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-count">68</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -595,13 +974,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">555k</span>
+    <span title="站点总字数">564k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">8:24</span>
+    <span title="站点阅读时长">8:33</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
   </div>

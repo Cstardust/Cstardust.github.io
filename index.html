@@ -170,6 +170,77 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/06/datalab/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/06/06/datalab/" class="post-title-link" itemprop="url">datalab</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-06 15:16:31" itemprop="dateCreated datePublished" datetime="2022-06-06T15:16:31+08:00">2022-06-06</time>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>0</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/24/vim/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -296,7 +367,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-30 10:13:42" itemprop="dateModified" datetime="2022-05-30T10:13:42+08:00">2022-05-30</time>
+                <time title="修改时间：2022-06-06 23:09:13" itemprop="dateModified" datetime="2022-06-06T23:09:13+08:00">2022-06-06</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -314,14 +385,14 @@
                 <i class="far fa-file-word"></i>
               </span>
                 <span class="post-meta-item-text">本文字数：</span>
-              <span>3.8k</span>
+              <span>13k</span>
             </span>
             <span class="post-meta-item" title="阅读时长">
               <span class="post-meta-item-icon">
                 <i class="far fa-clock"></i>
               </span>
                 <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
+              <span>12 分钟</span>
             </span>
 
         </div>
@@ -333,199 +404,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h1 id="Basic"><a href="#Basic" class="headerlink" title="Basic"></a>Basic</h1><h2 id="术语"><a href="#术语" class="headerlink" title="术语"></a>术语</h2><ul>
-<li>architecture（计算机的体系结构，架构）<ul>
-<li>also ISA：instruction set architecture 指令集架构</li>
-<li>当我们谈论指令和指令集，这是编译器的目标，为你提供一系列指令，告诉机器确切第做了什么</li>
-<li>事实证明，关于指令如何实现，硬件的实现者已经想好了。有的速度快，需要很多硬件；有的速度慢，但需要很少的硬件。</li>
-<li>所以，人们创建了instruction set architecture 指令集架构这一抽象概念<ul>
-<li>编译器的目标是他</li>
-<li>如何最好的实现他是硬件研究者需要负责的</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<p>text c program —Complier—-&gt; text 汇编asm program —–Assembler—–&gt; binary 文本表示的指令转化成了实际的字节object program ——linker—–&gt; binary executable program</p>
-<h2 id="x86常识"><a href="#x86常识" class="headerlink" title="x86常识"></a>x86常识</h2><h3 id="反汇编"><a href="#反汇编" class="headerlink" title="反汇编"></a>反汇编</h3><ul>
-<li><p>汇编中</p>
-<ul>
-<li>%开头 代表寄存器的实际名称</li>
-<li>句点.开头，表示他们事实上不是指令而是一些别的东西</li>
-<li>他们与一些被需要的东西有关， <ul>
-<li>一些信息提供给调试器，使它能够定位程序的各个部分</li>
-<li>一些信息提供给链接器，告诉他这是一个全局定义的函数</li>
-<li>还有很多其他信息，在一开始的时候不需要考虑他们太多，因此先删掉 </li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p>gcc -Og -S sum.c</p>
-<ul>
-<li>O : Optimize 优化</li>
-<li>S : stop 只做第一阶段的事情</li>
-</ul>
-</li>
-<li><p>objdump 会输出代码反汇编的结果。</p>
-<ul>
-<li>objdump -d</li>
-<li>反汇编程序无法访问源代码，甚至无法访问汇编代码，他只是通过实际代码文件中的字节辨别出来的。</li>
-</ul>
-</li>
-<li><p>gdb</p>
-<ul>
-<li>disassemble 函数名：查看函数二进制代码</li>
-</ul>
-</li>
-</ul>
-<h3 id="寄存器-Register"><a href="#寄存器-Register" class="headerlink" title="寄存器(Register)"></a>寄存器(Register)</h3><ul>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-26-12-11-00.png"></li>
-<li>%rsp比较特殊，我们不能随意改变，因为这里面存的是栈指针，指向当前栈顶（stack top）</li>
-<li>左边一列是原先就有的，右边一列是新增的</li>
-<li>%rax和%eax的关系<ul>
-<li>%rax是64位寄存器</li>
-<li>%eax是32位寄存器</li>
-<li>操作%eax就是操作%rax的低32位</li>
-</ul>
-</li>
-<li>另一特殊寄存器%rip：instruction pointer。包含当前执行指令的地址。不是我们可以正常访问的寄存器（但也有一些技巧可以获得），它只是告诉我们程序执行到了哪里。<h3 id="操作数-Operand"><a href="#操作数-Operand" class="headerlink" title="操作数(Operand)"></a>操作数(Operand)</h3></li>
-<li>立即数（immediate）<ul>
-<li>Example：$0400,$-533</li>
-<li>Like C constant ,but prefixed with $</li>
-<li>encoded with 1,2 or 4 bytes</li>
-</ul>
-</li>
-<li>寄存器（register）：上图十六个整形寄存器之一<ul>
-<li>example：%rax，%r13</li>
-<li>but % rsp reserved for special use</li>
-<li>Others have special uses for particular instructions</li>
-</ul>
-</li>
-<li>内存（memory）:8 consecutive bytes of memory at address given by register<ul>
-<li>example：(%rax)</li>
-<li>various other “address mode”</li>
-</ul>
-</li>
-</ul>
-<h3 id="经典指令"><a href="#经典指令" class="headerlink" title="经典指令"></a>经典指令</h3><ul>
-<li><p>mov指令</p>
-<ul>
-<li>mov的src和dst顺序<ul>
-<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/2397528/">https://stackoverflow.com/questions/2397528/</a></li>
-<li>mov dest, src称为 Intel syntax 。 (例如mov eax, 123)</li>
-<li>mov src, dest称为 AT&amp;T syntax 。 (例如mov $123, %eax)</li>
-<li>包括GNU汇编器在内的UNIX汇编器使用AT＆T语法，所有其他x86汇编器都使用Intel语法</li>
-</ul>
-</li>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-24-19-50-55.png"></li>
-</ul>
-</li>
-<li><p>机器不允许直接将数据从一个内存位置复制到另一个内存位置。需要使用两个指令。</p>
-<ul>
-<li>先将内存的值移到寄存器中</li>
-<li>再将寄存器中的值移到内存中</li>
-</ul>
-</li>
-<li><p>understanding swap</p>
-<ul>
-<li><img src="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/2022-05-30-09-07-35.png"></li>
-</ul>
-</li>
-<li><p>小问题：movq、leaq、addq、subq…中的q是什么？quad word（Intel术语）：4字=8Bytes=64位</p>
-</li>
-<li><p>addq,subq,imulq,salq，sarq,shrq,xorq,andq,orq等，都是src在前，dest在后。</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">addq src dst  dst = dst + src</span><br><span class="line">subq src dst  dst = dst - src</span><br><span class="line">imulq src dst dst = dst * src</span><br><span class="line">salq src dst  dst = dst &lt;&lt; src</span><br><span class="line">sarq src dst  dst = dst &gt;&gt; src  <span class="comment">// 算数右移</span></span><br><span class="line">shrq src dst  dst = dst &gt;&gt; src  <span class="comment">// 逻辑右移</span></span><br><span class="line">xorq src dst  dst = dst ^ src</span><br><span class="line">andq src dst  dst = dst &amp; src</span><br><span class="line">orq  src dst  dst = dst | src  </span><br></pre></td></tr></table></figure></li>
-<li><p>内存地址编码方式</p>
-<ul>
-<li>Simple Memory addressing modes。<ul>
-<li>normal：(R)  —- mem[reg[R]]<ul>
-<li>寄存器R中存的就是内存地址</li>
-<li>movq (%rcx),%rax ：%rax = *(%rcx)</li>
-</ul>
-</li>
-<li>displacement：mem[reg[R]+D]<ul>
-<li>R中存储内存基地址，向高偏移D个Bytes，得到目标地址</li>
-<li>movq 8(%rbp),%rdx ：%rdx = *(%rbp+8)</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Complete Memory Addressing Modes<ul>
-<li>most genernal form ：D(R) —- mem[reg[Rb] + S*reg[Rb] + D]<ul>
-<li> 数组引用常见形式</li>
-<li>D：偏移量。1 / 2 / 4 Bytes</li>
-<li>Rb：该寄存器存储目标内存基地址   </li>
-<li>Ri：下标寄存器</li>
-<li>Scale：比例。1 / 2 / 4 / 8 Bytes。数组元素的数据类型大小。</li>
-</ul>
-</li>
-<li>special cases<ul>
-<li>(Rb,Ri) —- mem[reg[Rb]+reg[Ri]]。mem[寄存器] 就是寄存器存储的地址对应的存储单元的存储的值</li>
-<li>D(Rb,Ri) —- mem[reg[Rb]+Reg[Ri]+D]</li>
-<li>(Rb,Ri,S) —- mem[reg[Rb]+S*reg[Ri]]</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li>lea指令：load effective address。将src表达的地址值赋值给Dst<ul>
-<li>leaq Src Dst（AT&amp;T syntax）<ul>
-<li>src is address mode expression</li>
-<li>set dest to address denoted by expression</li>
-</ul>
-</li>
-<li>作用：<ul>
-<li>计算地址 p = &amp;x[i]</li>
-<li>计算数值 x + k*y</li>
-</ul>
-</li>
-<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">func</span><span class="params">(<span class="keyword">long</span> x)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> x*<span class="number">12</span>;    </span><br><span class="line">  <span class="comment">// convert to asm by complier</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rdi,<span class="number">2</span>),%rax  ：%rax = reg[%rdi]+reg[%rdi]*<span class="number">2</span> = <span class="number">3</span> * %rdi</span><br><span class="line">  salq $<span class="number">2</span> , %rax             ：%rax &lt;&lt; <span class="number">2</span> = %rax * <span class="number">4</span> = <span class="number">12</span> &amp; %rdi</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-</ul>
-<ul>
-<li>例子<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">long</span> <span class="title">arith</span><span class="params">(<span class="keyword">long</span> x,<span class="keyword">long</span> y,<span class="keyword">long</span> z)</span></span></span><br><span class="line"><span class="function"></span>&#123;  </span><br><span class="line">  <span class="keyword">long</span> t1 = x+y;    t1 ：</span><br><span class="line">  <span class="keyword">long</span> t2 = z+t1;   t2 ：</span><br><span class="line">  <span class="keyword">long</span> t3 = x+<span class="number">4</span>;    </span><br><span class="line">  <span class="keyword">long</span> t4 = y*<span class="number">48</span>;</span><br><span class="line">  <span class="keyword">long</span> t5 = t3+t4;</span><br><span class="line">  <span class="keyword">long</span> rval = t2*t5;</span><br><span class="line">  <span class="keyword">return</span> rval;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">arith：</span><br><span class="line">  <span class="built_in">leaq</span> (%rdi,%rsi),%rax     ---&gt; %rax = %rdi+%rsi   <span class="comment">//  t1</span></span><br><span class="line">  addq %rdx,%rax            ---&gt; %rax += %rdx       <span class="comment">//  t2</span></span><br><span class="line">  <span class="built_in">leaq</span> (%rsi,%rsi,<span class="number">2</span>),%rdx   ---&gt; %rdx = <span class="number">2</span>*rsi + %rsi = <span class="number">3</span>*%rsi   </span><br><span class="line">  salq $<span class="number">4</span> , %rdx            ---&gt; %rdx &lt;&lt;= <span class="number">4</span>         <span class="comment">//  t4</span></span><br><span class="line">  leaq <span class="number">4</span>(%rdi,%rdx),%rcx    ---&gt; %rcx = %rdx + %rdi + <span class="number">4</span> <span class="comment">//  t5   t3 = %rdi + 4</span></span><br><span class="line">  imulq %rdx,%rax           ---&gt; %rax = %rax * %rcx <span class="comment">// rval</span></span><br><span class="line">  ret       </span><br><span class="line"></span><br><span class="line">%rdi x</span><br><span class="line">%rsi y</span><br><span class="line">%rax t1 t2 val</span><br><span class="line">%rdx t4</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h1 id="Control"><a href="#Control" class="headerlink" title="Control"></a>Control</h1><h2 id="information-about-currently-executing-program"><a href="#information-about-currently-executing-program" class="headerlink" title="information about currently executing program"></a>information about currently executing program</h2><ul>
-<li>temproary data（临时量）：<ul>
-<li>%rax…</li>
-</ul>
-</li>
-<li>location of runtime stack：<ul>
-<li>%rsp(栈指针)：指向当前栈顶</li>
-</ul>
-</li>
-<li>location of current code control point<ul>
-<li>%rip（当前程序运行到哪里）：包含当前执行指令的地址。不是我们可以正常访问的寄存器，它只是告诉我们程序执行到了哪里。</li>
-</ul>
-</li>
-<li>status of recent tests<ul>
-<li>condition codes：CF，ZF，SF，OF</li>
-<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/zenny_chen/article/details/121829354">https://blog.csdn.net/zenny_chen/article/details/121829354</a></li>
-</ul>
-</li>
-</ul>
-<h3 id="Condition-Codes"><a href="#Condition-Codes" class="headerlink" title="Condition Codes"></a>Condition Codes</h3><h4 id="Implicitly-Setting"><a href="#Implicitly-Setting" class="headerlink" title="Implicitly Setting"></a>Implicitly Setting</h4><ul>
-<li>Single bit register<ul>
-<li>CF：Carry Flag（for unisgned）（carry：进位）</li>
-<li>ZF：Zero Flag</li>
-<li>SF：Sign Flag（for signed）</li>
-<li>OF：Overflow Flag（for signed）</li>
-</ul>
-</li>
-<li>他们在算数过程中是如何被设置的？如 addq Src,Dest &lt;-&gt; t=a+b。他们的设置可以被认为是算数运算的副作用。<ul>
-<li>CF：unsigned 溢出(au bu 并且 t溢出)</li>
-<li>ZF：t=0</li>
-<li>SF：t&lt;0（signed）</li>
-<li>OF：signed（补码）溢出：<code>a&gt;0&amp;&amp;b&gt;0&amp;&amp;t&lt;0 || a&lt;0&amp;&amp;b&lt;0&amp;&amp;t&gt;0</code></li>
-</ul>
-</li>
-<li>lea指令不会设置这些标志位</li>
-</ul>
-<h4 id="Explicitly-Setting-Compare"><a href="#Explicitly-Setting-Compare" class="headerlink" title="Explicitly Setting: Compare"></a>Explicitly Setting: Compare</h4>
+          <p>Basic x86-64常识以及基本指令<br>Control 条件码相关、循环、跳转表</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/05/24/csapp_3_%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1003,7 +890,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-29 19:17:56" itemprop="dateModified" datetime="2022-05-29T19:17:56+08:00">2022-05-29</time>
+                <time title="修改时间：2022-06-04 21:31:23" itemprop="dateModified" datetime="2022-06-04T21:31:23+08:00">2022-06-04</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -1555,116 +1442,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/05/06/c++_%E5%87%BD%E6%95%B0%E5%AF%B9%E8%B1%A1/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/05/06/c++_%E5%87%BD%E6%95%B0%E5%AF%B9%E8%B1%A1/" class="post-title-link" itemprop="url">函数对象</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-05-06 11:04:54" itemprop="dateCreated datePublished" datetime="2022-05-06T11:04:54+08:00">2022-05-06</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2022-05-28 22:19:11" itemprop="dateModified" datetime="2022-05-28T22:19:11+08:00">2022-05-28</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>3k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>3 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="函数对象"><a href="#函数对象" class="headerlink" title="函数对象"></a>函数对象</h1><ul>
-<li>一个类，重载了<code>operator()</code>小括号运算符。如<code>class xx&#123;bool operator()(int a,int b);&#125;</code>。把这个类的对象称为函数对象或者仿函数。</li>
-<li>函数对象好处（代替函数指针）：<ul>
-<li>通过函数对象调用<code>operator()</code>，可以省略函数的调用开销，比通过函数指针调用函数（不能够<code>inline</code>内联调用）效率高</li>
-<li>因为函数对象是用类生成的，所以可以添加相关的成员变量，用来记录函数对象使用时更多的信息</li>
-</ul>
-</li>
-<li><code>sort(vec.begin(),vec.end(),greater&lt;int&gt;())</code><ul>
-<li>传入函数对象：<code>greater&lt;int&gt;()</code>。</li>
-</ul>
-</li>
-<li><code>priority_queue&lt;int,vector&lt;int&gt;,less&lt;int&gt;&gt; q;</code><ul>
-<li>传入函数对象的类类型<code>:less&lt;int&gt;</code>，将来会在<code>priority_queue</code>的类中造函数对象<code>less&lt;int&gt; comp</code>;<h2 id="仿函数和函数指针对比"><a href="#仿函数和函数指针对比" class="headerlink" title="仿函数和函数指针对比"></a>仿函数和函数指针对比</h2></li>
-</ul>
-</li>
-<li>函数对象示例<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unordered_set&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;unordered_map&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> maxn = <span class="number">100</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  Compare：函数对象的类类型</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T,<span class="keyword">typename</span> Compare&gt;  </span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">compare</span><span class="params">(T a, T b, Compare cmp)</span>    <span class="comment">//  cmp是个函数对象</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">cmp</span>(a,b);    <span class="comment">//  通过函数对象 调用的是operator()(a,b);</span></span><br><span class="line">    <span class="comment">//  内联inline！</span></span><br><span class="line">    <span class="comment">//  因为cmp是函数对象。也就是()是类内的函数。那么这个函数就是内联的.</span></span><br><span class="line">    <span class="comment">//  因为通过对象调用，那么</span></span><br><span class="line">    <span class="comment">//  编译器看到指定模板参数类型调用compare时，会实例化compare模板函数，而在这时Compare类型已经指定。也就是说对象cmp确定是什么类型的了。</span></span><br><span class="line">    <span class="comment">//  那么我们就可以知道调用哪个函数了。那么编译器就可以将他内联了，</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  mygreater类的对象称为 仿函数 / 函数对象</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">mygreater</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">operator</span><span class="params">()</span><span class="params">(T a, T b)</span></span>&#123;  <span class="comment">//  二元函数对象</span></span><br><span class="line">        <span class="keyword">return</span> a &gt; b;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  myless类的对象称为 仿函数 / 函数对象</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">myless</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">operator</span><span class="params">()</span><span class="params">(T a, T b)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> a &lt; b;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	cout&lt;&lt;myless&lt;<span class="keyword">int</span>&gt;()(<span class="number">1</span>,<span class="number">2</span>)&lt;&lt;endl;   <span class="comment">//  myless&lt;int&gt;()：仿函数 / 函数对象</span></span><br><span class="line">	cout&lt;&lt; <span class="built_in">compare</span>(<span class="number">1</span>,<span class="number">2</span>,myless&lt;<span class="keyword">int</span>&gt;()) &lt;&lt;endl;  <span class="comment">//  传入函数对象</span></span><br><span class="line">&#125;</span><br><span class="line">	<span class="comment">// cout&lt;&lt;compare&lt;int,myless&lt;int&gt;&gt;(1,2,myless&lt;int&gt;())&lt;&lt;endl; </span></span><br><span class="line">    <span class="comment">//  &lt;myless&lt;int&gt;&gt; 显示传入函数对象的类型 </span></span><br><span class="line">    <span class="comment">//  (myless&lt;int&gt;()) 传入函数对象 </span></span><br><span class="line">	<span class="comment">//  myless&lt;int&gt;：模板名 + 类型参数列表 = 类名。这是myless&lt;int&gt;()这个对象的类类型。</span></span><br></pre></td></tr></table></figure></li>
-</ul>
-<ul>
-<li>函数指针示例<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  Compare 函数指针类型</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T,<span class="keyword">typename</span> Compare&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">compare</span><span class="params">(T a, T b, Compare cmp)</span>	<span class="comment">//  cmp是一个函数指针</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">cmp</span>(a,b);    <span class="comment">//  通过函数指针调用</span></span><br><span class="line">    <span class="comment">//  通过函数指针调用缺点：！！！</span></span><br><span class="line">    <span class="comment">//  无法inline、开销大！因为有函数调用的开销！</span></span><br><span class="line">    <span class="comment">//  为什么无法内联？</span></span><br><span class="line">    <span class="comment">//  内联是在编译时期做的。而这里我们通过函数指针调用，是在运行时调用，在运行时传入地址，通过地址调用。</span></span><br><span class="line">    <span class="comment">//  而在编译时，编译器当然不知道调用的是那个函数。</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  这俩不是仿函数，是函数模板</span></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">greater</span><span class="params">(T a, T b)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> a &gt; b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">myless</span><span class="params">(T a, T b)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> a &lt; b;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    cout&lt;&lt;myless&lt;<span class="keyword">int</span>&gt;(<span class="number">1</span>,<span class="number">2</span>)&lt;&lt;endl;   	   <span class="comment">//  myless&lt;int&gt;:函数指针。</span></span><br><span class="line">    cout&lt;&lt;<span class="built_in">compare</span>(<span class="number">1</span>,<span class="number">2</span>,myless&lt;<span class="keyword">int</span>&gt;)&lt;&lt;endl;  <span class="comment">//  myless&lt;int&gt;的类型是一个函数指针</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="STL示例"><a href="#STL示例" class="headerlink" title="STL示例"></a>STL示例</h2><ul>
-<li>STL模板参数指定函数对象类型<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * template&lt;typename _Tp, typename _Sequence = vector&lt;_Tp&gt;,</span></span><br><span class="line"><span class="comment">	   typename _Compare  = less&lt;typename _Sequence::value_type&gt; &gt;</span></span><br><span class="line"><span class="comment">    class priority_queue</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">    ...</span></span><br><span class="line"><span class="comment">    protected:</span></span><br><span class="line"><span class="comment">      //  See queue::c for notes on these names.</span></span><br><span class="line"><span class="comment">      _Sequence  c;</span></span><br><span class="line"><span class="comment">      _Compare   comp;	用类型_Compare定义了一个函数对象</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="comment">//    priority_queue&lt;int&gt; q;  //  使用默认底层容器类型vector&lt;int&gt; 使用默认仿函数类型_Compare = less&lt;..&gt;</span></span><br><span class="line"><span class="comment">//    priority_queue&lt;int,vector&lt;int&gt;&gt; q;  //  使用默认 _Compare模板参数类型</span></span><br><span class="line">    priority_queue&lt;<span class="keyword">int</span>,vector&lt;<span class="keyword">int</span>&gt;,less&lt;<span class="keyword">int</span>&gt;&gt; q;</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">5</span>;++i)    q.<span class="built_in">push</span>(<span class="built_in">rand</span>()%<span class="number">100</span>);</span><br><span class="line">    <span class="keyword">while</span>(!q.<span class="built_in">empty</span>())</span><br><span class="line">    &#123;</span><br><span class="line">        cout&lt;&lt;q.<span class="built_in">top</span>()&lt;&lt;<span class="string">&quot; &quot;</span>;</span><br><span class="line">        q.<span class="built_in">pop</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    cout&lt;&lt;endl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1734,7 +1511,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">67</span>
+          <span class="site-state-item-count">68</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1784,13 +1561,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">555k</span>
+    <span title="站点总字数">564k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">8:24</span>
+    <span title="站点阅读时长">8:33</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
   </div>
