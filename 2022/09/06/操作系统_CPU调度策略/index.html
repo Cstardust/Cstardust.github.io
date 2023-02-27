@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="线程是CPU基本调度单位（如果os支持线程的话）.CPU调度没有对错，只有好坏，即作出的选择是否合适 .cpu调度策略 : 先来先服务,最短作业优先,最短剩余时间优先调度,最短剩余时间优先调度,轮转调度,多级队列调度,最高优先级调度,多级反馈队列调度 .">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CPU调度策略">
+<meta property="og:url" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="线程是CPU基本调度单位（如果os支持线程的话）.CPU调度没有对错，只有好坏，即作出的选择是否合适 .cpu调度策略 : 先来先服务,最短作业优先,最短剩余时间优先调度,最短剩余时间优先调度,轮转调度,多级队列调度,最高优先级调度,多级反馈队列调度 .">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-09-52-16.png">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-09-57-58.png">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-06-09-06-57.png">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-10-03-06.png">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-10-46-41.png">
+<meta property="og:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-11-18-21.png">
+<meta property="article:published_time" content="2022-09-06T00:27:09.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:20:47.643Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="OS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-09-52-16.png">
+
+<link rel="canonical" href="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>CPU调度策略 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          CPU调度策略
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-06 08:27:09" itemprop="dateCreated datePublished" datetime="2022-09-06T08:27:09+08:00">2022-09-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:20:47" itemprop="dateModified" datetime="2023-02-27T23:20:47+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>线程是CPU基本调度单位（如果os支持线程的话）.<br>CPU调度没有对错，只有好坏，即作出的选择是否合适 .<br>cpu调度策略 : 先来先服务,最短作业优先,最短剩余时间优先调度,最短剩余时间优先调度,轮转调度,多级队列调度,最高优先级调度,多级反馈队列调度 . </p>
+<span id="more"></span>
+
+
+<h2 id="因素-及-准则"><a href="#因素-及-准则" class="headerlink" title="因素 及 准则"></a>因素 及 准则</h2><ul>
+<li><p><strong>任务周转时间</strong>：即任务从新建进入os到该任务完成离开os所经历的全部时间</p>
+<ul>
+<li><strong>后台（非交互式）任务关注周转时间</strong></li>
+</ul>
+</li>
+<li><p><strong>任务响应时间</strong>：即从用户向程序发起一个交互操作到该任务响应这个操作之间经历的时间。例如单机菜单到弹出菜单这段时间。</p>
+<ul>
+<li><strong>前台（交互式）任务关注响应时间</strong></li>
+</ul>
+</li>
+<li><p><strong>系统吞吐量</strong>：即一段时间内计算机系统能完成的任务总数。（系统内耗时间少）</p>
+</li>
+<li><p>吞吐量和响应时间之间有矛盾</p>
+<ul>
+<li>响应时间小 =》切换次数多 =》 系统内耗大 =》吞吐量小</li>
+</ul>
+</li>
+<li><p>IO密集型和CPU密集型任务<br><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-09-52-16.png"></p>
+<ul>
+<li>CPU密集型，也即CPU约束型<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">|--------CPU-------|--IO--|--------CPU-------|--IO--|</span><br></pre></td></tr></table></figure></li>
+<li>IO密集型，也即IO约束型<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">|--CPU--|--------IO--------|--CPU--|--------IO--------|</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="先来先服务-First-Come-First-Severd-FCFS"><a href="#先来先服务-First-Come-First-Severd-FCFS" class="headerlink" title="先来先服务 First Come First Severd, FCFS"></a>先来先服务 First Come First Severd, FCFS</h3><ul>
+<li><p><strong>特点：公平</strong></p>
+</li>
+<li><p>先来后到，每次从就绪队列选择最先进入队列的进程，然后一直运行，直到进程退出或被阻塞，才会继续从队列中选择第一个进程接着运行</p>
+<ul>
+<li>这似乎很公平，但是当一个长作业先运行了，那么后面的短作业等待的时间就会很长，不利于短作业。<br><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-09-57-58.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="最短作业优先-Shortest-Job-First-SJF"><a href="#最短作业优先-Shortest-Job-First-SJF" class="headerlink" title="最短作业优先 Shortest Job First, SJF"></a>最短作业优先 Shortest Job First, SJF</h3><ul>
+<li><strong>短作业优点：周转时间最小</strong><br><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-06-09-06-57.png"></li>
+</ul>
+<ul>
+<li>优先选择运行时间最短的进程来运行，这有助于提高系统的吞吐量。</li>
+</ul>
+<h3 id="最短剩余时间优先调度-Shortest-Remaining-Time-First-SRTF"><a href="#最短剩余时间优先调度-Shortest-Remaining-Time-First-SRTF" class="headerlink" title="最短剩余时间优先调度 Shortest Remaining Time First , SRTF"></a>最短剩余时间优先调度 Shortest Remaining Time First , SRTF</h3><ul>
+<li><p>实际上，任务不可能一下子同时出现在0时刻，os无法在0时刻决定出那个先调度那进程，因此实际上是 <strong>最短剩余时间优先调度</strong></p>
+<ul>
+<li>每次新任务到达时，选择剩余执行时间最短的进行运行。</li>
+<li><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-10-03-06.png"></li>
+<li>是一种<strong>可抢占调度</strong></li>
+</ul>
+</li>
+<li><p>对于旨在缩小平均周转时间的非交互式任务，SRTF看起来是个可以解决问题的调度算法。</p>
+<ul>
+<li>不过存在一个问题：需要<strong>预测任务执行时间</strong><ul>
+<li>任务得到CPU之后将会执行的时间长度，只有任务完成以后</li>
+</ul>
+</li>
+<li>并且实际上也并不是只有非交互式任务，还存在交互式任务<ul>
+<li>SRTF中，任何任务要等到前面的任务全部执行完成以后才被调度，所以最差的用户响应时间可能很大</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="轮转调度-Round-Robin-RR"><a href="#轮转调度-Round-Robin-RR" class="headerlink" title="轮转调度 Round Robin, RR"></a>轮转调度 Round Robin, RR</h3><ul>
+<li><strong>RR特点：可以保证用户响应时间，是交互式任务调度的解决方法</strong></li>
+<li>概念<ul>
+<li>每个进程被分配一个时间段，称为时间片（Quantum），即允许该进程在该时间段中运行。</li>
+</ul>
+</li>
+<li>流程<ul>
+<li>如果时间片用完，进程还在运行，那么将会把此进程从 CPU 释放出来，并把 CPU 分配另外一个进程；</li>
+<li>如果该进程在时间片结束前阻塞或结束，则CPU立即进行切换；另外，时间片的长度就是一个很关键的点：</li>
+</ul>
+</li>
+<li>时间片长度<ul>
+<li>如果时间片设得太短会导致过多的进程上下文切换，降低了 CPU 效率，吞吐量变小。</li>
+<li>如果设得太长又可能引起对短作业进程的响应时间变长。</li>
+<li>时间片10-100ms,切换时间0.1-1ms(1%)</li>
+</ul>
+</li>
+</ul>
+<h3 id="多级队列调度-Multilevel-Queue-Schedule"><a href="#多级队列调度-Multilevel-Queue-Schedule" class="headerlink" title="多级队列调度 Multilevel Queue Schedule"></a>多级队列调度 Multilevel Queue Schedule</h3><p><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-10-46-41.png"></p>
+<h3 id="最高优先级调度-Highest-Priority-First，HPF"><a href="#最高优先级调度-Highest-Priority-First，HPF" class="headerlink" title="最高优先级调度 Highest Priority First，HPF"></a>最高优先级调度 Highest Priority First，HPF</h3><ul>
+<li><p>时间片轮转算法做了个假设，即让所有的进程同等重要，也不偏袒谁，大家的运行时间都一样。</p>
+</li>
+<li><p>但是，对于多用户计算机系统就有不同的看法了，它们希望调度是有优先级的，即希望调度程序能从就绪队列中选择最高优先级的进程进行运行，这称为最高优先级（Highest Priority First，HPF）调度算法。</p>
+</li>
+<li><p>进程的优先级可以分为，<strong>静态优先级</strong>或<strong>动态优先级</strong>：</p>
+<ul>
+<li><strong>静态优先级</strong>：创建进程时候，就已经确定了优先级了，然后整个运行时间优先级都不会变化；</li>
+<li><strong>动态优先级</strong>：根据进程的动态变化调整优先级，比如如果进程运行时间增加，则降低其优先级，如果进程等待时间（就绪队列的等待时间）增加，则升高其优先级，也就是随着时间的推移增加等待进程的优先级。</li>
+</ul>
+</li>
+<li><p>该算法也有两种处理优先级高的方法，<strong>非抢占式和抢占式</strong>：</p>
+<ul>
+<li><strong>非抢占式</strong>：当就绪队列中出现优先级高的进程，运行完当前进程，再选择优先级高的进程。</li>
+<li><strong>抢占式</strong>：当就绪队列中出现优先级高的进程，当前进程挂起，调度优先级高的进程运行。</li>
+</ul>
+</li>
+<li><p>但是依然有缺点，可能会导致低优先级的进程永远不会运行。</p>
+</li>
+</ul>
+<h3 id="多级反馈队列调度-Multilevel-Feedback-Queue"><a href="#多级反馈队列调度-Multilevel-Feedback-Queue" class="headerlink" title="多级反馈队列调度 Multilevel Feedback Queue"></a>多级反馈队列调度 Multilevel Feedback Queue</h3><p><img src="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/2022-09-07-11-18-21.png"></p>
+<ul>
+<li><strong>多级反馈队列</strong>（<strong>Multilevel Feedback Queue</strong>）<ul>
+<li><strong>多级</strong>：<ul>
+<li>不是单纯分成前台队列，后台队列，分成队列1，队列2，队列3。</li>
+<li>每个队列优先级从高到低，同时优先级越高时间片越短。</li>
+</ul>
+</li>
+<li><strong>反馈</strong><ul>
+<li>任务应该在哪个队列是在执行过程中<strong>动态调整</strong>，不似乎一开始就确定的。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="问题及解决"><a href="#问题及解决" class="headerlink" title="问题及解决"></a>问题及解决</h4><ul>
+<li><p>问题1：对于多级队列调度</p>
+<ul>
+<li>采用非抢占式调用，<ul>
+<li>最差响应时间可能变长<ul>
+<li>一旦后台任务得到CPU，就只能等到执行完之后再释放CPU，前台任务的响应时间可能变长</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>采用抢占调度<ul>
+<li>后台任务饥饿</li>
+<li>如果有前台任务，就必须切换到前台队列。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>问题2：os如何知道哪些是前台任务，哪些是后台任务？</p>
+<ul>
+<li>任务类型不是在一开始就确定下来，而是根据任务执行的具体表现来<strong>动态调整</strong></li>
+<li>这就是 <strong>多级反馈队列调度</strong> 中的<strong>反馈</strong>的含义</li>
+<li>IO动态调整。<ul>
+<li>总是进行IO的，提高优先级，减小时间片。</li>
+</ul>
+</li>
+<li>按执行时长进行动态调整<ul>
+<li>随着一个任务执行时间变长，降低其优先级，并增大其时间片。</li>
+<li>近似实现了SRTF，且不需要对执行时长进行预测。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ul>
+<li>多级反馈队列<ul>
+<li>多级反馈队列之间的动态调整（反馈）近似实现了SRTF，降低周转时间，且不用预测时间</li>
+<li>核心基础是RR，保证了任务响应时间</li>
+<li>多级反馈队列之间的动态调整（反馈）可以综合交互式和非交互式任务调度</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OS/" rel="tag"># OS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/" rel="prev" title="服务器设计范式">
+      <i class="fa fa-chevron-left"></i> 服务器设计范式
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/" rel="next" title="操作系统_并发05-死锁">
+      操作系统_并发05-死锁 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%A0%E7%B4%A0-%E5%8F%8A-%E5%87%86%E5%88%99"><span class="nav-number">1.</span> <span class="nav-text">因素 及 准则</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%88%E6%9D%A5%E5%85%88%E6%9C%8D%E5%8A%A1-First-Come-First-Severd-FCFS"><span class="nav-number">1.1.</span> <span class="nav-text">先来先服务 First Come First Severd, FCFS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E7%9F%AD%E4%BD%9C%E4%B8%9A%E4%BC%98%E5%85%88-Shortest-Job-First-SJF"><span class="nav-number">1.2.</span> <span class="nav-text">最短作业优先 Shortest Job First, SJF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E7%9F%AD%E5%89%A9%E4%BD%99%E6%97%B6%E9%97%B4%E4%BC%98%E5%85%88%E8%B0%83%E5%BA%A6-Shortest-Remaining-Time-First-SRTF"><span class="nav-number">1.3.</span> <span class="nav-text">最短剩余时间优先调度 Shortest Remaining Time First , SRTF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BD%AE%E8%BD%AC%E8%B0%83%E5%BA%A6-Round-Robin-RR"><span class="nav-number">1.4.</span> <span class="nav-text">轮转调度 Round Robin, RR</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E9%98%9F%E5%88%97%E8%B0%83%E5%BA%A6-Multilevel-Queue-Schedule"><span class="nav-number">1.5.</span> <span class="nav-text">多级队列调度 Multilevel Queue Schedule</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%80%E9%AB%98%E4%BC%98%E5%85%88%E7%BA%A7%E8%B0%83%E5%BA%A6-Highest-Priority-First%EF%BC%8CHPF"><span class="nav-number">1.6.</span> <span class="nav-text">最高优先级调度 Highest Priority First，HPF</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%9A%E7%BA%A7%E5%8F%8D%E9%A6%88%E9%98%9F%E5%88%97%E8%B0%83%E5%BA%A6-Multilevel-Feedback-Queue"><span class="nav-number">1.7.</span> <span class="nav-text">多级反馈队列调度 Multilevel Feedback Queue</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E5%8F%8A%E8%A7%A3%E5%86%B3"><span class="nav-number">1.7.1.</span> <span class="nav-text">问题及解决</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">1.7.2.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '5252dc97e61488ad173af15d4e609da4',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

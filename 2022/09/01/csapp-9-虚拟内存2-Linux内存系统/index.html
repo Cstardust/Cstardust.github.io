@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Linux 内存系统memory map 内存映射">
+<meta property="og:type" content="article">
+<meta property="og:title" content="csapp-9-虚拟内存2-Linux内存系统">
+<meta property="og:url" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="Linux 内存系统memory map 内存映射">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-41-13.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-48-10.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-58-14.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-17-11-29.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-17-47-01.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-08-09-01.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-10-28-09-24-32.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-08-08-51.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-01-20-38-16.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-01-20-38-31.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-11-27-15.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-07-51.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-09-52.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-31-10.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-39-36.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-20-43-20.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-20-49-19.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-21-01-14.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-15-20-07.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-12-13-06-03.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-23-12-47-03.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-32-35.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-41-52.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-42-21.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-16-10-06-37.png">
+<meta property="og:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-16-10-18-54.png">
+<meta property="article:published_time" content="2022-09-01T12:40:03.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:23.963Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-41-13.png">
+
+<link rel="canonical" href="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>csapp-9-虚拟内存2-Linux内存系统 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          csapp-9-虚拟内存2-Linux内存系统
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-01 20:40:03" itemprop="dateCreated datePublished" datetime="2022-09-01T20:40:03+08:00">2022-09-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:23" itemprop="dateModified" datetime="2023-02-27T23:18:23+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Linux 内存系统<br>memory map 内存映射</p>
+<span id="more"></span>
+
+<h2 id="Linux-内存系统"><a href="#Linux-内存系统" class="headerlink" title="Linux 内存系统"></a><strong>Linux 内存系统</strong></h2><h3 id="Linux-地址翻译"><a href="#Linux-地址翻译" class="headerlink" title="Linux 地址翻译"></a><strong>Linux 地址翻译</strong></h3><ul>
+<li><p><strong>结构</strong><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-41-13.png"><br>L1-d-TBL 和 L1-i-TLB 这些SRAM中缓存的PTE，是为了防止TLB中找不到相应PTE</p>
+</li>
+<li><p><strong>地址翻译过程</strong> 注意到是四级页表层次结构<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-48-10.png"></p>
+<ul>
+<li><strong>加速技巧</strong></li>
+</ul>
+</li>
+<li><p><strong>由图易知：x64 是 48位虚拟地址 ，52位物理地址</strong></p>
+</li>
+</ul>
+<ul>
+<li><p><strong>PTE格式</strong></p>
+<ul>
+<li>level 1-3<ul>
+<li>每个PTE引用一个4KB的子页表（下一级的page table）</li>
+<li><strong>组成：page table physical base addr（下一级页表的基地址） + permission bits</strong><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-16-58-14.png"></li>
+</ul>
+</li>
+<li>level 4<ul>
+<li>每个PTE引用一个4KB的虚拟内存（实际上存的是DRAM的物理地址）</li>
+<li><strong>组成：page physical base addr + permission bits</strong></li>
+<li><strong>所存的 page physical base address 就是 PPN</strong><ul>
+<li><strong>这个PPN是一个DRAM的页面基地址（physical page 的 base addr），这个页面，cached了一个虚拟内存（位于disk）里的VM的内容。</strong></li>
+<li><strong>所以称</strong>，每个PTE引用了一个4KB的虚拟内存。（是指其指向的DRAM的地址的内容是cached的磁盘虚拟内存上的内容）<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-17-11-29.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>PTE的三个权限位<ul>
+<li>R/W：页的内容只读/读写</li>
+<li>U/S：是否可以用户模式访问（保护kernal的代码和数据不被用户程序访问）</li>
+<li>XD：禁止从本页取指令（通过限制只能执行只读代码段，防御缓冲区溢出攻击）</li>
+</ul>
+</li>
+<li>A：引用位（reference bit），用于实现页面替换算法</li>
+<li>D：修改位/脏位(dirty bit)</li>
+</ul>
+</li>
+<li><p>MMU如何通过四级页表将VA翻译成PA<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-18-17-47-01.png"></p>
+</li>
+</ul>
+<h3 id="Linux-虚拟内存系统"><a href="#Linux-虚拟内存系统" class="headerlink" title="Linux 虚拟内存系统"></a><strong>Linux 虚拟内存系统</strong></h3><h4 id="Virtual-Address-Space-虚拟地址空间"><a href="#Virtual-Address-Space-虚拟地址空间" class="headerlink" title="Virtual    Address    Space 虚拟地址空间"></a>Virtual    Address    Space 虚拟地址空间</h4><ul>
+<li><p><strong>Virtual    Address    Space    of    a    Linux    Process</strong> 一个Linux进程的虚拟地址空间（我觉得不应当叫虚拟内存，你看英文就不这么叫。或者应该叫进程的虚拟内存也不错。）</p>
+</li>
+<li><p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-08-09-01.png"></p>
+<ul>
+<li>每个进程共享内核代码和数据结构（Kernel    code    and    data），所以内核虚拟地址空间的这个区域被map映射到所有进程共享的物理页面PP</li>
+<li>内核虚拟地址空间的其他区域包含每个进程都不相同的数据，<ul>
+<li>page table页表，kernal stack内核在上下文执行代码时使用的栈，task and mm structs 记录虚拟地址空间当前组织的各种数据结构。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>32位和64位的地址空间<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-10-28-09-24-32.png"></p>
+</li>
+</ul>
+<h4 id="Linux-Organizes-VM-as-Collection-of-“Areas”"><a href="#Linux-Organizes-VM-as-Collection-of-“Areas”" class="headerlink" title="Linux    Organizes    VM    as    Collection    of    “Areas”"></a>Linux    Organizes    VM    as    Collection    of    “Areas”</h4><ul>
+<li><strong>Linux 以 区域（也叫做段） 的形式 来管理 虚拟内存（已分配的虚拟地址空间），并把虚拟内存（已分配的虚拟地址空间）作为 区域 的集合</strong><ul>
+<li>一个<strong>区域（area）</strong>就是<strong>已经存在着的（已分配的）</strong>（（我认为）但是不一定已经要加载入DRAM中的）的<strong>虚拟内存的连续片</strong>（chunk），这些页以某种方式相关联。</li>
+<li>如,.text段,.data段,.bss段,堆,共享库段,以及用户栈都是不同的area区域。</li>
+<li><strong>每个存在的虚拟页面都保存在某个区域中，而不属于某个区域的虚拟页是不存在的，并且不能被进程引用。</strong></li>
+<li>area的概念很重要，因为它允许虚拟地址空间有间隙。内核不用记录那些<strong>不存在的虚拟页</strong>，而这样的页也<strong>不占用内存、磁盘或者内核本身的任何额外资源</strong>。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>kernel通过<strong>task_struct中的mm_struct</strong>来组织进程的虚拟内存。<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-08-08-51.png"></p>
+<ul>
+<li><strong>task_struct</strong>：kernal为os的每个progess维护一个单独的任务结构，其中元素包含内核运行该进程所需的所有信息<ul>
+<li>一直说的PCB、PCB。<strong>所谓的PCB，就是这个task_struct</strong></li>
+</ul>
+</li>
+<li><strong>mm_struct</strong>：描述当前虚拟内存状态</li>
+<li><strong>pgd</strong>：level 1 page table地址</li>
+<li><strong>vm_area_struct 区域结构</strong><ul>
+<li>vm_strart：区域的起始处</li>
+<li>vm_end：区域的结束处</li>
+<li>vm_prot：区域内所有页的读写权限</li>
+<li>vm_flags：这个区域内的页面，是与其他进程共享还是私有</li>
+<li>vm_next：指向链表中下一个区域的结构</li>
+</ul>
+</li>
+<li>当内核运行某进程时，就将其pgd放在CR3。</li>
+</ul>
+</li>
+<li><p><strong>以上这些所谓的组织虚拟内存，这些都是软件上的，逻辑上的，都是虚拟的，都是Virtual Address Space中的，并没有涉及到MMU将VA翻译成PA的过程，还没走到那里。</strong></p>
+</li>
+<li><p>vm_area_struct的区域创建了，就代表这那部分虚拟地址空间（虚拟内存）应该有东西，但是实际上那部分东西究竟有没有载入dram，并不知道。</p>
+<ul>
+<li>如果没有，那么会触发page fault中断，将disk上的相应内容cache入dram</li>
+<li>如果有，那么就引用就行了。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<ul>
+<li>ps:mm_struct的具体成员<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-01-20-38-16.png"><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-01-20-38-31.png"></li>
+</ul>
+<ul>
+<li>所谓的一直说的进程控制块<strong>PCB Progess Control Block</strong>,<strong>在Linux下的实现就是task_struct结构体</strong></li>
+</ul>
+<hr>
+<h4 id="Linux-Page-Fault-Handling-Linux缺页异常处理"><a href="#Linux-Page-Fault-Handling-Linux缺页异常处理" class="headerlink" title="Linux Page    Fault    Handling   Linux缺页异常处理"></a>Linux Page    Fault    Handling   Linux缺页异常处理</h4><ul>
+<li><p>缺页分三类</p>
+<ul>
+<li><strong>Segmentation fault 段错误</strong> : 访问一个不存在的页面</li>
+<li><strong>Protection    exception 保护异常</strong> : 违反许可，写一个只读的页面</li>
+<li><strong>Normal    page    fault    正常缺页</strong> : 可以访问该虚拟页面，但是虚拟页面所映射的虚拟内存，还没有加载到DRAM中，需要加载进来。    </li>
+</ul>
+</li>
+<li><p>MMU翻译某个虚拟地址A时，触发了缺页异常。于是控制转移到kernel的page fault handler。之后</p>
+</li>
+<li><p><strong>1. 虚拟地址A是合法的吗？</strong></p>
+<ul>
+<li><strong>也即，A在某个vm_area_struct定义的区域内吗？</strong></li>
+<li>handler遍历链表，搜索所有start和end。若不合法（也即不在），那么触发一个<strong>Segmentation fault段错误</strong>。</li>
+<li>这种情况就是连malloc还没malloc，连虚拟页面都没有.</li>
+</ul>
+</li>
+<li><p><strong>2. 试图进行的内存访问是否合法？</strong></p>
+<ul>
+<li><strong>也即，进程是否有读、写或者执行这个区域内页面的权限。</strong></li>
+<li>如 用户模式的进程试图从内核虚拟内存中读取字造成的缺页；又如，对只读页面进行写操作的存储指令造成的缺页。</li>
+<li>那么，触发一个 <strong>Protection    exception 保护异常</strong></li>
+</ul>
+</li>
+<li><p><strong>3. 此时，内核知道了这个缺页是由于对合法的虚拟地址进行合法的操作造成的</strong></p>
+<ul>
+<li>那么，选择一个牺牲页，如果修改过，就交换出去，换入新的页面并更新页表。handler返回时，cpu重新执行引起缺页的指令。该指令再次将A发送到MMU。这次MMU能正常的翻译而不缺页。</li>
+</ul>
+</li>
+</ul>
+<h2 id="Memory-mapping-内存映射"><a href="#Memory-mapping-内存映射" class="headerlink" title="Memory mapping 内存映射"></a>Memory mapping 内存映射</h2><ul>
+<li><strong>Memory mapping</strong> : VM    areas    initialized    by    associating    them    with    disk objects.Linux将虚拟内存区域与一个磁盘上的对象关联起来,以初始化这个虚拟内存区域的内容.这个过程,被称作内存映射.</li>
+</ul>
+<h3 id="映射对象"><a href="#映射对象" class="headerlink" title="映射对象"></a>映射对象</h3><ul>
+<li>虚拟内存区域可以映射到的两种类型的对象 <ul>
+<li><strong>Regular    file on    disk    Linux文件系统中的普通文件</strong><ul>
+<li>一个区域可以映射到一个普通磁盘文件的连续部分(e.g.,    an    executable    object    file) </li>
+<li>Initial    page    bytes    come    from    a    section    of    a    file(文件区被分为页大小的片,每一片包含一个虚拟页面的初始内容)</li>
+<li><strong>因为按需页面调度,所以这些虚拟页面没有实际交换进入DRAM,直到CPU第一次引用到页面(即发射一个虚拟地址,落在地址空间这个页面的范围之内).如果区域比文件区要大,那么就用0填充这个区域的余下部分.</strong></li>
+</ul>
+</li>
+<li><strong>Anonymous    file    (e.g.,    nothing) 匿名文件</strong><ul>
+<li>匿名文件由内核创建,包含的全是二进制0</li>
+<li>当cpu引用匿名文件时,调度页面时,用二进制0覆盖victim,并更新页表    ,标记为常驻内存<ul>
+<li>页面调度时,disk和dram没有任何数据传送.</li>
+</ul>
+</li>
+<li>Once    the    page    is    wriken    to    (dirtied),    it    is    like    any    other    page</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Swap-File-交换文件"><a href="#Swap-File-交换文件" class="headerlink" title="Swap File 交换文件"></a>Swap File 交换文件</h3><ul>
+<li><strong>Dirty    pages    are    copied    back and    forth    between    memory    and    a    special    swap    file.</strong><ul>
+<li>dirty page : 一个被初始化过的虚拟页面</li>
+<li>swap file 交换文件 也叫做 swap space 交换空间 或者 swap area 交换区域 </li>
+<li>任何时刻,swap file 限制着当前运行得进程能够分配的虚拟页面的总数</li>
+</ul>
+</li>
+<li><strong>我认为 我感觉 这个swap file 就是磁盘上的那片虚拟内存吧</strong></li>
+</ul>
+<h3 id="Sharing-Revisited-Shared-Objects-共享对象"><a href="#Sharing-Revisited-Shared-Objects-共享对象" class="headerlink" title="Sharing    Revisited:    Shared    Objects 共享对象"></a>Sharing    Revisited:    Shared    Objects 共享对象</h3><ul>
+<li><p><strong>COW实现?</strong></p>
+</li>
+<li><p>共享对象 应该就是 <strong>共享库(shared library)的</strong>实现原理吧</p>
+</li>
+<li><p><strong>内存映射</strong>提供了一种清晰的机制,用来控制多个进程如何<strong>共享对象</strong>.</p>
+</li>
+<li><p>一个对象可以被映射到虚拟内存的一个区域,要么作为共享对象,要么作为私有对象.</p>
+<ul>
+<li>作为<strong>共享对象</strong> : 一个进程对这个区域的任何写操作 , 也会反映到这个共享对象映射到的其他进程 . 并且,也会反映在磁盘上的原始对象上.<ul>
+<li>一个映射到共享对象的虚拟内存区域称为共享区域</li>
+</ul>
+</li>
+<li>作为<strong>私有对象</strong> : 对四有对象映射到的区域作出的改变,对其他进程是不可见的,也不会反映在磁盘上的对象中 . <ul>
+<li>一个映射到私有对象的虚拟内存区域称为私有区域<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-11-27-15.png"></li>
+</ul>
+</li>
+<li>即使对象被映射到了多个共享区域,物理内存也只需要存放共享对象的一个副本.</li>
+</ul>
+</li>
+<li><p><strong>COW 写时复制 copy on write</strong>:延迟私有对象中的副本直到最后可能的时刻,充分利用DRAM</p>
+<ul>
+<li>映射private object的进程,其相应私有区域的<strong>PTE</strong>标记为<strong>read only</strong></li>
+<li>且,其相应的<strong>area</strong>区域结构被标记为<strong>私有的写时复制</strong><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-07-51.png"></li>
+<li>Instruction    writing    to    private    page    triggers    , 触发异常</li>
+<li>handler会在DRAM种创建这个私有对象的页面的一个新副本,更新页表条目指向这个新的副本,然后恢复这个页面的可写权限.</li>
+<li>控制返回到触发异常的指令,重新执行.<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-09-52.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="Fork"><a href="#Fork" class="headerlink" title="Fork"></a>Fork</h3><ul>
+<li><p><strong>fork实现? 共享了什么? 什么不共享?</strong></p>
+</li>
+<li><p>VM虚拟内存    and    memory    mapping内存映射    explain    how    fork    provides    private    address    space    for    each    process.</p>
+</li>
+<li><p>fork被当前progess调用时</p>
+<ul>
+<li>To    create    virtual    address    for    new    new    process    <ul>
+<li>Create    exact    copies    of    current    mm_struct,    vm_area_struct区域结构,    and    page    tables页表</li>
+<li>Flag    each    page    in    both    processes    as    read-only     — 每个页面的都标记位为只读(因为要实现COW)</li>
+<li>Flag    each    vm_area_struct in    both    processes    as    private    COW    — 两个进程中的每个区域结构都标记位私有的写时复制</li>
+</ul>
+</li>
+<li>On    return,    each    process    has    exact    copy    of    virtual    memory    (和刚调用fork时存在的虚拟内存相同的副本)</li>
+<li>Subsequent    writes    create    new    pages    using    COW    mechanism<ul>
+<li>因此,也就为每个进程保持了私有地址空间的抽象概念</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="execve"><a href="#execve" class="headerlink" title="execve"></a>execve</h3><blockquote>
+<p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-31-10.png"><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-14-39-36.png"><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-20-43-20.png"></p>
+</blockquote>
+<ul>
+<li><p><strong>加载器如何工作？</strong></p>
+</li>
+<li><p><code>execve(&quot;a.out&quot;,NULL,NULL)</code> 在当前进程中加载并运行包含在可执行文件a.out中的程序。将executable file a加载进内存。步骤如下<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-20-49-19.png"></p>
+</li>
+<li><p><strong>删除已经存在的用户区域；</strong></p>
+</li>
+<li><p><strong>映射私有区域；</strong></p>
+</li>
+<li><p><strong>映射共享区域；</strong></p>
+</li>
+<li><p><strong>设置PC</strong></p>
+</li>
+<li><p>main开始执行时的用户栈结构<br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-21-21-01-14.png"></p>
+</li>
+</ul>
+<h3 id="User-Level-Memory-Mapping-mmap-用户级内存映射"><a href="#User-Level-Memory-Mapping-mmap-用户级内存映射" class="headerlink" title="User-Level    Memory    Mapping     : mmap 用户级内存映射"></a>User-Level    Memory    Mapping     : mmap 用户级内存映射</h3><ul>
+<li><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/huxiao-tee/p/4660352.html">补充</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/huxiao-tee/p/4657851.html">TO_READ</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://xiaolincoding.com/os/8_network_system/zero_copy.html#%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E9%9B%B6%E6%8B%B7%E8%B4%9D">read mmap</a></p>
+</li>
+<li><p>read: disk —data—&gt; kernal —data—&gt; user </p>
+</li>
+<li><p>mmap:disk —data—&gt; kernal —映射到user的虚拟地址空间</p>
+</li>
+<li><p><strong>mmap不必从内核缓冲区拷贝到用户缓冲区,减少了一次数据拷贝,但是上下文切换次数没减少.(os的内核和用户空间不需要进行任何数据拷贝)</strong></p>
+</li>
+<li><p><strong>mmap</strong>要求创建一个新的虚拟内存区域,最好是从start开始的一个区域,并将fd指定的对象的一个连续的片(chunk)映射到这个新的区域.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span> *<span class="title">mmap</span><span class="params">(<span class="keyword">void</span> *start,<span class="keyword">size_t</span> length,<span class="keyword">int</span> prot,<span class="keyword">int</span> flags,<span class="keyword">int</span> fd,<span class="keyword">off_t</span> offset)</span></span>;</span><br></pre></td></tr></table></figure></li>
+<li><p>Map    len    bytes    startng    at    offset    offset of    the    file    specified    by    file    description    fd,    preferably    at    address    start    </p>
+</li>
+<li><p>start : NULL</p>
+</li>
+<li><p>length : 连续的对象片的大小字节</p>
+</li>
+<li><p>offset : 从文件开始处偏移量为offset字节的地方开始</p>
+</li>
+<li><p>prot : 新映射的虚拟内存区域的访问权限位</p>
+<ul>
+<li>PROT_EXEC : 这个区域内的页面可以由被CPU执行的指令组成</li>
+<li>PROT_READ : 这个区域内的页面可读</li>
+<li>PROT_WRITE : 这个区域内的页面可写 </li>
+<li>PROT_NONE : 这个区域内的页面不能被访问</li>
+</ul>
+</li>
+<li><p>flag : 被映射对象类型的位</p>
+<ul>
+<li> MAP_ANON : 被映射对象是一个匿名对象</li>
+<li> MAP_PRIVATE : 被映射对象是一个私有的,写时复制的对象</li>
+<li> MAP_SHARED : 共享对象</li>
+</ul>
+</li>
+<li><p>return: Return    a    pointer    to    start    of    mapped    area    (may    not    be    start)</p>
+</li>
+</ul>
+<p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-19-15-20-07.png"></p>
+<ul>
+<li><p><strong>munmap</strong> : 删除虚拟内存的区域</p>
+<ul>
+<li>删除从虚拟地址start开始,由接下来len字节组成的区域area</li>
+<li>也即,<strong>删掉了这个vm_area_struct结构</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">munmap</span><span class="params">(<span class="keyword">void</span> *start,<span class="keyword">size_t</span> len)</span></span>;</span><br><span class="line">success : <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">error : <span class="keyword">return</span> <span class="number">-1</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>我认为：malloc在分配内存的时候，就是创建了几块虚拟页面组成的区域vm_area_struct，并且改变虚拟页面相应PTE，使其指向磁盘上的相应字节。还并没有建设从va到dram中pa的映射，也没有把dram中的physical memory分配给该进程 / 该进程的的user pgtbl 也不知道需要从va到pa建立映射 </p>
+</li>
+</ul>
+<ul>
+<li>我认为：mmap在映射内存时，就是将虚拟地址空间里的页面和磁盘上的文件的字节关联了起来，之后在第一次引用这些虚拟内存页面时，发现dram中并没有缓存disk上的这些字节，因此再将disk中的字节换入dram中，改变PTE使其指向dram中的相应physical page</li>
+<li>如何将虚拟内存页面和磁盘上的文件的字节关联起来？<ul>
+<li>创建了几块虚拟页面组成的区vm_area_struct，并改变了pagetabel上virtual page相应的PTE，使其指向磁盘上相应的文件。</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-09-12-13-06-03.png"></p>
+<h2 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h2><p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-23-12-47-03.png"></p>
+<p>一开始只是建立了映射，进程逻辑上的虚拟地址空间里的虚拟页  映射到了 磁盘上的字节（虚拟内存）<br>（也可称之为进程1的虚拟内存映射到了磁盘上），然后，由于按需页面调度，在第一次引用这个虚拟页的时候，磁盘上的字节会被cached到DRAM中，之后，这个虚拟页的VA所对应的PTE的PA，就是DRAM保存相应内容的PP地址。之后就这么通过VA直接找PA存的内容就行。</p>
+<p>虚拟内存系统 页面调入调出作用<br>就是 告诉cpu每个进程 你在你所想象的虚拟地址空间里拿什么地址的内容都行 我都有<br>实际上 有大部分地址的内容都没有在内存中，还在磁盘里躺着<br>但是，当引用到了这部分内容时，VM系统会将磁盘里的相应内容，调度入DRAM<br>再将这部分内容返回给cpu（由于局部性，不会不断地换入换出，还挺高效）</p>
+<p>这样，从cpu/用户的角度来看，我想要什么地址的内容，就能拿到什么地址的内容<br>尽管，我所引用的地址，是虚拟的，但我不在乎，我甚至不用知道。<br>因为VM系统（MMU地址翻译）会将我所发射的VA转化成PA，并为我取得相应内容。<br>至于从哪里取得，disk还是dram，用户/cpu不在乎。我能拿到data就可以。</p>
+<p><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1tN4y1V71B?spm_id_from=333.1007.top_right_bar_window_dynamic.content.click&amp;vd_source=7cf747b91a297d9a0c8581a26188dd95&amp;t=2.6">https://www.bilibili.com/video/BV1tN4y1V71B?spm_id_from=333.1007.top_right_bar_window_dynamic.content.click&amp;vd_source=7cf747b91a297d9a0c8581a26188dd95&amp;t=2.6</a></p>
+<p>虚拟内存是一块字节序列？字节存储在磁盘上？<br>    对 是在磁盘上</p>
+<p>虚拟内存三大元件：<br>    物理内存（DRAM）<br>    页表    （DRAM）<br>    虚拟内存（磁盘）<br>所谓虚拟内存无非就是一种缓存机制嘛。通过页表 检查我们所需的虚拟内存的相应页面所对应的磁盘内容，是否已经被缓存入物理内存中。</p>
+<p>虚拟地址空间可以说就是页表吧</p>
+<p><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1iW411d7hd?p=18&t=4237.5">mmap</a></p>
+<p>【潜水】grey 20:24:02<br>百度面试就让写多线程</p>
+<p>【潜水】grey 20:24:04<br>打印</p>
+<p>【潜水】grey 20:24:08<br>都忘光了</p>
+<p>【潜水】grey 20:24:24<br>还问问完cpp11 thread 再问pthread </p>
+<p><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-32-35.png"></p>
+<p><strong><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-41-52.png"></strong></p>
+<p><strong><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-05-20-42-21.png"></strong></p>
+<p>》 TODO<br><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1iW411d7hd?p=17&amp;vd_source=7cf747b91a297d9a0c8581a26188dd95&amp;t=1962.6">https://www.bilibili.com/video/BV1iW411d7hd?p=17&amp;vd_source=7cf747b91a297d9a0c8581a26188dd95&amp;t=1962.6</a><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-16-10-06-37.png"><br><img src="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/2022-08-16-10-18-54.png"></p>
+<p>……..:<br>感觉就是 听感觉没啥，一个新系统让你实际 一脸懵， 我就感觉细节还是很重要的，像之前看的一个时间轮实现定时器和堆实现定时器 ，为什么时间轮可以在海量并发下实现定时 而堆排序却不行</p>
+<p>……..:<br>看到明白了 时间轮时间复杂度数据量增加也是O（1）级别    堆而言的时间复杂度O（logn）  数据量越多 并发越差  此时设计在优化   </p>
+<p>不到叫啥名:<br>请问下xdm 6824需要学什么前置的课程吗</p>
+<p>……..:<br>还有就是那个 跳表结构为什么支持高并发  但是我一直不明白 他是如何控制锁粒度去实现的</p>
+<h2 id="MORE"><a href="#MORE" class="headerlink" title="MORE"></a>MORE</h2><ul>
+<li>task_struct结构体<ul>
+<li>linux-5.6.18\include\linux\sched.h<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> &#123;</span></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/" rel="prev" title="网络_socket流程">
+      <i class="fa fa-chevron-left"></i> 网络_socket流程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/" rel="next" title="Linux IO模型">
+      Linux IO模型 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.</span> <span class="nav-text">Linux 内存系统</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91"><span class="nav-number">1.1.</span> <span class="nav-text">Linux 地址翻译</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Linux-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.</span> <span class="nav-text">Linux 虚拟内存系统</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Virtual-Address-Space-%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="nav-number">1.2.1.</span> <span class="nav-text">Virtual    Address    Space 虚拟地址空间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Linux-Organizes-VM-as-Collection-of-%E2%80%9CAreas%E2%80%9D"><span class="nav-number">1.2.2.</span> <span class="nav-text">Linux    Organizes    VM    as    Collection    of    “Areas”</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Linux-Page-Fault-Handling-Linux%E7%BC%BA%E9%A1%B5%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86"><span class="nav-number">1.2.3.</span> <span class="nav-text">Linux Page    Fault    Handling   Linux缺页异常处理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Memory-mapping-%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84"><span class="nav-number">2.</span> <span class="nav-text">Memory mapping 内存映射</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%A0%E5%B0%84%E5%AF%B9%E8%B1%A1"><span class="nav-number">2.1.</span> <span class="nav-text">映射对象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Swap-File-%E4%BA%A4%E6%8D%A2%E6%96%87%E4%BB%B6"><span class="nav-number">2.2.</span> <span class="nav-text">Swap File 交换文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Sharing-Revisited-Shared-Objects-%E5%85%B1%E4%BA%AB%E5%AF%B9%E8%B1%A1"><span class="nav-number">2.3.</span> <span class="nav-text">Sharing    Revisited:    Shared    Objects 共享对象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Fork"><span class="nav-number">2.4.</span> <span class="nav-text">Fork</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#execve"><span class="nav-number">2.5.</span> <span class="nav-text">execve</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#User-Level-Memory-Mapping-mmap-%E7%94%A8%E6%88%B7%E7%BA%A7%E5%86%85%E5%AD%98%E6%98%A0%E5%B0%84"><span class="nav-number">2.6.</span> <span class="nav-text">User-Level    Memory    Mapping     : mmap 用户级内存映射</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Summary"><span class="nav-number">3.</span> <span class="nav-text">Summary</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MORE"><span class="nav-number">4.</span> <span class="nav-text">MORE</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '00ae456aaab0a75390745e578f03c1db',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

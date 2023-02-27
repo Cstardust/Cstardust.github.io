@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="易知x86-64都实现了lazy allocation例如malloc一块很大的内存，直到对这个内存进行写&#x2F;读之前，都不会 为xv6实现懒分配lazy allocation  lazy allocation 目的 : 为防止sbrk大量内存但实际上并没有使用的情况 实现 : 通过 虚拟内存 和 page fault handler 阶段1. 设定va为合法 sbrk系统调用 : 仅仅设定user的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab5-lazy_allocation">
+<meta property="og:url" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="易知x86-64都实现了lazy allocation例如malloc一块很大的内存，直到对这个内存进行写&#x2F;读之前，都不会 为xv6实现懒分配lazy allocation  lazy allocation 目的 : 为防止sbrk大量内存但实际上并没有使用的情况 实现 : 通过 虚拟内存 和 page fault handler 阶段1. 设定va为合法 sbrk系统调用 : 仅仅设定user的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-20-39-19.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-13-33.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-27-56.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-32-17.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-32-43.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-30-36.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-37-35.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-33-58.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-20-01-55.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-16-53.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-18-28.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-19-46.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-22-05.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-44-59.png">
+<meta property="og:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-56-11.png">
+<meta property="article:published_time" content="2022-11-09T05:27:18.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:40.927Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-20-39-19.png">
+
+<link rel="canonical" href="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab5-lazy_allocation | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab5-lazy_allocation
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-09 13:27:18" itemprop="dateCreated datePublished" datetime="2022-11-09T13:27:18+08:00">2022-11-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:40" itemprop="dateModified" datetime="2023-02-27T23:22:40+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>6.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>易知x86-64都实现了lazy allocation<br>例如malloc一块很大的内存，直到对这个内存进行写/读之前，都不会</p>
+<p>为xv6实现懒分配lazy allocation</p>
+<ul>
+<li>lazy allocation<ul>
+<li>目的 : 为防止sbrk大量内存但实际上并没有使用的情况</li>
+<li>实现 : 通过 虚拟内存 和 page fault handler<ul>
+<li>阶段1. 设定va为合法<ul>
+<li>sbrk系统调用 : 仅仅设定user的这段va是合法的，而不分配内存建立映射。</li>
+</ul>
+</li>
+<li>阶段2. 使用va触发pagefault, 进行响应(handle)<ul>
+<li>pagefault handelr : 为va 分配一块physical page 并 建立映射</li>
+<li>阶段2中对于va<ul>
+<li>user使用无效 userva<ul>
+<li>MMU –检测–&gt; trap –&gt; pagefault handler</li>
+</ul>
+</li>
+<li>kernel使用无效 userva<ul>
+<li>argaddr 中检测 –&gt; pagefault handelr</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>pgfault handelr之后 返回到造成pgfault的指令继续执行.</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><ul>
+<li>背景：实现lazy allocation之前：也即 eager allocation</li>
+<li>通过<a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/sbrk.2.html">sbrk(bytes)</a> 向上扩展heap空间<ul>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-20-39-19.png"></p>
+</blockquote>
+</li>
+<li>这意味着，当sbrk实际发生或者被调用的时候，内核会分配一些物理内存，并将这些内存映射到用户应用程序的地址空间，然后将内存内容初始化为0，再返回sbrk系统调用。这样，应用程序可以通过多次sbrk系统调用来增加它所需要的内存。类似的，应用程序还可以通过给sbrk传入负数作为参数，来减少或者压缩它的地址空间。我们暂且只关注内存增加</li>
+</ul>
+</li>
+<li>在XV6中，sbrk的实现<strong>默认是eager allocation</strong>。这表示了，一旦调用了sbrk，内核会立即分配应用程序所需要的物理内存。但是实际上，对于应用程序来说很难预测自己需要多少内存，所以通常来说，应用程序倾向于申请多于自己所需要的内存。这意味着，<strong>进程的内存消耗会增加许多，但是有部分内存永远也不会被应用程序所使用到</strong>。<ul>
+<li>你或许会认为这里很蠢，怎么可以这样呢？你可以设想自己写了一个应用程序，读取了一些输入然后通过一个矩阵进行一些运算。你需要为最坏的情况做准备，比如说为最大可能的矩阵分配内存，但是应用程序可能永远也用不上这些内存，通常情况下，应用程序会在一个小得多的矩阵上进行运算。所以，程序员过多的申请内存但是过少的使用内存，这种情况还挺常见的。</li>
+</ul>
+</li>
+<li>原则上来说，这不是一个大问题。但是<strong>使用虚拟内存和page fault handler</strong>，我们完全可以用某种更聪明的方法来解决这里的问题，这里<strong>就是利用lazy allocation</strong>。</li>
+</ul>
+<p>下面 称 未建立映射的va 为<br>只设定为合法，但是 在pgtbl中没有相应pte，或者相应的pte并没有指向物理内存</p>
+<h1 id="part1-and-part2"><a href="#part1-and-part2" class="headerlink" title="part1 and part2"></a>part1 and part2</h1><ul>
+<li>mit教授课上做的就是</li>
+</ul>
+<h2 id="lazy-alloc-核心思想"><a href="#lazy-alloc-核心思想" class="headerlink" title="lazy alloc 核心思想"></a><strong>lazy alloc 核心思想</strong></h2><ul>
+<li><p>lazy allocation的<strong>核心思想</strong>很简单，如下。可<strong>分为两个阶段</strong>。</p>
+<ul>
+<li><strong>阶段1. 设定va为合法</strong><ul>
+<li><strong>通过sbrk系统调用</strong><ul>
+<li>设定user的这段va是合法的。通过将p-&gt;trapframe-&gt;sz增加来达成这一目的。仅仅做了这一件事。根本就没在user pgtbl上登记有关va的任何信息，也没分配physical page。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>阶段2. 使用va，触发pagefault 进行响应(handle)</strong><ul>
+<li>关于如何对page fault响应，大致来说就是<ul>
+<li>为va 分配一块physical page</li>
+<li>将该page与触发page fault的va 在 user pgtbl中建立映射。</li>
+<li>重新执行造成 page fault的指令(如load/store)</li>
+</ul>
+</li>
+<li><strong>具体来讲，其阶段二也可分为两部分</strong><ul>
+<li>user使用无效 userva</li>
+<li>kernel使用无效 userva</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>kernel识别page fault 并进行响应</strong> (（pagefault handler）lazy allocation的所需 )<strong>的有效信息</strong></p>
+<ul>
+<li><strong>1. 触发page fault的va</strong>               <ul>
+<li>($STVAL)</li>
+</ul>
+</li>
+<li><strong>2. 进入trap(引起page fault的)原因类型</strong>     <ul>
+<li>($SCAUSE)</li>
+<li>比如从user进入usertrap可能有多种原因，而属于pagefault造成的进入kernel的只有三种：instruction page fault(12) , load page fault (13), store page fault(15)</li>
+</ul>
+</li>
+<li><strong>3. 触发page fault的指令</strong>   <ul>
+<li>($SEPC) ，保存在trapframe-&gt;epc中</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="code"><a href="#code" class="headerlink" title="code"></a>code</h2><ul>
+<li><strong>更改code如下：</strong></li>
+<li>usertrap中增加handle page fault的分支（通过检测r_scause）<ul>
+<li><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-13-33.png"></li>
+</ul>
+</li>
+<li>growproc:<ul>
+<li>sys_sbrk -&gt; growproc。原先是立刻分配sz大小的物理内存，现在改成只增长heap顶部的上界，也即将va设定为”合法”。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  只有sbrk会调用到这里</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">growproc</span><span class="params">(<span class="keyword">int</span> n)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    uint sz;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line"></span><br><span class="line">    sz = p-&gt;sz;</span><br><span class="line">    <span class="keyword">if</span>(n &gt; <span class="number">0</span>)&#123;</span><br><span class="line">        <span class="comment">// if((sz = uvmalloc(p-&gt;pagetable, sz, sz + n)) == 0) &#123;</span></span><br><span class="line">        <span class="comment">//   return -1;</span></span><br><span class="line">        <span class="comment">// &#125;</span></span><br><span class="line">        <span class="comment">//  只设定合法但不kalloc 也不建立映射</span></span><br><span class="line">        sz += n;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span>(n &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        sz = uvmdealloc(p-&gt;pagetable, sz, sz + n);</span><br><span class="line">    &#125;</span><br><span class="line">    p-&gt;sz = sz;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>isvalidva_proc<ul>
+<li>检验va是否是应当进行lazy allocation的va（即是否是合法的va）（va应当是heap段的va） <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">uint64 <span class="title">isvalidva_proc</span><span class="params">(uint64 va)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="comment">//  Handle faults on the invalid page below the user stack.</span></span><br><span class="line"><span class="comment">//  Kill a process if it page-faults on a virtual memory address higher than any allocated with sbrk().</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> <span class="built_in">myproc</span>();</span><br><span class="line"><span class="keyword">if</span>(va &lt;= p-&gt;trapframe-&gt;sp || va &gt;= p-&gt;sz) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="comment">//  p-&gt;trapframe-&gt;sp trap时保留的用户栈顶</span></span><br><span class="line"><span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>uvmlazyalloc<ul>
+<li>对于合法但未分配物理内存和建立映射的虚拟地址va，进行lazyalloc  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  对于合法但未分配物理内存和建立映射的虚拟地址va，进行lazyalloc</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">uvmlazyalloc</span><span class="params">(uint64 va)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">    va = PGROUNDDOWN(va);</span><br><span class="line">    <span class="comment">//  为va申请对应的physical mem</span></span><br><span class="line">    uint64 pa = (uint64) kalloc();</span><br><span class="line">    <span class="comment">//  oom</span></span><br><span class="line">    <span class="keyword">if</span>(pa == <span class="number">0</span>)&#123;</span><br><span class="line">        p-&gt;killed = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  申请成功 建立映射</span></span><br><span class="line">    <span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="built_in">memset</span>((<span class="keyword">void</span>*)pa,<span class="number">0</span>,PGSIZE);</span><br><span class="line">        <span class="comment">//  映射</span></span><br><span class="line">        <span class="keyword">if</span>(mappages(p-&gt;pagetable,va,PGSIZE,pa,PTE_W|PTE_R|PTE_U)!=<span class="number">0</span>)&#123;</span><br><span class="line">            <span class="comment">//  映射失败 释放pm</span></span><br><span class="line">            kfree((<span class="keyword">void</span>*)pa);</span><br><span class="line">            p-&gt;killed = <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>uvmunmap<ul>
+<li>防止释放合法但还没分配物理内存建立映射的va</li>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-27-56.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="part3"><a href="#part3" class="headerlink" title="part3"></a>part3</h1><ul>
+<li>uvmcopy<ul>
+<li>fork时会调用uvmcopy，将parent process的heap段虚拟内存对应的pte拷贝给child的pte，并且还有分配物理内存去映射。显然引入lazy之后就不能这么干了。因为很可能parent的这些虚拟内存还只不过是还未建立映射的地址。自然不应该拷贝。</li>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-32-17.png"><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-21-32-43.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="bug-及-解决"><a href="#bug-及-解决" class="headerlink" title="bug 及 解决"></a>bug 及 解决</h2><ul>
+<li><p>以上这些函数都没花多长时间就改完了。。下面这个改了好长时间：</p>
+</li>
+<li><p>一直卡在sbrkarg test。</p>
+</li>
+<li><p>由lazy alloc 核心思想中所述，lazy alloc可分为两个阶段：1. 设定va为合法 和 2. 触发page fault并进行响应。</p>
+</li>
+<li><p>可具体来说，<strong>第二阶段触发page fault并进行响应可分为两种情况</strong> — 根据在user态还是kernel态触发page fault 来分类。具体如下所示</p>
+</li>
+</ul>
+<h3 id="page-fault-的触发！"><a href="#page-fault-的触发！" class="headerlink" title="page fault 的触发！"></a><strong>page fault 的触发！</strong></h3><ul>
+<li><p>思考问题：user态触发page fault和kernel触发有什么区别？触发后会跳转到哪里？user会进入usertrap，那么kernel会进入kernel trap吗？找到造成缺页的指令是哪条？是哪里检测出了page fault ? 当时这里没搞清晰，改bug改了一上午。见下。</p>
+<ul>
+<li>一开始误认为kernel 使用user传入的无效va，也会进入kernel trap（实际上不会）。结果在kernel trap里写了个page fault分支，没有反应。一直卡在sbrkarg。当时debug的时候发现会进入filewrite。改了蛮久才找出来。</li>
+</ul>
+</li>
+<li><p>user态和kernel态使用无效的user va所发生的反应不同，一个触发 fault，一个没有。<strong>关键是在二者使用user va的方式不同，一个是MMU硬件查找，一个是walk模拟</strong>。</p>
+</li>
+</ul>
+<h4 id="user-态触发-page-fault"><a href="#user-态触发-page-fault" class="headerlink" title="user 态触发 page fault"></a><strong>user 态触发 page fault</strong></h4><ul>
+<li><strong>user态使用了一个user 无效的va , 会导致进入usertrap</strong> 。原因见下<ul>
+<li><strong>user态发生的page fault</strong> （我认为）应当<strong>是由硬件MMU检测到的</strong><ul>
+<li>为什么？因为此时cpu的$satp 是 user的pgtbl。此时是MMU来查找user pgtbl并返回pa的</li>
+</ul>
+</li>
+<li>比如user先p = sbrk(PGSIZE); 然后赋值 *p = 100 ; </li>
+<li>p是一个还没建立映射的虚拟地址</li>
+<li>MMU根据va查看user的pgtbl后，发现pte是个空或者无效则会爆出pagefault，设置scause。而后进入trampoline，进入usertrap。</li>
+<li>所以我们在usertrap处写一个page fault分支，是用于处理user态造成的page fault的。对于kernel态的，无能为力。</li>
+</ul>
+</li>
+</ul>
+<h4 id="kernel-态触发page-fault（实际上并没有page-fault）"><a href="#kernel-态触发page-fault（实际上并没有page-fault）" class="headerlink" title="kernel 态触发page fault（实际上并没有page fault）"></a><strong>kernel 态触发page fault（实际上并没有page fault）</strong></h4><ul>
+<li><strong>kernel态使用了一个user 无效的va ，并不会进入kerneltrap</strong>。原因见下。</li>
+<li>kernel使用user态无效的虚拟地址 发生在如下情况(简易取一种情况)<ul>
+<li>user将user va 通过syscall传给kernel和kernel对user va的使用流程：举例write</li>
+<li>user va = sbrk(xxxx);</li>
+<li>write –user va–&gt; trampoline -&gt; usertrap —&gt; syscall -&gt; sys_write —-取出user va—&gt;filewrite —&gt; either_copyin –&gt; copyin –user va—&gt; walkaddr <ul>
+<li>user va有效 —&gt; 使用user va，读取</li>
+<li><strong>user va无效（未建立映射的、等待lazyalloc的地址）–&gt; 不读取，放弃copyin,return -1</strong>。 而后一层层return -1给sys_write。回到sycall，将-1作为系统调用返回值返回给user。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>由此观之，也即，当kernel使用未建立映射的user va时，即userpgtbl中user va对应的pte无效或不存在时，放弃使用（读取/写入）改user va，并return -1(fail)</strong></li>
+</ul>
+<h3 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h3><ul>
+<li><p><strong>当kenerl拿到user传入给kernel的user va时，就使得va进行lazyalloc的第二步：分配物理内存并建立映射。</strong></p>
+</li>
+<li><p><strong>argaddr</strong></p>
+<ul>
+<li>检验user va是否是heap上的user va，是没建立映射（防止重复建立映射）</li>
+<li>uvmlazyalloc。为user va进行lazyalloc<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Retrieve an argument as a pointer.</span></span><br><span class="line"><span class="comment">// Doesn&#x27;t check for legality, since</span></span><br><span class="line"><span class="comment">// copyin/copyout will do that.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">argaddr</span><span class="params">(<span class="keyword">int</span> n, uint64 *ip)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="comment">//  *ip为user传入的user空间的虚拟addr</span></span><br><span class="line">*ip = argraw(n);</span><br><span class="line"></span><br><span class="line"><span class="comment">//  防止不是heap上懒分配的page</span></span><br><span class="line"><span class="keyword">if</span>(!isvalidva_proc(*ip)) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"><span class="comment">//  防止重复分配physical memory、重复mappage建立映射</span></span><br><span class="line"><span class="keyword">pte_t</span> *pte = walk(myproc()-&gt;pagetable,*ip,<span class="number">1</span>);</span><br><span class="line"><span class="comment">//  当当前要使用的user的虚拟地址是一个未建立映射的虚拟地址（等待懒分配的），那么就lazyalloc它</span></span><br><span class="line"><span class="keyword">if</span>((pte == <span class="number">0</span> || (*pte &amp; PTE_V) == <span class="number">0</span>))&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;shc syscall leads to kernel page fault!\n&quot;</span>);</span><br><span class="line">    uvmlazyalloc(*ip);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>成功pass  sbrkarg</p>
+<ul>
+<li><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-30-36.png"></li>
+</ul>
+</li>
+<li><p>之前没改这里之前，一直卡在sbrkarg</p>
+<ul>
+<li>由上述解释可知，在没改之前，write会返回-1，故sbrktest会出现write sbrk failed。符合预期。</li>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-37-35.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-33-58.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>改完！结束！</p>
+</li>
+</ul>
+<hr>
+<h3 id="补充：write使用va流程图-不看也tm-ok"><a href="#补充：write使用va流程图-不看也tm-ok" class="headerlink" title="补充：write使用va流程图 不看也tm ok"></a>补充：write使用va流程图 不看也tm ok</h3><ul>
+<li><blockquote>
+<p><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-20-01-55.png"><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-16-53.png"><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-18-28.png"><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-19-46.png"></p>
+</blockquote>
+</li>
+<li><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-22-05.png"></li>
+</ul>
+<blockquote>
+<p>唠叨文字版：user sbrk了一个地址 然后user使用系统调用write 并传入这个地址，比如write(fd, buf, sizeof(buf))（可以看sbrkarg，就是test这个的）。buf即为一个user态没建立映射的虚拟地址，kernel会使用（读取）这个addr。<br>从trampoline 进入 usertrap 进入syscall分支 进入sys_write ，在这里通过argaddr取出user传入的地址，之后调用filewrite使用了取出的user的va 。filewrite里又调用writei，wirtei调用either_copyin,either_copyin调用copyin（user的va作为srcva传入该函数）。copyin中通过walkaddr软件模拟来使用user的va，如果这个va有效，那么得到pa，然后使用pa进行一个写入。如果va无效，那么walkaddr查找pgtbl 就会没找到有效pte，就会返回0。<br>copyin发现pa为0，则return -1代表写入失败。顺着刚才描述的栈帧，一层层向上return，最后return -1给filewrite，然后return-1给write，回到sycall。存到trapframe，然后作为系统调用返回值返回给user层。</p>
+</blockquote>
+<hr>
+<ul>
+<li>下面这没啥p用，就是印证下理论</li>
+<li>可以看到如果不处理，就会死循环<ul>
+<li>不断缺页 不断进入usertrap.c这里的 pagefault分支</li>
+<li>因为这个pagefault分支并没有对缺页做任何处理 只是直接返回到造成缺页的指令 不断执行这条指令 不断造成缺页。</li>
+<li><img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-44-59.png"></li>
+</ul>
+</li>
+</ul>
+<h1 id="理论比较"><a href="#理论比较" class="headerlink" title="理论比较"></a>理论比较</h1><ul>
+<li>和csapp上的理论上的page fault比较一下（linux也是csapp这么实现的）（图中也并没有画出kenerl如何使用无效va，只有user的pagefault 不过也正常，因为那造成的也不是page fault）<br>  <img src="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/2022-11-11-22-56-11.png"></li>
+<li>相同之处 在于 当user引用为建立映射的va时，都会在dram中分配一个physical page ，去给userpgtbl建立va到pa的映射。</li>
+<li>不同之处在于并没有实现和磁盘的交换操作，只是将dram中的physical page映射给了user va。</li>
+<li>缺憾在于这样在dram满了的时候就无法再给user va 分配映射的物理内存了</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/" rel="prev" title="操作系统-xv6-lab3-pagetable">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-lab3-pagetable
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/" rel="next" title="操作系统-xv6-Interrupt">
+      操作系统-xv6-Interrupt <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#part1-and-part2"><span class="nav-number">2.</span> <span class="nav-text">part1 and part2</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#lazy-alloc-%E6%A0%B8%E5%BF%83%E6%80%9D%E6%83%B3"><span class="nav-number">2.1.</span> <span class="nav-text">lazy alloc 核心思想</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#code"><span class="nav-number">2.2.</span> <span class="nav-text">code</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#part3"><span class="nav-number">3.</span> <span class="nav-text">part3</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#bug-%E5%8F%8A-%E8%A7%A3%E5%86%B3"><span class="nav-number">3.1.</span> <span class="nav-text">bug 及 解决</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#page-fault-%E7%9A%84%E8%A7%A6%E5%8F%91%EF%BC%81"><span class="nav-number">3.1.1.</span> <span class="nav-text">page fault 的触发！</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#user-%E6%80%81%E8%A7%A6%E5%8F%91-page-fault"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">user 态触发 page fault</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#kernel-%E6%80%81%E8%A7%A6%E5%8F%91page-fault%EF%BC%88%E5%AE%9E%E9%99%85%E4%B8%8A%E5%B9%B6%E6%B2%A1%E6%9C%89page-fault%EF%BC%89"><span class="nav-number">3.1.1.2.</span> <span class="nav-text">kernel 态触发page fault（实际上并没有page fault）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3"><span class="nav-number">3.1.2.</span> <span class="nav-text">解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A1%A5%E5%85%85%EF%BC%9Awrite%E4%BD%BF%E7%94%A8va%E6%B5%81%E7%A8%8B%E5%9B%BE-%E4%B8%8D%E7%9C%8B%E4%B9%9Ftm-ok"><span class="nav-number">3.1.3.</span> <span class="nav-text">补充：write使用va流程图 不看也tm ok</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%90%86%E8%AE%BA%E6%AF%94%E8%BE%83"><span class="nav-number">4.</span> <span class="nav-text">理论比较</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '3f1c943707c705eaa7fa02ca71aa1a77',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

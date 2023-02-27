@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="xv6文件系统解析 重点在bcache和log 有待复习">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-文件系统">
+<meta property="og:url" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="xv6文件系统解析 重点在bcache和log 有待复习">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-04-22-33-53.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-11-28.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-09-16.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-10-05.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-03-14-31-46.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-21-48-59.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-11-16-52-31.png">
+<meta property="og:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-06-09-34-11.png">
+<meta property="article:published_time" content="2022-11-27T07:46:12.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:36.338Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-04-22-33-53.png">
+
+<link rel="canonical" href="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-文件系统 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-文件系统
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-27 15:46:12" itemprop="dateCreated datePublished" datetime="2022-11-27T15:46:12+08:00">2022-11-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:36" itemprop="dateModified" datetime="2023-02-27T23:22:36+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>31k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>28 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>xv6文件系统解析<ul>
+<li>重点在bcache和log</li>
+<li>有待复习</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="问题及解释"><a href="#问题及解释" class="headerlink" title="问题及解释"></a>问题及解释</h2><p>一句话描述：如何通过name找到inode？<br>等会画一下一个完整的文件系统调用。</p>
+<p>一句话描述：日志系统如何防止系统崩溃使得disk处于不一致状态？</p>
+<p>ok<br>日志loggedblock在buf list中这是显然<br>但是log header除了在struct log header中 在写入disk的过程中还会产生个在buflist中的副本<br>回答：都是为了写入磁盘嘛，必须途径buffer cache层的辣</p>
+<p>目录为什么不能sys_link？<br>硬链接不支持directory。ubuntu下 hard link not allowed for directory。xv6下的 sys_link 也会检查要增加link的inode是否是directory；若是，则失败。<br>为什么 ?<br><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-04-22-33-53.png"></p>
+<p>ok<br>涉及的文件有点多啊<br>最底层的buf：bio.c<br>日志的实现：log.c<br>file system 对inode的维护以及日志的使用… ：fs.c<br>上层使用file system的接口：file.c<br>系统调用：sys_file.c</p>
+<p>ok<br>文件系统通过调用virtio_disk_rw，实现对设备的写操作<br>ques : virtio_disk_rw如何确定从disk的哪个位置读？通过buf.dev和buf.block no确定</p>
+<p>ok<br>待解决问题：cpu到底在什么时候和磁盘进行交互？而不是和内存缓存？<br>所有和磁盘交互的动作都必须先进入buffer cache层，然后通过disk驱动程序virtio_disk_rw对磁盘进行读写<br>其余时候cpu都是在和内存交互</p>
+<p>ok<br>bcache里缓存的都是inode block吗。有data block吗?。当然有。bcacehe可以缓存disk上的任意block。</p>
+<p>ok<br>待解决问题：inode 什么时候应该有ondisk 什么时候应该用memory<br>bread找到的dinode是On-disk inode structure<br>iget找到的是in-memory copy of an inode<br>这俩之前有何区别联系？<br>有的属性只有mem中的inode有，而disk上的dinode没有。如inode.ref 是说当前内核在内存中有多少C指针引用该inode，仅仅是为了内核正确运行，而这个信息显然不必存在disk上，故dinode没有。</p>
+<h1 id="文件系统"><a href="#文件系统" class="headerlink" title="文件系统"></a>文件系统</h1><h2 id="功能概述"><a href="#功能概述" class="headerlink" title="功能概述"></a>功能概述</h2><ul>
+<li><p><strong>文件系统背后的机制</strong></p>
+<ul>
+<li>对硬件的抽象</li>
+<li>crash safety</li>
+<li><strong>如何在磁盘上排布文件系统</strong><ul>
+<li>重启计算机时，磁盘上的所有数据(如目录和文件)都能恢复。</li>
+<li><strong>file system的工作之一就是将所有的数据结构以一种能够在重启之后重新构建file system存放在disk上</strong></li>
+</ul>
+</li>
+<li>性能<ul>
+<li>尽量避免写磁盘<ul>
+<li>文件系统所在的硬件设备很慢。如SSD为0.1到1ms完成读写一个disk block；HDD通常是在10ms量级。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>API角度看文件系统功能</strong></p>
+<ul>
+<li>open(“/x/y”,–);<ul>
+<li>human readable pathname  </li>
+</ul>
+</li>
+<li>write(fd , “abc” , 3);<ul>
+<li>implicit offset : write没有传入offset，所以具体写到文件的那个位置是由fs负责维护的。</li>
+</ul>
+</li>
+<li>link(“/x/y”,”/x/z”);<ul>
+<li>multiple names : 为同一个文件指定多个名字，因此fs需要负责跟踪指向同一文件的多个文件名。</li>
+</ul>
+</li>
+<li>unlink(“x/y”)</li>
+<li><blockquote>
+<p>除此之外，我还想提一点。文件系统的目的是实现上面描述的API，也即是典型的文件系统API。但是，这并不是唯一构建一个存储系统的方式。如果只是在磁盘上存储数据，你可以想出一个完全不同的API。举个例子，数据库也能持久化的存储数据，但是数据库就提供了一个与文件系统完全不一样的API。所以记住这一点很重要：还存在其他的方式能组织存储系统。我们这节课关注在文件系统，文件系统通常由操作系统提供，而数据库如果没有直接访问磁盘的权限的话，通常是在文件系统之上实现的（注，早期数据库通常直接基于磁盘构建自己的文件系统，因为早期操作系统自带的文件系统在性能上较差，且写入不是同步的，进而导致数据库的ACID不能保证。不过现代操作系统自带的文件系统已经足够好，所以现代的数据库大部分构建在操作系统自带的文件系统之上）。</p>
+</blockquote>
+</li>
+<li>fs如何实现上述功能? (fs的核心数据结构?)</li>
+</ul>
+</li>
+</ul>
+<h2 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h2><ul>
+<li><p><strong>file system的核心数据结构</strong></p>
+</li>
+<li><p><strong>inode</strong></p>
+<ul>
+<li>一个inode代表一个文件。</li>
+<li>fs通过uint inum识别、引用inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//   inode中的信息完全足够用来实现read/write系统调用，至少可以找到哪个disk block需要用来执行read/write系统调用 </span></span><br><span class="line"><span class="comment">// in-memory copy of an inode</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inode</span> &#123;</span></span><br><span class="line">    uint dev;           <span class="comment">// Device number</span></span><br><span class="line">    uint inum;          <span class="comment">// Inode number 用于识别inode</span></span><br><span class="line">    <span class="keyword">int</span> ref;            <span class="comment">// Reference count</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sleeplock</span> <span class="title">lock</span>;</span> <span class="comment">// protects everything below here</span></span><br><span class="line">    <span class="keyword">int</span> valid;          <span class="comment">// inode has been read from disk?</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">short</span> type;         <span class="comment">// copy of disk inode</span></span><br><span class="line">    <span class="keyword">short</span> major;</span><br><span class="line">    <span class="keyword">short</span> minor;</span><br><span class="line">    <span class="keyword">short</span> nlink;        <span class="comment">//  指向inode的数量</span></span><br><span class="line">    uint size;          <span class="comment">//  file大小</span></span><br><span class="line">    uint addrs[NDIRECT+<span class="number">1</span>];  <span class="comment">//  direct and indirect block number</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-11-28.png"></p>
+</li>
+<li><p>利用inode的direct number和indirect block number找到block</p>
+<ul>
+<li>假设需要读取file的第8000个字节，那么你该读取哪个data block呢？从inode的数据结构中该如何计算呢？<ul>
+<li>blockth: 8000 / block_size(1024) = 7。也即file的第8000个byte是file的第几个data block。之后便可依托类似多级页表的机制找到data block地址</li>
+<li>bytesth: 8000 % block_size(1024) = 7。得知位于data block的第几个byte</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>file descriptor</strong></p>
+<ul>
+<li>与user交互</li>
+<li>维护对于文件的offset</li>
+</ul>
+</li>
+</ul>
+<h2 id="层次如下"><a href="#层次如下" class="headerlink" title="层次如下"></a>层次如下</h2><ul>
+<li>程序mkfs设置对应于引导扇区、超级块、日志块、inode块和位图块的比特位。<ul>
+<li>Disk layout: [ boot block | sb block | log | inode blocks | free bit map | data blocks ]</li>
+</ul>
+</li>
+</ul>
+<p>以下约定xxx的元数据为<br>描述xxx的数据，是描述xxx的状态如lock，也包括描述其data的位置、大小等相关信息</p>
+<p>以下约定 不被独占 为 当前thread没有对该对象lock上锁</p>
+<ul>
+<li><strong>file system 的 层次结构</strong><ul>
+<li><strong>disk 磁盘</strong> <ul>
+<li>实际保存数据的存储设备，正是这些设备提供了持久化存储，</li>
+</ul>
+</li>
+<li><strong>buffer cache / block cache</strong><ul>
+<li>全是data block的缓存? 不是的。disk上的block都可以缓存到这里</li>
+<li>缓存disk的数据到内存</li>
+</ul>
+</li>
+<li><strong>logging</strong><ul>
+<li>crash safety</li>
+</ul>
+</li>
+<li><strong>inode cache</strong><ul>
+<li>为了向单个inode提供同步synchronization。<ul>
+<li>大家可以同步的、正确的、访问同一个inode，inode cache保证了对inode并发访问的正确性。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Directory</li>
+<li>Pathname</li>
+<li>Fd</li>
+<li><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-09-16.png"></li>
+<li>实际上所有的文件系统都有组件对应这里不同的分层</li>
+</ul>
+</li>
+</ul>
+<h2 id="Disk"><a href="#Disk" class="headerlink" title="Disk"></a>Disk</h2><ul>
+<li>术语<ul>
+<li><strong>sector</strong> <ul>
+<li>磁盘驱动可以读写的最小单元，它过去通常是512字节</li>
+</ul>
+</li>
+<li><strong>block</strong><ul>
+<li>是操作系统或者文件系统视角的数据。它由文件系统定义，在XV6中它是1024字节。所以XV6中一个block对应两个sector。通常来说一个block对应了一个或者多个sector</li>
+</ul>
+</li>
+<li>有的时候，人们也将磁盘上的sector称为block。所以这里的术语也不是很精确</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>fs 将磁盘看作一个巨大的block数组 : block[0,n-1]</p>
+</li>
+<li><p>类似于ext2</p>
+<ul>
+<li><blockquote>
+<p><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-13-10-05.png"></p>
+</blockquote>
+</li>
+<li><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-03-14-31-46.png"></li>
+<li><strong>70 个meta block</strong></li>
+<li><strong>199930 个data block</strong></li>
+</ul>
+</li>
+<li><p><strong>70个meta block</strong></p>
+<ul>
+<li>block 0 <ul>
+<li><strong>boot sector</strong> / 没用</li>
+</ul>
+</li>
+<li>block 1<ul>
+<li><strong>super block</strong> : 描述fs信息，如fs由多少block组成<ul>
+<li>there should be one superblock per disk device, but we run with only one device</li>
+<li>xv6里面只有一个device（待解决问题：感觉这个所谓的device说得就是disk.）<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Disk layout:</span></span><br><span class="line"><span class="comment">// [ boot block | super block | log | inode blocks |</span></span><br><span class="line"><span class="comment">//                                          free bit map | data blocks]</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// mkfs computes the super block and builds an initial file system. The</span></span><br><span class="line"><span class="comment">// super block describes the disk layout:</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">superblock</span> &#123;</span></span><br><span class="line">    uint magic;        <span class="comment">// Must be FSMAGIC</span></span><br><span class="line">    uint size;         <span class="comment">// Size of file system image (blocks)</span></span><br><span class="line">    uint nblocks;      <span class="comment">// Number of data blocks</span></span><br><span class="line">    uint ninodes;      <span class="comment">// Number of inodes.</span></span><br><span class="line">    uint nlog;         <span class="comment">// Number of log blocks</span></span><br><span class="line">    uint logstart;     <span class="comment">// Block number of first log block</span></span><br><span class="line">    uint inodestart;   <span class="comment">// Block number of first inode block</span></span><br><span class="line">    uint bmapstart;    <span class="comment">// Block number of first free map block</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>[block2,block32)<ul>
+<li><strong>log block</strong></li>
+</ul>
+</li>
+<li>[block32 , block45)<ul>
+<li><strong>inode</strong> block<ul>
+<li>1个inode 64 bytes</li>
+<li>1个block 1024bytes</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>[block45 , block70)<ul>
+<li><strong>bitmap block</strong> : data block 是否 free</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>199930 个data block</strong></p>
+<ul>
+<li>[block46,block1000)<ul>
+<li><strong>data blocks</strong></li>
+<li>file和目录内容</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Buffer-Cache"><a href="#Buffer-Cache" class="headerlink" title="Buffer Cache"></a>Buffer Cache</h2><p>bio.c<br><strong>Buffer Cache是唯一与磁盘直接交互的模块.</strong><br><strong>上层通过buffer cache 读写磁盘.</strong></p>
+<p>以下约定，将disk上的block 被缓存在 内存中的 buf list上的buf<br>称为 block cache。亦或者称为 block buf 亦或 block cache buf 亦或称为buf<br>以block cache和buf为主</p>
+<p>xv6中 内存中的所有东西要写入磁盘，都必须先拷贝进buffer cache层的buf 然后再落入磁盘</p>
+<h3 id="作用"><a href="#作用" class="headerlink" title="作用"></a>作用</h3><ul>
+<li><strong>同步保证正确性</strong>：<strong>同步</strong>对磁盘块的访问，以确保磁盘块在内存中只有一个副本，并且一次只有一个内核线程使用该副本<ul>
+<li>Buffer cache每个buf使用一个sleeplock，以确保每个缓冲区（因此也是每个磁盘块）每次只被一个线程使用</li>
+</ul>
+</li>
+<li><strong>加速</strong>：<strong>缓存常用块</strong>，以便不需要从慢速磁盘重新读取它们。。</li>
+</ul>
+<h3 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h3><p><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-01-21-48-59.png"></p>
+<ul>
+<li>cache list<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span>       <span class="comment">//  保护buf链表</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> <span class="title">buf</span>[<span class="title">NBUF</span>];</span>       </span><br><span class="line"></span><br><span class="line">  <span class="comment">// Linked list of all buffers, through prev/next.</span></span><br><span class="line">  <span class="comment">// Sorted by how recently the buffer was used.</span></span><br><span class="line">  <span class="comment">// head.next is most recent, head.prev is least.</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> <span class="title">head</span>;</span></span><br><span class="line">&#125; bcache;</span><br></pre></td></tr></table></figure></li>
+<li>block cache : struct buf(.data[])<ul>
+<li>其中buf.data[BSIZE] 就是 disk上 block的cache。也即，buf就是block 的副本缓冲区。</li>
+<li>buf的其他字段是关于cache的元数据<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">buf</span> &#123;</span></span><br><span class="line">  <span class="keyword">int</span> valid;   <span class="comment">// buf是否包含block副本  has data been read from disk?</span></span><br><span class="line">  <span class="keyword">int</span> disk;    <span class="comment">// buf内容是否已经交给磁盘 does disk &quot;own&quot; buf?</span></span><br><span class="line">  uint dev;</span><br><span class="line">  uint blockno;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sleeplock</span> <span class="title">lock</span>;</span>  </span><br><span class="line">  uint refcnt;  <span class="comment">//  有多少proc在使用</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">prev</span>;</span> <span class="comment">// LRU cache list</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">next</span>;</span></span><br><span class="line">  uchar data[BSIZE];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>区分<ul>
+<li>kalloc.c : memory allocator 是将dram用一个个大小为4KB的page以freelist形式管理起来。</li>
+<li>bio.c : 这里管理磁盘缓存是通过将一部分dram用一个个大小为1KB (1024Bytes)的buf以list形式管理起来。每一个buf都是一个block的cache(因为disk上一个block的大小就是1024bytes)<ul>
+<li>这个list上面的buf是所有的buf，既有free的又有非free的。是否free通过ref_cnt判断。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h3><ul>
+<li>struct buf* <strong>bread</strong>(uint dev, uint blockno)<ul>
+<li>上层调用bread以获取一个上锁的block的locked buffer。</li>
+<li>上层调用者在内存中独占的读写该buf。</li>
+<li>由流程可知，获取的该locked buffer，必然是一个最新的填充了目标block(dev + blockno)的内容的缓存块。</li>
+<li><strong>如果</strong>调用者<strong>修改</strong>了buf，那么在释放缓冲区之前<strong>必须调用bwrite</strong>将更改的数据<strong>写入磁盘</strong>。</li>
+<li>流程<ul>
+<li><ol>
+<li>bget获取locked buffer</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>如果buffer不是block的副本，也即buf.valid = 0。那么通过<strong>virtio_disk_rw</strong>与磁盘交互，读取出data到buffer中<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Return a locked buf with the contents of the indicated block.</span></span><br><span class="line"><span class="function">struct buf*</span></span><br><span class="line"><span class="function"><span class="title">bread</span><span class="params">(uint dev, uint blockno)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">b</span>;</span></span><br><span class="line">  <span class="comment">//  get locked buffer prepared for dev blockno</span></span><br><span class="line">  b = bget(dev, blockno);</span><br><span class="line">  <span class="comment">//  如果buffer里面本身没有dev blockno的数据</span></span><br><span class="line">  <span class="keyword">if</span>(!b-&gt;valid) &#123;</span><br><span class="line">    <span class="comment">//  从disk读入到buf   </span></span><br><span class="line">    virtio_disk_rw(b, <span class="number">0</span>);</span><br><span class="line">    b-&gt;valid = <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> b;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>void <strong>bwrite</strong>(struct buf *b)<ul>
+<li>通过<strong>virtio_disk_rw</strong>与磁盘交互，将上层在mem中修改过的buf真正的写入磁盘</li>
+</ul>
+</li>
+<li>void <strong>brelse</strong>(struct buf *b)<ul>
+<li>释放buf的锁，并–引用计数</li>
+<li>kernel thread结束对buf的使用后，必须通过调用brelse释放buf。</li>
+<li>当ref_cnt = 0，将buf移动到list末尾。</li>
+</ul>
+</li>
+<li>static struct buf* <strong>bget</strong>(uint dev, uint blockno)<ul>
+<li>扫描buf list，查找具有给定设备dev和扇区号block no的缓冲区buf。<ul>
+<li>如果存在这样的缓冲区，bget增加引用计数，获取缓冲区的sleeplock。然后返回locked的缓冲区。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(b = bcache.head.next; b != &amp;bcache.head; b = b-&gt;next)&#123;</span><br><span class="line">  <span class="keyword">if</span>(b-&gt;dev == dev &amp;&amp; b-&gt;blockno == blockno)&#123;</span><br><span class="line">    b-&gt;refcnt++;</span><br><span class="line">    release(&amp;bcache.lock);</span><br><span class="line">    acquiresleep(&amp;b-&gt;lock);</span><br><span class="line">    <span class="keyword">return</span> b;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>如果对于dev和blockno，不存在其buf，那么bget就要分配一个buf作为dev的block no的cache。采用lru算法，查找最近的b-&gt;ref_cnt = 0的buf。<ul>
+<li>Bget编辑该buf元数据以记录新设备dev和扇区号blockno</li>
+<li>并令<strong>b-&gt;valid = 0，确保了bread将从磁盘读取块数据，而不是错误地使用该buf以前的内容</strong>，增加引用计数，并获取其sleeplock。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Not cached.</span></span><br><span class="line"><span class="comment">// Recycle the least recently used (LRU) unused buffer.</span></span><br><span class="line"><span class="keyword">for</span>(b = bcache.head.prev; b != &amp;bcache.head; b = b-&gt;prev)&#123;</span><br><span class="line">  <span class="keyword">if</span>(b-&gt;refcnt == <span class="number">0</span>) &#123;</span><br><span class="line">    b-&gt;dev = dev;</span><br><span class="line">    b-&gt;blockno = blockno;</span><br><span class="line">    b-&gt;valid = <span class="number">0</span>;   <span class="comment">//  确保了bread将从磁盘读取块数据，而不是错误地使用该buf以前的内容</span></span><br><span class="line">    b-&gt;refcnt = <span class="number">1</span>;</span><br><span class="line">    release(&amp;bcache.lock);</span><br><span class="line">    acquiresleep(&amp;b-&gt;lock);</span><br><span class="line">    <span class="keyword">return</span> b;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="tip"><a href="#tip" class="headerlink" title="tip"></a>tip</h3><ul>
+<li>对于<strong>struct bcache 和 buf</strong>的修改需要遵守以下几点<strong>原则</strong>.</li>
+<li><strong>1. bcache.spinlock</strong> : <ul>
+<li>bcache.lock用于保护有关缓存哪些块的信息</li>
+<li>对bcache做任何修改，都必须持有bcache.spinlock</li>
+</ul>
+</li>
+<li><strong>2. buf.sleeplock</strong> : <ul>
+<li>buf.sleeplock保护block cache(buf)的读写</li>
+<li>对disk上block的cache，即对buf.data[BSIZE]做访问，都必须持有buf.sleeplock。</li>
+<li>确保了任何时候只有一个进程可以读写block cache</li>
+<li>也就确保了读者看到写操作，写者之间的写操作也不会混乱。</li>
+</ul>
+</li>
+<li><strong>3. <strong>只有在</strong>buf.ref_cnt</strong> = 0时，才驱逐block cache。<ul>
+<li>也即在buf.ref_cnt &gt; 0时，block不会被block cache修改。</li>
+</ul>
+</li>
+<li><strong>4. 1个block只能有1个block cache</strong>，也即1个block只有1个struct buf<ul>
+<li><blockquote>
+<p>如果buffer cache中有两份block 33的cache将会出现问题。假设一个进程要更新inode19，另一个进程要更新inode20。如果它们都在处理block 33的cache，并且cache有两份，那么第一个进程可能持有一份cache并先将inode19写回到磁盘中，而另一个进程持有另一份cache会将inode20写回到磁盘中，并将inode19的更新<strong>覆盖</strong>掉。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>5.<strong>如果调用者修改了缓冲区buf，那么在释放缓冲区之前</strong>必须调用bwrite</strong>将更改的数据写入磁盘 </li>
+<li>在bcache.lock临界区域之外获取buf.sleeplock是安全的，且也有其作用<ul>
+<li>非零b-&gt;refcnt用于防止buf被重新用于不同的磁盘块。</li>
+<li>如bpin()</li>
+</ul>
+</li>
+<li><strong>ps : 在bread(bget)和brelse之间，用户持有其获得的buf.lock，可以独占的对其进行读写</strong></li>
+</ul>
+<h2 id="Log-日志"><a href="#Log-日志" class="headerlink" title="Log 日志"></a>Log 日志</h2><p>log.c</p>
+<h3 id="作用-1"><a href="#作用-1" class="headerlink" title="作用"></a>作用</h3><ul>
+<li>崩溃会造成磁盘上的文件系统处于不一致的状态。能不能具体说说啥叫不一致。难道还要我去学raft吗。。<ul>
+<li>例如，假设在文件截断（将文件长度设置为零并释放其内容块）期间发生崩溃。根据磁盘写入的顺序，崩溃可能会<ul>
+<li>留下对标记为空闲的内容块的引用的inode，<ul>
+<li>引用已释放块的inode在重新启动后可能会导致严重问题。重新启动后，内核可能会将该块分配给另一个文件，现在我们有两个不同的文件无意中指向同一块。如果xv6支持多个用户，这种情况可能是一个安全问题，因为旧文件的所有者将能够读取和写入新文件中的块，而新文件的所有者是另一个用户。</li>
+</ul>
+</li>
+<li>也可能留下已分配但未引用的内容块。<ul>
+<li>相对来说是良性的</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Xv6通过简单的<strong>日志</strong>记录形式<strong>解决</strong>了文件系统操作期间的<strong>崩溃问题。</strong><ul>
+<li>xv6系统调用<strong>不会直接写入磁盘上相应的文件系统数据结构。相反，它会在磁盘上的log（日志）中放置它希望进行的所有磁盘写入的描述</strong>。<ul>
+<li>log_write: 通过写入logheader记录disk上的哪些block需要被修改，并通过bpin保持其cache不被覆盖。</li>
+</ul>
+</li>
+<li>一旦logheader记录了所有事务的所有的系统调用，它就会向磁盘写入一条特殊的commit（提交）记录，表明日志包含一个完整的操作。</li>
+<li>然后，日志系统将写内容复制到磁盘上的文件系统数据结构。</li>
+<li>完成这些写入后，日志系统将擦除磁盘上的日志。</li>
+</ul>
+</li>
+</ul>
+<h3 id="关于流程、崩溃及恢复"><a href="#关于流程、崩溃及恢复" class="headerlink" title="关于流程、崩溃及恢复"></a><strong>关于流程、崩溃及恢复</strong></h3><ul>
+<li><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-11-16-52-31.png"></li>
+</ul>
+<p>崩溃后重启，file system如何通过日志恢复磁盘？一言以蔽之：install_trans() : 读取disk 上的logheader，将logged block中的data拷贝到disk上的指定block。</p>
+<ul>
+<li><p><strong>0. 事务还在内存中 并没有提交</strong></p>
+<ul>
+<li>也即 所有的被修改的datablock cache 也即struct logheader中对于修改的记录都是在内存中，还没有落入磁盘</li>
+<li><strong>crashA：完整的丢失写入数据</strong>。<ul>
+<li>如果此时发生crash，data全部位于内存中，则重启周recover无法恢复。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>1. commit：提交事务</strong>(事务被提交前，全部位于内存中)。</p>
+<ul>
+<li>这里所谓的事务，就是一堆需要落入磁盘的操作(系统调用)</li>
+<li>事务的提交分为，两个阶段<ul>
+<li> <strong>1.1 write_log</strong>. 提交了日志系统中所有已完成事务中修改了的目标block的cache，将其提交到disk的logged block中。</li>
+<li> <strong>1.2 write_head</strong>. 提交了日志系统中所有已完成事务的记录，也即本日志中事务中有哪些block需要被修改的记录</li>
+</ul>
+</li>
+<li>完成这12阶段，即disk上已经有了完整的所有已完成事务的记录 以及 修改内容</li>
+<li><strong>crashC（已完成1.1、1.2）</strong>：即便此时系统发生崩溃，重启时通过recover_from_log也可以<strong>完全恢复</strong>disk：将logged block根据logheader拷贝到相应的inode/bitmap/datablock中</li>
+<li><strong>crashB(已完成1.1）</strong>：如果只完成了1,但是没有完成2,系统就崩溃了，那么无妨，这种<strong>崩溃是良性</strong>的，不会导致文件系统/disk处于不一致状态。因为这种崩溃<strong>在disk上留下的是已分配但未引用的datablock</strong>。也即 logged block被填充了，但是logheader block并没有记录他们这些loggedblock被修改了，也即并没有引用这些logged block。会造成完整的磁盘上的内容缺失。这些已分配但是未引用的logged block<strong>稍后会被覆盖</strong>。</li>
+<li><strong>crashB</strong>：如果在完成1的过程中崩溃，同上</li>
+<li>如果在完成2的过程中崩溃，咋整？岂不是真的寄掉了？。<ul>
+<li>胡咧咧一个解释：由于2过程要写入的header block只有一个块，假定对一个块的写入是原子的。因此，崩溃时要么对这个块没进行一点写入，要么已经写完了这个块。也即对该块的写入是原子的。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>2. install_trans : 处理(安装)事务</strong></p>
+<ul>
+<li>完成1.1 1.2阶段之后，就是安装事务了</li>
+<li>根据logheader block中的记录，将logged block复制到其相应的inode/bitmap/datablock中</li>
+<li>处理完之后，日志对于这些事务的记录header block以及内容logged block就没有作用了。</li>
+<li>如果2崩溃了，没关系，disk区域上的log块仍然在，recover时可以正常恢复。</li>
+</ul>
+</li>
+<li><p><strong>3. 清空日志记录</strong></p>
+<ul>
+<li>清空headerblock。清除日志系统中对于事务的记录。</li>
+<li><strong>crashD</strong>：此时crash，无妨。recover时重新安装一遍之前安装过的block即可。无影响。</li>
+</ul>
+</li>
+<li><p>从代码中可以看到</p>
+<ul>
+<li>xv6允许一次commit多个事务，也就是说允许多个事务并发。（都begin_op,然后都end_op)</li>
+<li>但是当在commit时，就不允许再开启新事务了，需要等待commit完成。</li>
+</ul>
+</li>
+</ul>
+<h3 id="编程模型"><a href="#编程模型" class="headerlink" title="编程模型"></a>编程模型</h3><ul>
+<li>想要对disk进行操作时，<ul>
+<li>写begin_op标志事务开始，</li>
+<li>然后通过bget拿到block对应的cache，之后对cache进行读写操作。</li>
+<li>操作完成之后，通过log_write记入日志，</li>
+<li>然后end_op标志事务结束<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">begin_op();           <span class="comment">//  开启事务</span></span><br><span class="line">...</span><br><span class="line">bp = bread(...);      <span class="comment">//  获取目标的block cache</span></span><br><span class="line">bp-&gt;data[...] = ...;  <span class="comment">//  对block cache进行读写修改</span></span><br><span class="line">log_write(bp);        <span class="comment">//  日志记录需要修改的block</span></span><br><span class="line">...</span><br><span class="line">end_op();             <span class="comment">//  结束并提交事务</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>日志的一个示例使用发生在filewrite. 事务如下所示 .<ul>
+<li>这段代码被包装在一个循环中，该循环一次将大的写操作分解为几个扇区的单个事务，以避免日志溢出。</li>
+<li>作为此事务的一部分，对writei的调用写入许多块：文件的inode、一个或多个位图块以及一些数据块。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">begin_op(); </span><br><span class="line">ilock(f-&gt;ip); </span><br><span class="line">r = writei(f-&gt;ip, ...); </span><br><span class="line">iunlock(f-&gt;ip); </span><br><span class="line">end_op();</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="结构-1"><a href="#结构-1" class="headerlink" title="结构"></a>结构</h3><ul>
+<li><p>disk上的log区域为如下</p>
+<ul>
+<li><strong>header block</strong><ul>
+<li>磁盘上对所有已提交事务的记录<ul>
+<li>也即指示应当将哪些 logged block 复制到哪些 block 中</li>
+<li>包括一个数量n以及需落入的块号</li>
+<li>在内存中的表现就是 struct logheader{}</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>logged block</strong><ul>
+<li>内存中的block cache 先落入disk上的logged block</li>
+<li>然后再根据header block的指示，将disk上的logged block 复制到 目标block</li>
+</ul>
+</li>
+<li><strong>unlogged block</strong><ul>
+<li>空闲的，等待cache落入的block</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>内存中的表现形式如下</p>
+</li>
+<li><p>header block 在内存中就是 struct logheader。也就是说headerblock就这俩数据。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Contents of the header block, used for both the on-disk header block</span></span><br><span class="line"><span class="comment">// and to keep track in memory of logged block# before commit.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">logheader</span> &#123;</span></span><br><span class="line">  <span class="keyword">int</span> n;                  <span class="comment">//  总共有多少个block被修改</span></span><br><span class="line">  <span class="keyword">int</span> block[LOGSIZE];     <span class="comment">//  需要修改的block编号</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>n = 0 , 表示日志中没有事务</li>
+<li>n !=0 , 表示日志包含一个完整的已commit的事务 , 并具有n个logged block</li>
+</ul>
+</li>
+<li><p>整个日志系统的状态以及元数据都在struct log中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">log</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">  <span class="keyword">int</span> start;</span><br><span class="line">  <span class="keyword">int</span> size;</span><br><span class="line">  <span class="keyword">int</span> outstanding; <span class="comment">// 预定日志空间的事务数</span></span><br><span class="line">  <span class="keyword">int</span> committing;  <span class="comment">// in commit(), please wait.</span></span><br><span class="line">  <span class="keyword">int</span> dev;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">logheader</span> <span class="title">lh</span>;</span>    <span class="comment">//  记录了哪些block需要被修改</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">log</span> <span class="title">log</span>;</span>   <span class="comment">//  日志系统</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>committing : 日志系统是否正在执行commit</li>
+<li>outstanding : 预定日志空间的事务数。只有当减少至0的时候才会commit。</li>
+<li>logheader : 如上</li>
+<li>dev : 哪个磁盘的文件系统。xv6中只有一个磁盘，故只有一个文件系统。</li>
+</ul>
+</li>
+</ul>
+<h3 id="接口-1"><a href="#接口-1" class="headerlink" title="接口"></a>接口</h3><ul>
+<li><p><strong>begin_op</strong> : 标志开始当前事务</p>
+<ul>
+<li>等待日志系统commit完成，且有足够的未被使用的log block<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  正在提交。等待</span></span><br><span class="line"><span class="keyword">if</span>(<span class="built_in">log</span>.committing)</span><br><span class="line">  sleep(&amp;<span class="built_in">log</span>, &amp;<span class="built_in">log</span>.lock);</span><br></pre></td></tr></table></figure></li>
+<li>++log.outstanding : 为本次事务预定日志空间<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">acquire(&amp;<span class="built_in">log</span>.lock);</span><br><span class="line"><span class="comment">//  开启日志</span></span><br><span class="line"><span class="built_in">log</span>.outstanding += <span class="number">1</span>;</span><br><span class="line">release(&amp;<span class="built_in">log</span>.lock);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>log_write</strong> : 通过写入logheader，并通过bpin保持其cache不被覆盖。</p>
+<ul>
+<li>充当bwrite的代理。</li>
+<li>在内存中记录disk上的哪些block需要被修改。<ul>
+<li>logheader block[] 记录</li>
+</ul>
+</li>
+<li>在磁盘上的日志中预定一个槽位<ul>
+<li>logheader.n++</li>
+</ul>
+</li>
+<li>保持将要落入磁盘的block cache，防止被覆盖。<ul>
+<li>bpin<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  1. 更新log header ，将块的扇区号blockno记录在内存中</span></span><br><span class="line"><span class="comment">//  如果b对应的block no已经被记录了，那么不必再记录(重复记录也无妨)</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; <span class="built_in">log</span>.lh.n; i++) &#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">log</span>.lh.block[i] == b-&gt;blockno)   <span class="comment">// log absorbtion</span></span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//  幂等操作 无论是否是新增blockno</span></span><br><span class="line"><span class="built_in">log</span>.lh.block[i] = b-&gt;blockno;</span><br><span class="line"><span class="keyword">if</span> (i == <span class="built_in">log</span>.lh.n) &#123;  <span class="comment">// Add new block to log?</span></span><br><span class="line">  <span class="comment">//  2. bpin将该block的buf固定在cache中</span></span><br><span class="line">  bpin(b);            <span class="comment">//  防止struct buf b 被释放</span></span><br><span class="line">  <span class="comment">//  3. 在磁盘的日志块中预定一个槽位</span></span><br><span class="line">  <span class="built_in">log</span>.lh.n++;         </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>endop</strong> : 标志当前事务完成，告知日志；若此时日志中没有未完成的事务，则执行commit。</p>
+<ul>
+<li>核心代码<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">acquire(&amp;<span class="built_in">log</span>.lock);</span><br><span class="line"><span class="comment">//  标志完成一个事务</span></span><br><span class="line">--<span class="built_in">log</span>.outstanding;     </span><br><span class="line"><span class="comment">//  如果日志中的所有事务均已完成 则 commit 日志</span></span><br><span class="line"><span class="keyword">if</span>(<span class="built_in">log</span>.outstanding == <span class="number">0</span>)&#123; </span><br><span class="line">  do_commit = <span class="number">1</span>;</span><br><span class="line">  <span class="built_in">log</span>.committing = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line">release(&amp;<span class="built_in">log</span>.lock);</span><br><span class="line"></span><br><span class="line"><span class="comment">//  commit日志 if do_commit = 1</span></span><br><span class="line"><span class="keyword">if</span>(do_commit)&#123;</span><br><span class="line">  <span class="comment">// call commit w/o holding locks, since not allowed</span></span><br><span class="line">  <span class="comment">// to sleep with locks.</span></span><br><span class="line">  commit();</span><br><span class="line">  acquire(&amp;<span class="built_in">log</span>.lock);</span><br><span class="line">  <span class="built_in">log</span>.committing = <span class="number">0</span>; <span class="comment">//  提交完成</span></span><br><span class="line">  wakeup(&amp;<span class="built_in">log</span>);</span><br><span class="line">  release(&amp;<span class="built_in">log</span>.lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>commit</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">commit</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">log</span>.lh.n &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    write_log();     <span class="comment">// Write modified blocks from cache to log</span></span><br><span class="line">    write_head();    <span class="comment">// Write header to disk -- the real commit</span></span><br><span class="line">    install_trans(<span class="number">0</span>); <span class="comment">// Now install writes to home locations</span></span><br><span class="line">    <span class="built_in">log</span>.lh.n = <span class="number">0</span>;</span><br><span class="line">    write_head();    <span class="comment">// Erase the transaction from the log</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>一次commit可能涉及多个事务的写入。</li>
+<li><strong>write_log</strong> : 将日志记录落入磁盘<ul>
+<li>根据logheader中的记录，将被修改的 目标block cache 落入 disk上的 log block</li>
+<li>目标block cache –copy into–&gt; log block cache –落入–&gt; disk log block<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy modified blocks from cache to log.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">write_log</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> tail;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (tail = <span class="number">0</span>; tail &lt; <span class="built_in">log</span>.lh.n; tail++) &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">to</span> =</span> bread(<span class="built_in">log</span>.dev, <span class="built_in">log</span>.start+tail+<span class="number">1</span>);     <span class="comment">// 新从disk读出来的unlogged block</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">from</span> =</span> bread(<span class="built_in">log</span>.dev, <span class="built_in">log</span>.lh.block[tail]); <span class="comment">// 之前访问修改的cache block</span></span><br><span class="line">    memmove(to-&gt;data, from-&gt;data, BSIZE);                  <span class="comment">// copy into log block cache</span></span><br><span class="line">    bwrite(to);                                            <span class="comment">// write the log into disk</span></span><br><span class="line">    brelse(from);</span><br><span class="line">    brelse(to);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>write_head</strong> : 将日志记录头落入磁盘<ul>
+<li>将 logheader 落入 disk上的 header block</li>
+<li>logheader –copy–&gt; headerblock cache —落入—&gt; disk上的headerblock<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Write in-memory log header to disk. through buffer list</span></span><br><span class="line"><span class="comment">// This is the true point at which the</span></span><br><span class="line"><span class="comment">// current transaction commits.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">write_head</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">buf</span> =</span> bread(<span class="built_in">log</span>.dev, <span class="built_in">log</span>.start);</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">logheader</span> *<span class="title">hb</span> =</span> (struct logheader *) (buf-&gt;data);</span><br><span class="line">  <span class="keyword">int</span> i;</span><br><span class="line">  hb-&gt;n = <span class="built_in">log</span>.lh.n;</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; <span class="built_in">log</span>.lh.n; i++) &#123;</span><br><span class="line">    hb-&gt;block[i] = <span class="built_in">log</span>.lh.block[i];</span><br><span class="line">  &#125;</span><br><span class="line">  bwrite(buf);</span><br><span class="line">  brelse(buf);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>install_trans</strong> : 处理已经提交的事务：将日志安装到磁盘上。<ul>
+<li>根据logheader中的记录，将保存在log cache的内容落入其原本应当在的inode/bitmap/data/…block</li>
+<li>核心逻辑</li>
+<li>log cache –&gt; 目标block cache –&gt; disk 目标block<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">install_trans</span><span class="params">(<span class="keyword">int</span> recovering)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (tail = <span class="number">0</span>; tail &lt; <span class="built_in">log</span>.lh.n; tail++) &#123;</span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">lbuf</span> =</span> bread(<span class="built_in">log</span>.dev, <span class="built_in">log</span>.start+tail+<span class="number">1</span>);    <span class="comment">// read log block</span></span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">dbuf</span> =</span> bread(<span class="built_in">log</span>.dev, <span class="built_in">log</span>.lh.block[tail]);  <span class="comment">// read dst</span></span><br><span class="line">      memmove(dbuf-&gt;data, lbuf-&gt;data, BSIZE);                 <span class="comment">// copy block cache to dst cache</span></span><br><span class="line">      bwrite(dbuf);                                           <span class="comment">// write dst cache to disk </span></span><br><span class="line">      brelse(lbuf);</span><br><span class="line">    brelse(dbuf);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>清空disk上的headerblock<ul>
+<li>log.lh.n = 0;</li>
+<li>write_head();<ul>
+<li>log header记录的需要修改的block的数量为0，即等价于header block没有记录任何日志，即清空headerblock。那么就可以认为日志系统中没有任何被commit的事务，也即没有任何loggged block。</li>
+<li>这必须在下一个事务开始写入日志块之前发生，以便崩溃不会导致使用一个事务的头块和后续事务的日志块进行恢复</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>recover_from_log</strong> : 它读取日志头，如果有已经commited的事务，则将logged block 拷贝到相应的block中</p>
+<ul>
+<li>fsinit -&gt; initlog -&gt; recover from log<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">recover_from_log</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  read_head();      <span class="comment">//  从disk logheaderblock 读出 记录到 mem中的 struct logheader</span></span><br><span class="line">  install_trans(<span class="number">1</span>); <span class="comment">// if committed, copy from log to disk</span></span><br><span class="line">  <span class="built_in">log</span>.lh.n = <span class="number">0</span>;</span><br><span class="line">  write_head(); <span class="comment">// clear the log</span></span><br><span class="line"><span class="comment">//  清空已经处理完的事务 以便后续记录新的事务</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="Inode-Cache层"><a href="#Inode-Cache层" class="headerlink" title="Inode Cache层"></a>Inode Cache层</h2><h3 id="Inode结构"><a href="#Inode结构" class="headerlink" title="Inode结构"></a>Inode结构</h3><ul>
+<li><p>术语inode（即索引结点）有2种含义。</p>
+<ul>
+<li><ol>
+<li>指包含文件大小和数据块编号列表的磁盘上的数据结构(struct dinode)</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>指内存中的inode，它包含磁盘上inode(dinode)的副本以及内核中所需的额外信息。(struct inode)</li>
+</ol>
+</li>
+</ul>
+</li>
+<li><p>An <strong>inode</strong> <strong>describes a single unnamed file</strong>.</p>
+</li>
+<li><p><strong>disk上的inode</strong>：The <strong>inode disk structure holds metadata</strong>: </p>
+<ul>
+<li><p>the file’s type, its size, the number of links referring to it, and <strong>the list of blocks holding the file’s content</strong>.</p>
+</li>
+<li><p><strong>dinode : inode在磁盘上的结构</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// On-disk inode structure</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dinode</span> &#123;</span></span><br><span class="line">  <span class="comment">//  meta data</span></span><br><span class="line">  <span class="keyword">short</span> type;           <span class="comment">// File type  文件 / 目录 / 特殊文件 / 0表示inode空闲</span></span><br><span class="line">  <span class="keyword">short</span> major;          <span class="comment">// Major device number (T_DEVICE only)</span></span><br><span class="line">  <span class="keyword">short</span> minor;          <span class="comment">// Minor device number (T_DEVICE only)</span></span><br><span class="line">  <span class="keyword">short</span> nlink;          <span class="comment">// Number of links to inode in file system</span></span><br><span class="line">  uint size;            <span class="comment">// Size of file (bytes)</span></span><br><span class="line">  <span class="comment">//  the list of blocks holding the file&#x27;s content</span></span><br><span class="line">  uint addrs[NDIRECT+<span class="number">1</span>];   <span class="comment">// Data block addresses 保存inode代表的文件的内容的磁盘块号</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>nlink</strong> : 引用本inode的<strong>entry</strong>目录项的数量(<strong>entry是真实存在于disk上的结构</strong>,断电之后还会保存在磁盘里面)</p>
+<ul>
+<li>当nlink = 0时，就在disk上真正释放该inode。</li>
+<li>这就是<strong>硬链接</strong>。</li>
+<li>tips：<ul>
+<li>之前还没看xv6的时候，总看有的sb资料说 硬链接不占磁盘空间，当时觉得扯淡。怎么可能呢？现在解释如下</li>
+<li>硬链接hard link就是一个个directory下的一个个entry。其只是不占据inode blocks而已，但也要占磁盘空间啊。entry存储在directory的data block下</li>
+<li>至于软连接，xv6里面并没有实现。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>addrs : </p>
+<ul>
+<li>[0,11] direct block</li>
+<li>[12] indirect block</li>
+</ul>
+</li>
+<li><p><img src="/2022/11/27/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-06-09-34-11.png"></p>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>inode cache 内存中的inode</strong> : <strong>The kernel keeps a cache of in-use inodes in memory to provide a place for synchronizing access to inodes used by multiple processes.</strong><ul>
+<li>The cached inodes include book-keeping information that is not stored on disk: ip-&gt;ref and ip-&gt;valid.</li>
+<li><strong>作用：1. 为多个进程访问inode提供同步（主要）</strong></li>
+<li>作用：2. 缓存，加速</li>
+<li><strong>icache and inode : inode在内存中的结构</strong>：<ul>
+<li><strong>inode cache : a cache of in-use inode</strong><ul>
+<li>inode cache 是 活跃的inode的集合。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span>       <span class="comment">//  1. 保证同一个dinode在inode中最多出现一次。 2.  维护inode.ref的正确性。</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">inode</span> <span class="title">inode</span>[<span class="title">NINODE</span>];</span></span><br><span class="line">&#125; icache;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>struct inode</strong> : <ul>
+<li>是disk上dinode的在内存的缓存，只有C指针引用某个inode时，icache中才会存储该inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  The cached inodes include book-keeping information that is not stored on disk: ip-&gt;ref and ip-&gt;valid.</span></span><br><span class="line"><span class="comment">// in-memory copy of an inode</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inode</span> &#123;</span></span><br><span class="line">  uint dev;           <span class="comment">// Device number</span></span><br><span class="line">  uint inum;          <span class="comment">// Inode number</span></span><br><span class="line">  <span class="keyword">int</span> ref;            <span class="comment">// Reference count</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sleeplock</span> <span class="title">lock</span>;</span> <span class="comment">// protects everything below here</span></span><br><span class="line">  <span class="comment">//  确保独占的访问 inode的size，data block等</span></span><br><span class="line">  <span class="keyword">int</span> valid;          <span class="comment">// inode has been read from disk?</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">short</span> type;         <span class="comment">// copy of disk inode</span></span><br><span class="line">  <span class="keyword">short</span> major;</span><br><span class="line">  <span class="keyword">short</span> minor;</span><br><span class="line">  <span class="keyword">short</span> nlink;        <span class="comment">//  引用本inode的目录项的数量</span></span><br><span class="line">  uint size;          <span class="comment">//  文件大小吧，感觉应该是指向的datablock的大小之和。</span></span><br><span class="line">  uint addrs[NDIRECT+<span class="number">1</span>];    <span class="comment">//  最终都指向 block number</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>ref</strong> : 内存中引用本struct inode的C指针数量<ul>
+<li>如果ref = 0，那么，icache就可以将该struct inode从缓存中踢掉。</li>
+<li>与什么软链接、硬链接无关</li>
+<li>C指针是存在于内存的，不是磁盘里真实存在的东西。</li>
+</ul>
+</li>
+<li>valid : struct inode是否已经从磁盘中读取dinode部分<ul>
+<li>如果valid = 0，那么，重新从disk读取。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="接口-2"><a href="#接口-2" class="headerlink" title="接口"></a>接口</h3><h3 id="datablock分配"><a href="#datablock分配" class="headerlink" title="datablock分配"></a>datablock分配</h3><ul>
+<li><p><strong>balloc : datablock分配器</strong></p>
+<ul>
+<li>遍历bitmap,通过bread获取free data block的cache,并返回其block no。<ul>
+<li>注意只是将该free data block加载进了cache，返回了blockno。并没有独占该block cache 也即并没有lock该block cache</li>
+<li>这个工具函数就不放代码了，见注释吧，挺简单。</li>
+<li>注意下对于meta blocks的bit : super block , logging , inodes ,bitmap。在mkdfs中，bitmap就将其全部将其置为1，这样才符合bitmap指向datablock的逻辑。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>bfree : datablock释放器</strong></p>
+<ul>
+<li>static void bfree(int dev, uint b)</li>
+<li>(我认为)真正的释放disk上的data block b<ul>
+<li>并没有将buf清0，而是仅仅通过将bitmap的相应bit清0来代表该block里面的数据已经没用，可以被覆盖，也即该block是一个free block ，可以再被分配。</li>
+<li>当然是commit之后生效。</li>
+</ul>
+</li>
+<li>核心逻辑<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">bi = b % BPB;</span><br><span class="line">m = <span class="number">1</span> &lt;&lt; (bi % <span class="number">8</span>);</span><br><span class="line"><span class="keyword">if</span>((bp-&gt;data[bi/<span class="number">8</span>] &amp; m) == <span class="number">0</span>)</span><br><span class="line">  panic(<span class="string">&quot;freeing free block&quot;</span>);</span><br><span class="line"><span class="comment">//  清空该bit</span></span><br><span class="line">bp-&gt;data[bi/<span class="number">8</span>] &amp;= ~m;</span><br><span class="line">log_write(bp);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h4 id="inode分配"><a href="#inode分配" class="headerlink" title="inode分配"></a>inode分配</h4><ul>
+<li><strong>iget</strong>: <strong>从inode cache中 返回 编号为inum的inode</strong><ul>
+<li>iget(uint dev, uint inum)</li>
+<li>Does not lock the inode and does not read it from disk</li>
+<li><strong>返回一个不被独占的inode。</strong></li>
+<li>如果这个inum对应的inode之前被使用过<ul>
+<li>那么在icache中就可以找到该inode，</li>
+<li>++ref，返回即可<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  ip-&gt;ref++ 代表内存中引用struct inode结构体的人又多了一个。</span></span><br><span class="line">  <span class="keyword">if</span>(ip-&gt;ref &gt; <span class="number">0</span> &amp;&amp; ip-&gt;dev == dev &amp;&amp; ip-&gt;inum == inum)&#123;</span><br><span class="line">    ip-&gt;ref++;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;1 ip-&gt;type = %d\n&quot;</span>,ip-&gt;type);</span><br><span class="line">    release(&amp;icache.lock);</span><br><span class="line">    <span class="keyword">return</span> ip;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>如果这个inum对应的inode之前没使用过，<ul>
+<li>那么在icache中找不到该inode，替换icache中无用的inode，</li>
+<li>对inode 进行 inode独有的metadata的初始化.(dinode的metadata之后会从disk读)<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  ref = 0 , 即该struct inode已经内存中无人引用。</span></span><br><span class="line"><span class="comment">//  那么将其替换掉</span></span><br><span class="line">  <span class="keyword">if</span>(empty == <span class="number">0</span> &amp;&amp; ip-&gt;ref == <span class="number">0</span>)    <span class="comment">// Remember empty slot.</span></span><br><span class="line">    empty = ip;</span><br><span class="line"><span class="comment">//  初始化inode的metadata</span></span><br><span class="line">  ip = empty;</span><br><span class="line">  ip-&gt;dev = dev;</span><br><span class="line">  ip-&gt;inum = inum;  <span class="comment">//  dev and inum</span></span><br><span class="line">  ip-&gt;ref = <span class="number">1</span>;      <span class="comment">//  引用为1</span></span><br><span class="line">  ip-&gt;valid = <span class="number">0</span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>ialloc</strong> : 从inode cache获取一个已经初始化了inode metadata的free inode<ul>
+<li>返回的是个没独占的inode。</li>
+<li>核心逻辑<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">struct inode*</span></span><br><span class="line"><span class="function"><span class="title">ialloc</span><span class="params">(uint dev, <span class="keyword">short</span> type)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">bp</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">dinode</span> *<span class="title">dip</span>;</span></span><br><span class="line">  <span class="keyword">for</span>(inum = <span class="number">1</span>; inum &lt; sb.ninodes; inum++)&#123;</span><br><span class="line">    <span class="comment">//  获取disk上第inum个inode所属的block buf(位于buf list)</span></span><br><span class="line">    bp = bread(dev, IBLOCK(inum, sb));      </span><br><span class="line">    <span class="comment">//  获取该dinode</span></span><br><span class="line">    dip = (struct dinode*)bp-&gt;data + inum%IPB;    </span><br><span class="line">    <span class="comment">//  free dip</span></span><br><span class="line">    <span class="keyword">if</span>(dip-&gt;type == <span class="number">0</span>)&#123;  </span><br><span class="line">      <span class="built_in">memset</span>(dip, <span class="number">0</span>, <span class="keyword">sizeof</span>(*dip));</span><br><span class="line">      dip-&gt;type = type;       <span class="comment">//  声明该dinode被使用</span></span><br><span class="line">      log_write(bp);          <span class="comment">//  落入磁盘</span></span><br><span class="line">      brelse(bp);</span><br><span class="line">      <span class="comment">//  返回一个inode cache中的inode</span></span><br><span class="line">        <span class="comment">//  可以看到此时返回的inode 其中的type和dip-&gt;type并不一致。那么如何解决？：在调用者获取了该inode之后，会对属于dinode的metadata进行初始化</span></span><br><span class="line">      <span class="keyword">return</span> iget(dev, inum); </span><br><span class="line">    <span class="comment">// in-memory copy of an inode</span></span><br><span class="line">    &#125;</span><br><span class="line">    brelse(bp);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>可以看到ialloc的调用情景,在获取inode之后，会对struct inode中dinode的metadata部分进行初始化。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ip = ialloc(dp-&gt;dev, type);</span><br><span class="line">ilock(ip);</span><br><span class="line">ip-&gt;major = major;</span><br><span class="line">ip-&gt;minor = minor;</span><br><span class="line">ip-&gt;nlink = <span class="number">1</span>;</span><br><span class="line">iupdate(ip);</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li><p><strong>ilock</strong></p>
+<ul>
+<li><ol>
+<li>acquire(sleeplock) </li>
+</ol>
+</li>
+<li><ol start="2">
+<li>根据需要从磁盘中读取struct inode中尚未读取的dinode部分</li>
+</ol>
+</li>
+<li><strong>在读写inode的元数据或内容之前，代码必须使用ilock锁定inode</strong></li>
+<li>将inode指针的获取与锁定分离有助于在某些情况下避免死锁，例如在目录查找期间。多个进程可以持有指向iget返回的inode的C指针，但一次只能有一个进程锁定inode。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ilock</span><span class="params">(struct inode *ip)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  1. ilock(inode)</span></span><br><span class="line">  acquiresleep(&amp;ip-&gt;lock);</span><br><span class="line">  <span class="comment">//  2. 从磁盘中读取struct inode中尚未读取的dinode部分</span></span><br><span class="line">  <span class="keyword">if</span>(ip-&gt;valid == <span class="number">0</span>)&#123;</span><br><span class="line">    bp = bread(ip-&gt;dev, IBLOCK(ip-&gt;inum, sb));</span><br><span class="line">    dip = (struct dinode*)bp-&gt;data + ip-&gt;inum%IPB;</span><br><span class="line">    ip-&gt;type = dip-&gt;type;</span><br><span class="line">    ip-&gt;major = dip-&gt;major;</span><br><span class="line">    ip-&gt;minor = dip-&gt;minor;</span><br><span class="line">    ip-&gt;nlink = dip-&gt;nlink;</span><br><span class="line">    ip-&gt;size = dip-&gt;size;</span><br><span class="line">    memmove(ip-&gt;addrs, dip-&gt;addrs, <span class="keyword">sizeof</span>(ip-&gt;addrs));</span><br><span class="line">    brelse(bp);</span><br><span class="line">    ip-&gt;valid = <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>iput</strong></p>
+<ul>
+<li>iput(struct inode *ip)</li>
+<li><ol>
+<li>放下本thread对于inode的引用</li>
+</ol>
+<ul>
+<li>ip-&gt;ref–;</li>
+<li>如果inode的ref降至0，那么意味着inode cahce中的该inode在内存中无人引用。此后在iget中可以将其替换掉。</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>如果此刻已经无人再引用该inode，且其对应的dinode的nlink = 0(也即硬链接计数为0，也即没有entry指向该inode)</li>
+</ol>
+<ul>
+<li>那么该inode不只留在内存中无用，留在磁盘中也无用。那么如下</li>
+<li>inode大小置0并释放其所引用的addrs + 标记为未分配 + 写入磁盘</li>
+</ul>
+</li>
+<li>iput中释放inode的锁定协议值得仔细研究<ul>
+<li>先不研究了。。。要学不完了。。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>iunlock</strong></p>
+<ul>
+<li>释放inode的lock<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">iunlock</span><span class="params">(struct inode *ip)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  releasesleep(&amp;ip-&gt;lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>inode指针的获取和上锁进行分离</strong></p>
+<ul>
+<li><strong>iget</strong> : inode cache中 inode指针的获取</li>
+<li><strong>ilock</strong> : 对 inode cache中 inode进行lock</li>
+<li>作用：有助于在某些情况下<strong>避免deadlock</strong>，<ul>
+<li>例如在<strong>目录查找</strong>期间 : 多个进程可以持有指向iget返回的inode的C指针，但一次只能有一个进程锁定inode。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>iupdate</strong></p>
+<ul>
+<li>作用：将inode cache中对inode的修改，落入disk上的dinode中.</li>
+<li>inode cache —copy into–&gt; dinode block cache –落入-&gt; disk dinode</li>
+<li>inode cache直写：每次修改inode之后，必须立刻执行iupdate，将其落入disk</li>
+<li>简单，不放代码了。</li>
+</ul>
+</li>
+</ul>
+<h4 id="inode使用"><a href="#inode使用" class="headerlink" title="inode使用"></a>inode使用</h4><ul>
+<li><p><strong>bmap</strong></p>
+<ul>
+<li>bmap(struct inode *ip, uint bn)</li>
+<li><strong>作用:z</strong> 返回inode指向的第bn个datablock的blockno，并根据需要分配datablock<ul>
+<li>The bn argument is a “logical block number” – a block number within the file, relative to the start of the file. The block numbers in ip-&gt;addrs[], and the argument to bread(), are disk block numbers. You can view bmap() as mapping a file’s logical block numbers into disk block numbers.</li>
+<li>如直接块插槽没有指向的block，则balloc为其分配</li>
+<li>如没有indirect block，则balloc为其分配</li>
+<li>如间接块插槽没有指向的block，则balloc为其分配。</li>
+</ul>
+</li>
+<li>并不独占datablock cache</li>
+<li>ip-&gt;addrs[]或间接块中条目为零表示未分配块。<ul>
+<li>通过balloc分配datablock (bmap获取并返回free datablock的blockno)</li>
+</ul>
+</li>
+<li>感觉很像vm.c里的一些函数<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> uint <span class="title">bmap</span><span class="params">(struct inode *ip, uint bn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  如果inode的直接块并没有指向datablock</span></span><br><span class="line">  <span class="keyword">if</span>(bn &lt; NDIRECT)&#123;</span><br><span class="line">    <span class="keyword">if</span>((addr = ip-&gt;addrs[bn]) == <span class="number">0</span>)</span><br><span class="line">      ip-&gt;addrs[bn] = addr = balloc(ip-&gt;dev);</span><br><span class="line">    <span class="keyword">return</span> addr;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  间接块</span></span><br><span class="line">  bn -= NDIRECT;</span><br><span class="line">  <span class="comment">// Load indirect block, allocating if necessary.</span></span><br><span class="line">  <span class="keyword">if</span>(bn &lt; NINDIRECT)&#123;</span><br><span class="line">    <span class="comment">//  如果indirect间接块为0 ，那么为其分配balloc一个freeblock作为indirect block</span></span><br><span class="line">    <span class="keyword">if</span>((addr = ip-&gt;addrs[NDIRECT]) == <span class="number">0</span>)</span><br><span class="line">      ip-&gt;addrs[NDIRECT] = addr = balloc(ip-&gt;dev);</span><br><span class="line">    <span class="comment">//  得到indirect block</span></span><br><span class="line">    bp = bread(ip-&gt;dev, addr);</span><br><span class="line">    a = (uint*)bp-&gt;data;</span><br><span class="line">    <span class="comment">//  indirect block的条目bn没有指向datablock</span></span><br><span class="line">    <span class="keyword">if</span>((addr = a[bn]) == <span class="number">0</span>)&#123;</span><br><span class="line">      a[bn] = addr = balloc(ip-&gt;dev);</span><br><span class="line">      log_write(bp);</span><br><span class="line">    &#125;</span><br><span class="line">    brelse(bp);</span><br><span class="line">    <span class="keyword">return</span> addr;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 如果blockno 超过NDIRECT+NINDIRECT，则bmap调用panic崩溃</span></span><br><span class="line">  panic(<span class="string">&quot;bmap: out of range&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>itrunc</strong></p>
+<ul>
+<li><strong>清空inode</strong> : 释放inode所引用的块，并置inode代表的文件大小为0<ul>
+<li><ol>
+<li>释放其所指向的所有直接块(disk 上)</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>释放其所指向的所有间接块(disk 上)</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>文件大小置为0</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>readi</strong></p>
+<ul>
+<li>int readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)</li>
+<li><strong>作用</strong>：读取从inode代表的文件的第off个bytes开始(从disk / buf)，读取n个bytes到dst中</li>
+<li>调用了bmap</li>
+<li>disk(datablock) ——-&gt; block cache —copyinto—&gt; user/kernel virtual adddress</li>
+<li>和巡逻机<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">readi</span><span class="params">(struct inode *ip, <span class="keyword">int</span> user_dst, uint64 dst, uint off, uint n)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  确保起始指针偏移量不超过文件的末尾。</span></span><br><span class="line">  <span class="keyword">if</span>(off &gt; ip-&gt;size || off + n &lt; off)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">  <span class="comment">//  确保最多只能读取到文件末尾</span></span><br><span class="line">  <span class="keyword">if</span>(off + n &gt; ip-&gt;size)</span><br><span class="line">    n = ip-&gt;size - off;</span><br><span class="line">  <span class="comment">//  开始读取inode指向的datablock</span></span><br><span class="line">  <span class="comment">//  将data从disk copy到内核内存再copy到用户内存</span></span><br><span class="line">    <span class="comment">//  total:总共读了file的多少bytes ; off:读到file的第几个byte了 ; dst : user virtual address</span></span><br><span class="line">  <span class="keyword">for</span>(tot=<span class="number">0</span> ; tot&lt;n ; tot+=m, off+=m, dst+=m)&#123;</span><br><span class="line">    <span class="comment">//  bmap(ip, off/BSIZE) : 获取file的第off个bytes对应的block no</span></span><br><span class="line">    bp = bread(ip-&gt;dev, bmap(ip, off/BSIZE));</span><br><span class="line">    <span class="comment">//  将buf拷贝到用户内存user_dst</span></span><br><span class="line">    either_copyout(user_dst, dst, bp-&gt;data + (off % BSIZE), m);</span><br><span class="line">    brelse(bp);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> tot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>wirtei</strong></p>
+<ul>
+<li>writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)</li>
+<li>用户从inode指向的第off个bytes开始，写n个bytes，从src address到disk</li>
+<li>user/kernel addr -&gt; block cache -&gt; disk</li>
+<li>代码略。类似readi</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>stati</strong><ul>
+<li>stati(struct inode *ip, struct stat *st)</li>
+<li>Copy stat information from inode</li>
+<li>Caller must hold ip-&gt;lock</li>
+</ul>
+</li>
+</ul>
+<h2 id="Directory-目录层"><a href="#Directory-目录层" class="headerlink" title="Directory 目录层"></a>Directory 目录层</h2><h3 id="结构-2"><a href="#结构-2" class="headerlink" title="结构"></a>结构</h3><ul>
+<li><p><strong>目录也是一个文件，因此也是一个inode来代表</strong></p>
+<ul>
+<li>directory <strong>inode</strong> : <ul>
+<li>type = T_DIR</li>
+<li>其addrs所指向的datablock，其中包含的data都是一个个entry，代表directory下的子文件/子目录</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>entry的结构如下：</strong></p>
+<ul>
+<li>entry不是file，并不需要由inode代表，而仅仅是一个directory的inode的datablock中的数据。其结构如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  目录项、entry。文件夹中的一系列代表其下的文件/文件夹的东西就叫entry. </span></span><br><span class="line"><span class="comment">//  dirent不是文件夹，之前还误以为是文件夹。傻冒。</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dirent</span> &#123;</span></span><br><span class="line">  ushort inum;    <span class="comment">//  用于索引inode</span></span><br><span class="line">  <span class="keyword">char</span> name[DIRSIZ];  <span class="comment">//  一</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="接口-3"><a href="#接口-3" class="headerlink" title="接口"></a>接口</h3><ul>
+<li><strong>dirlookup</strong><ul>
+<li>struct inode* dirlookup(struct inode *dp, char *name, uint *poff)</li>
+<li>在目录directory中搜索具有给定名称的条目entry。<ul>
+<li>调用了readi,iget</li>
+<li>如果找到<ul>
+<li><ol>
+<li>将*poff设置为条目在目录中的字节偏移量</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>通过iget获得的未锁定的inode 并 return unlocked inode*</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>如果没找到<ul>
+<li>return 0<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(off = <span class="number">0</span>; off &lt; dp-&gt;size; off += <span class="keyword">sizeof</span>(de))&#123;</span><br><span class="line">  <span class="comment">//  每轮读出一个entry : struct dirent</span></span><br><span class="line">  readi(dp, <span class="number">0</span>, (uint64)&amp;de, off, <span class="keyword">sizeof</span>(de);</span><br><span class="line">  <span class="comment">//  当前的entry所能索引到的inode 和name是否匹配</span></span><br><span class="line">  <span class="keyword">if</span>(namecmp(name, de.name) == <span class="number">0</span>)&#123;</span><br><span class="line">    <span class="comment">// entry matches path element</span></span><br><span class="line">    *poff = off;</span><br><span class="line">    inum = de.inum;</span><br><span class="line">    <span class="comment">//  返回该entry所对应的inode</span></span><br><span class="line">    <span class="keyword">return</span> iget(dp-&gt;dev, inum);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>dirlink</strong><ul>
+<li>int dirlink(struct inode *dp, char *name=xxx, uint inum=123)</li>
+<li>作用：在directory dp下 ，新增一个entry。entry的name是xxx，指向的inode是123</li>
+<li>调用了dirlookup,readi,writei , 核心逻辑见下。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">dirlink</span><span class="params">(struct inode *dp, <span class="keyword">char</span> *name, uint inum)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">// Check that name is not present.</span></span><br><span class="line">  <span class="keyword">if</span>((ip = dirlookup(dp, name, <span class="number">0</span>)) != <span class="number">0</span>)&#123;</span><br><span class="line">    iput(ip);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//  找到空闲的entry </span></span><br><span class="line">  <span class="keyword">for</span>(off = <span class="number">0</span>; off &lt; dp-&gt;size; off += <span class="keyword">sizeof</span>(de))&#123;</span><br><span class="line">    readi(dp, <span class="number">0</span>, (uint64)&amp;de, off, <span class="keyword">sizeof</span>(de));</span><br><span class="line">    <span class="keyword">if</span>(de.inum == <span class="number">0</span>)</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//  写入name和inum</span></span><br><span class="line">  <span class="built_in">strncpy</span>(de.name, name, DIRSIZ);</span><br><span class="line">  de.inum = inum;</span><br><span class="line">  <span class="comment">//  写入disk (如果现有的size里面没有free entry 那么就会增添新entry , 扩展dp-&gt;size)</span></span><br><span class="line">  writei(dp, <span class="number">0</span>, (uint64)&amp;de, off, <span class="keyword">sizeof</span>(de)) != <span class="keyword">sizeof</span>(de)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="Pathname-路径层"><a href="#Pathname-路径层" class="headerlink" title="Pathname 路径层"></a>Pathname 路径层</h2><ul>
+<li><p><strong>工具函数：skipelem</strong>  </p>
+<ul>
+<li>static char* skipelem(char *path, char *name)</li>
+<li>skipelem 将path中的 第一个path element(应该是个文件夹名字)取出拷贝到name中 , 返回path中除去path element之后剩余的内容<ul>
+<li>对于取出的给name的path element，如果是路径末尾的最后一个path element，那么就是个file的名字；如果不是路径末尾的最后一个path element，即中间的pathelement，则是一个directory的名字。</li>
+<li>可以去除/</li>
+<li>返回null时就代表name现在保存的已经是path中最后一个element</li>
+<li>传入的*path = ‘\0’时，返回nullptr，且不改变name</li>
+</ul>
+</li>
+<li>如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;path left: %s\n&quot;</span>,skipelem(<span class="string">&quot;/123///456/789/&quot;</span>,name));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;name : %s\n&quot;</span>,name);</span><br><span class="line"></span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;path left: %s\n&quot;</span>,skipelem(<span class="string">&quot;aaaa&quot;</span>,name));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;name : %s\n&quot;</span>,name);</span><br><span class="line"></span><br><span class="line">name[<span class="number">0</span>] = <span class="number">0</span>;</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;path left: %s\n&quot;</span>,skipelem(<span class="string">&quot;&quot;</span>,name));</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;name : %s\n&quot;</span>,name);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>namex</strong></p>
+<ul>
+<li>static struct inode* namex(char *path, int nameiparent, char *name)</li>
+<li>nameiparent = 0 : 返回path最后一个element(file/directory)的inode，并将最后一个element的名字拷贝到name中</li>
+<li>nameiparent = 1 : 返回path最后一个element(file/directory)的的parent的inode，并将最后一个element的名字拷贝到name中</li>
+<li>从哪里查找的？: <ul>
+<li> 将path一级级，逐级拆分出一个个name，在当前directory inode下查找出(dirlookup)inode；</li>
+<li> 然后将该inode，作为下一级name的directory node，也即在这个刚查出来的inode下，查找name对应的inode。</li>
+<li> 一级级查找，直到查到path的最后一级别的inode。返回即可。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p> namex过程可能需要很长时间才能完成：它可能涉及多个磁盘操作来读取路径名中所遍历目录的索引节点和目录块（如果它们不在buffer cache中）。</p>
+</li>
+<li><p> Xv6经过精心设计，如果一个内核线程对namex的调用在磁盘I/O上阻塞，另一个查找不同路径名的内核线程可以同时进行。Namex分别锁定路径中的每个目录，以便在不同目录中进行并行查找。</p>
+</li>
+<li><p>struct inode* namei(char *path)</p>
+<ul>
+<li>返回path最后一个element的inode</li>
+<li>return namex(path, 0, name);</li>
+</ul>
+</li>
+<li><p>struct inode* nameiparent(char *path, char *name)</p>
+<ul>
+<li>返回path最后一个element的父目录的inode</li>
+<li>return namex(path, 1, name);</li>
+<li>可用于在某dir路径下创建新entry。</li>
+</ul>
+</li>
+</ul>
+<h2 id="fd-文件描述符层"><a href="#fd-文件描述符层" class="headerlink" title="fd 文件描述符层"></a>fd 文件描述符层</h2><h3 id="结构-3"><a href="#结构-3" class="headerlink" title="结构"></a>结构</h3><ul>
+<li>为什么可以多个process同时打开一个文件？答案就是如下结构体 struct file。</li>
+<li><strong>struct file</strong>{} : 文件结构体<ul>
+<li>inode或管道的封装，加上一个I/O偏移量<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">file</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">enum</span> &#123;</span> FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE &#125; type;</span><br><span class="line">  <span class="keyword">int</span> ref;          <span class="comment">// reference count  当前内存中有几个人正在使用该文件</span></span><br><span class="line">  <span class="keyword">char</span> readable;</span><br><span class="line">  <span class="keyword">char</span> writable;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">pipe</span> *<span class="title">pipe</span>;</span> <span class="comment">// FD_PIPE</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">inode</span> *<span class="title">ip</span>;</span>  <span class="comment">// FD_INODE and FD_DEVICE</span></span><br><span class="line">  uint off;          <span class="comment">// FD_INODE</span></span><br><span class="line">  <span class="keyword">short</span> major;       <span class="comment">// FD_DEVICE</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li>每次调用open都会创建一个新的打开文件（一个新的struct file）：如果多个进程独立地打开同一个文件，那么不同的实例将具有不同的I/O偏移量。</li>
+<li>另一方面，单个打开的文件（同一个struct file）可以多次出现在一个进程的文件表中，也可以出现在多个进程的文件表中</li>
+<li>如果一个进程使用open打开文件，然后使用dup创建别名，或使用fork与子进程共享，就会发生这种情况。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>struct ftable</strong> : <strong>文件表file table 存储所有struct file</strong><ul>
+<li>file table : 每个槽位都是个struct file容器，存储所有打开的文件，即创建的struct file<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">file</span> <span class="title">file</span>[<span class="title">NFILE</span>];</span></span><br><span class="line">&#125; ftable;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>文件描述符表 : 每个进程都有的一个fd表</strong></p>
+<ul>
+<li>proc结构体中有<strong>struct file *ofile[NOFILE];</strong>  // Open files</li>
+<li>这就是常说的文件描述符表/fd表</li>
+<li><strong>是每个process 由 fd 到 struct file的索引表</strong></li>
+</ul>
+</li>
+<li><p><strong>可以看到，struct inode和struct file本身并不具有name属性，实际上都是entry中附加包含的</strong>。</p>
+</li>
+</ul>
+<h3 id="接口-4"><a href="#接口-4" class="headerlink" title="接口"></a>接口</h3><ul>
+<li><p><strong>filealloc</strong></p>
+<ul>
+<li>struct file* filealloc(void)</li>
+<li>作用：从ftable中返回一个free的struct file容器给调用者用于承载文件。<ul>
+<li>仅仅是在操作struct file<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">acquire(&amp;ftable.lock);</span><br><span class="line"><span class="keyword">for</span>(f = ftable.file; f &lt; ftable.file + NFILE; f++)&#123;</span><br><span class="line">  <span class="keyword">if</span>(f-&gt;ref == <span class="number">0</span>)&#123;</span><br><span class="line">    f-&gt;ref = <span class="number">1</span>;</span><br><span class="line">    release(&amp;ftable.lock);</span><br><span class="line">    <span class="keyword">return</span> f;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">release(&amp;ftable.lock);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>fdalloc</strong></p>
+<ul>
+<li>fdalloc(struct file *f)</li>
+<li>将 struct file记录在process的文件描述符表ofile中的空闲位置，为用户提供一种方式：通过free fd来索引struct file<ul>
+<li>记录file: process-&gt;ofile[fd] = f</li>
+<li>返回fd</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>filedup</strong></p>
+<ul>
+<li>重复引用file</li>
+<li>f-&gt;ref++;</li>
+</ul>
+</li>
+<li><p><strong>fileclose</strong></p>
+<ul>
+<li>作用：释放引用,若对file的ref降至0,则iput其inode<ul>
+<li>操作struct file，有可能操作inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">fileclose</span><span class="params">(struct file *f)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  acquire(&amp;ftable.lock);</span><br><span class="line">  <span class="keyword">if</span>(--f-&gt;ref &gt; <span class="number">0</span>)&#123;</span><br><span class="line">    release(&amp;ftable.lock);</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//  f.ref == 0;</span></span><br><span class="line">  ff = *f;</span><br><span class="line">  <span class="comment">//  清空ftable记录</span></span><br><span class="line">  f-&gt;ref = <span class="number">0</span>;</span><br><span class="line">  f-&gt;type = FD_NONE;</span><br><span class="line">  release(&amp;ftable.lock);</span><br><span class="line">  <span class="comment">//  释放file的inode</span></span><br><span class="line">  begin_op();</span><br><span class="line">  iput(ff.ip);</span><br><span class="line">  end_op();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>fileread</strong></p>
+<ul>
+<li>通过readi,在file-&gt;inode中读取数据送入用户内存。（读取的起点是struct file.offset）</li>
+<li>核心逻辑如下<ul>
+<li>检查readable/writable是否允许该操作，然后将调用传递给pipe / inode的实现<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">fileread(struct file *f, uint64 addr, <span class="keyword">int</span> n)</span><br><span class="line">&#123;</span><br><span class="line">  ilock(f-&gt;ip);</span><br><span class="line">  <span class="comment">//  f-&gt;off即为操作文件时的起始偏移量</span></span><br><span class="line">  r = readi(f-&gt;ip, <span class="number">1</span>, addr, f-&gt;off, n);</span><br><span class="line">  f-&gt;off += r;</span><br><span class="line">  iunlock(f-&gt;ip);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>filewrite</strong></p>
+<ul>
+<li>通过writei,向file-&gt;node写数据</li>
+<li>检查打开模式是否允许该操作，然后将调用传递给管道或inode的实现<ul>
+<li>核心逻辑如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">while</span>(i &lt; bytes_to_write)&#123;</span><br><span class="line">  begin_op();</span><br><span class="line">  ilock(f-&gt;ip);</span><br><span class="line">  r = writei(f-&gt;ip, <span class="number">1</span>, addr + i, f-&gt;off, n1);</span><br><span class="line">  f-&gt;off += r;</span><br><span class="line">  iunlock(f-&gt;ip);</span><br><span class="line">  end_op();</span><br><span class="line">  i+=r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>通过fileread和filewrite可以看出，xv6中，文件的read和write共同维护同一个offset.</p>
+</li>
+<li><p>且可以看出，得益于ilock(file.inode)，使得各个进程可以原子的更新offset；即，使得对同一文件的同时多次写入不能覆盖彼此的数据，尽管他们的写入最终可能是交错的。</p>
+</li>
+</ul>
+<h2 id="系统调用"><a href="#系统调用" class="headerlink" title="系统调用"></a>系统调用</h2><ul>
+<li><strong>sys_link</strong><ul>
+<li>作用：<strong>新建立一条硬链接 从 new entry 索引到 现有inode</strong>。</li>
+<li>直观来看就是在编辑目录，为现有的inode新增一个名字。通过创建个指向现有inode的entry实现。</li>
+<li>下面约定叫老文件old对应的inode,即需要新增链接的这个node,称为目标inode</li>
+<li>trapframe传入old,new<ul>
+<li>old : 目标inode的name</li>
+<li>new : 新entry的路径</li>
+</ul>
+</li>
+<li>逻辑<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">sys_link(<span class="keyword">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">//  old : 老文件的name</span></span><br><span class="line">  <span class="comment">//  new : 即将新建立的entry，我们将要让该entry指向old inode。注意这个new不是file，而是一个entry</span></span><br><span class="line">  <span class="comment">//  目的 : 要在new所在的directory,建立一个新entry(old_inum , new_entry_name)</span></span><br><span class="line">  <span class="keyword">char</span> <span class="keyword">new</span>[MAXPATH], old[MAXPATH];  </span><br><span class="line"></span><br><span class="line">  begin_op();</span><br><span class="line"><span class="comment">//  操作目标inode : ++nlink</span></span><br><span class="line">&#123;  </span><br><span class="line">  ip = namei(old);      <span class="comment">//  根据name old获取对应的inode</span></span><br><span class="line">  ilock(ip);</span><br><span class="line">  </span><br><span class="line">  <span class="comment">//  check whether ip is directory ; if true , fail;</span></span><br><span class="line">  ip-&gt;nlink++;</span><br><span class="line"></span><br><span class="line">  iupdate(ip);</span><br><span class="line">  iunlock(ip);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//  操作new的parent inode : 创建entry(old_inum,new)</span></span><br><span class="line">&#123;</span><br><span class="line">  dp = nameiparent(<span class="keyword">new</span>, name);</span><br><span class="line">  ilock(dp);</span><br><span class="line">  dirlink(dp, name, ip-&gt;inum);    <span class="comment">//  directory dp下 新增entry(inum,name)</span></span><br><span class="line">  iunlockput(dp);</span><br><span class="line">  iput(ip);</span><br><span class="line">&#125;</span><br><span class="line">  end_op();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li> 硬链接不支持directory。ubuntu下 hard link not allowed for directory。xv6下的 sys_link 也会检查要增加link的inode是否是directory；若是，则失败</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>sys_unlink</strong></p>
+<ul>
+<li>删除entry,–inode.nlink<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">memset</span>(&amp;entry, <span class="number">0</span>, <span class="keyword">sizeof</span>(entry));</span><br><span class="line">writei(entry, <span class="number">0</span>, (uint64)&amp;entry, off, <span class="keyword">sizeof</span>(entry));</span><br><span class="line">ip-&gt;nlink--;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>create</strong></p>
+<ul>
+<li>static struct inode* create(char *path, short type, short major, short minor)</li>
+<li><strong>作用</strong>：<strong>新创建一个inode</strong>，并在path处创建一个entry指向该inode。注意更新其parent directory。</li>
+<li>返回一个<strong>独占的inode</strong></li>
+<li>简单来说，就是创建新node 并给其新name</li>
+<li>逻辑如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  create 为新inode创建一个新名称的新entry</span></span><br><span class="line"><span class="comment">//  返回一个被锁定的inode</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> struct inode* <span class="title">create</span><span class="params">(<span class="keyword">char</span> *path, <span class="keyword">short</span> type, <span class="keyword">short</span> major, <span class="keyword">short</span> minor)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  找到path 最后一个 element的 parent directory</span></span><br><span class="line">  dp = nameiparent(path, name);</span><br><span class="line"></span><br><span class="line">  ilock(dp);</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  如果之前存在 视为成功</span></span><br><span class="line">  <span class="keyword">if</span>((ip = dirlookup(dp, name, <span class="number">0</span>)) != <span class="number">0</span>)&#123;</span><br><span class="line">    iunlockput(dp);</span><br><span class="line">    ilock(ip);</span><br><span class="line">    <span class="keyword">if</span>(type == T_FILE &amp;&amp; (ip-&gt;type == T_FILE || ip-&gt;type == T_DEVICE))</span><br><span class="line">      <span class="keyword">return</span> ip;</span><br><span class="line">    iunlockput(ip);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="comment">//  if name对应的entry对应的inode并不存在 , 那么进行分配inode</span></span><br><span class="line">  <span class="comment">//  get初始化了inode metadata的i弄得</span></span><br><span class="line">  ip = ialloc(dp-&gt;dev, type);</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  inode 中dinode meta data初始化</span></span><br><span class="line">  ilock(ip);</span><br><span class="line">  ip-&gt;major = major;</span><br><span class="line">  ip-&gt;minor = minor;</span><br><span class="line">  ip-&gt;nlink = <span class="number">1</span>;</span><br><span class="line">  iupdate(ip);</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  如果create是要创建一个目录 , 也即 inode要作为一个目录的inode</span></span><br><span class="line">  <span class="keyword">if</span>(type == T_DIR)&#123;  <span class="comment">// Create . and .. entries.</span></span><br><span class="line">    dp-&gt;nlink++;  <span class="comment">// for &quot;..&quot;</span></span><br><span class="line">    <span class="comment">// No ip-&gt;nlink++ for &quot;.&quot;: avoid cyclic ref count.</span></span><br><span class="line">    iupdate(dp);  <span class="comment">//  write through</span></span><br><span class="line">    <span class="comment">//  在inode下，新增自带的. 和 .. entry</span></span><br><span class="line">    dirlink(ip, <span class="string">&quot;.&quot;</span>, ip-&gt;inum);</span><br><span class="line">    dirlink(ip, <span class="string">&quot;..&quot;</span>, dp-&gt;inum);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  在parent directory下 创建索引新建inode的entry</span></span><br><span class="line">  dirlink(dp, name, ip-&gt;inum);</span><br><span class="line"></span><br><span class="line">  iunlockput(dp);</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">return</span> ip;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>sys_open、sys_mkdir和sys_mknod都利用了create</p>
+</li>
+<li><p><strong>sys_mkdir</strong>: 创建文件夹</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">begin_op();</span><br><span class="line">ip = create(path, T_DIR, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">iunlockput(ip);</span><br><span class="line">end_op();</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>sys_open</strong>: 创建文件</p>
+<ul>
+<li><ol>
+<li>以某种方式获得inode</li>
+</ol>
+<ul>
+<li>O_CREATE标志，调用create</li>
+<li>否则，调用namei<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  如果open被传递了O_CREATE标志，它将调用create（kernel/sysfile.c:301）。</span></span><br><span class="line"><span class="comment">//  create ilock(inode)</span></span><br><span class="line"><span class="keyword">if</span>(omode &amp; O_CREATE)&#123;</span><br><span class="line">  ip = create(path, T_FILE, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line"><span class="comment">//  否则，它将调用namei（kernel/sysfile.c:307）</span></span><br><span class="line"><span class="comment">//  namei不ilock(inode),因此需要sys_open自己ilock</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  ip = namei(path)</span><br><span class="line">  ilock(ip);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><ol start="2">
+<li>为新建的inode 分配 free struct file 和 free fd。</li>
+</ol>
+<ul>
+<li>从全局的ftable中分配free struct file 来作为文件容器，承载inode。</li>
+<li>将 struct file记录在process的文件描述符表ofile中的空闲位置，为用户提供一种方式：通过free fd来索引struct file。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  从ftable中分配free struct file 来承载inode</span></span><br><span class="line"><span class="comment">//  从ofile中分配free fd 来索引struct file</span></span><br><span class="line">f = filealloc();</span><br><span class="line">fd = fdalloc(f);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><ol start="3">
+<li>填充该文件<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">f-&gt;type = FD_INODE;</span><br><span class="line">f-&gt;off = <span class="number">0</span>;</span><br><span class="line">f-&gt;ip = ip;                         <span class="comment">//  inode挂在struct file上</span></span><br><span class="line">f-&gt;readable = !(omode &amp; O_WRONLY);  <span class="comment">//  根据mode指明权限</span></span><br><span class="line">f-&gt;writable = (omode &amp; O_WRONLY) || (omode &amp; O_RDWR);</span><br><span class="line"><span class="comment">// if mode为O_TRUNC</span></span><br><span class="line">itrunc(ip);</span><br><span class="line">iunlock(ip);</span><br><span class="line">end_op();</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+<li><ol start="4">
+<li>return fd</li>
+</ol>
+<ul>
+<li>给user返回file索引：fd。</li>
+<li>结束。文件至此创建完毕。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><ul>
+<li>首先，文件系统是一个位于磁盘的数据结构</li>
+<li>关注block cache的实现，这对于性能来说是至关重要的，因为读写磁盘是代价较高的操作，可能要消耗数百毫秒，而block cache确保了如果我们最近从磁盘读取了一个block，那么我们将不会再从磁盘读取相同的block。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/27/%E8%BD%AE%E5%AD%90-%E6%97%A5%E5%BF%97%E5%BA%93/" rel="prev" title="轮子-日志库">
+      <i class="fa fa-chevron-left"></i> 轮子-日志库
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F2/" rel="next" title="操作系统-xv6-文件系统2">
+      操作系统-xv6-文件系统2 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E5%8F%8A%E8%A7%A3%E9%87%8A"><span class="nav-number">1.</span> <span class="nav-text">问题及解释</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F"><span class="nav-number"></span> <span class="nav-text">文件系统</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%9F%E8%83%BD%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">功能概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B1%82%E6%AC%A1%E5%A6%82%E4%B8%8B"><span class="nav-number">3.</span> <span class="nav-text">层次如下</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Disk"><span class="nav-number">4.</span> <span class="nav-text">Disk</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Buffer-Cache"><span class="nav-number">5.</span> <span class="nav-text">Buffer Cache</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%9C%E7%94%A8"><span class="nav-number">5.1.</span> <span class="nav-text">作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">5.2.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3"><span class="nav-number">5.3.</span> <span class="nav-text">接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tip"><span class="nav-number">5.4.</span> <span class="nav-text">tip</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Log-%E6%97%A5%E5%BF%97"><span class="nav-number">6.</span> <span class="nav-text">Log 日志</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%9C%E7%94%A8-1"><span class="nav-number">6.1.</span> <span class="nav-text">作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E6%B5%81%E7%A8%8B%E3%80%81%E5%B4%A9%E6%BA%83%E5%8F%8A%E6%81%A2%E5%A4%8D"><span class="nav-number">6.2.</span> <span class="nav-text">关于流程、崩溃及恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%96%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-number">6.3.</span> <span class="nav-text">编程模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84-1"><span class="nav-number">6.4.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3-1"><span class="nav-number">6.5.</span> <span class="nav-text">接口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Inode-Cache%E5%B1%82"><span class="nav-number">7.</span> <span class="nav-text">Inode Cache层</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Inode%E7%BB%93%E6%9E%84"><span class="nav-number">7.1.</span> <span class="nav-text">Inode结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3-2"><span class="nav-number">7.2.</span> <span class="nav-text">接口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#datablock%E5%88%86%E9%85%8D"><span class="nav-number">7.3.</span> <span class="nav-text">datablock分配</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#inode%E5%88%86%E9%85%8D"><span class="nav-number">7.3.1.</span> <span class="nav-text">inode分配</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#inode%E4%BD%BF%E7%94%A8"><span class="nav-number">7.3.2.</span> <span class="nav-text">inode使用</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Directory-%E7%9B%AE%E5%BD%95%E5%B1%82"><span class="nav-number">8.</span> <span class="nav-text">Directory 目录层</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84-2"><span class="nav-number">8.1.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3-3"><span class="nav-number">8.2.</span> <span class="nav-text">接口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pathname-%E8%B7%AF%E5%BE%84%E5%B1%82"><span class="nav-number">9.</span> <span class="nav-text">Pathname 路径层</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#fd-%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6%E5%B1%82"><span class="nav-number">10.</span> <span class="nav-text">fd 文件描述符层</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84-3"><span class="nav-number">10.1.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3-4"><span class="nav-number">10.2.</span> <span class="nav-text">接口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"><span class="nav-number">11.</span> <span class="nav-text">系统调用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">12.</span> <span class="nav-text">小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'd2d6af2716ae029b7dc7191c88383256',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

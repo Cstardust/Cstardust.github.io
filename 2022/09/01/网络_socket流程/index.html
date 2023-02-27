@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="只记录API关键信息方便快速回忆。API的具体信息还请man。以前初学的时候记录的信息太冗杂了。现在看也不方便看，这回力求精简，痛苦的重写一遍概要。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络_socket流程">
+<meta property="og:url" content="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="只记录API关键信息方便快速回忆。API的具体信息还请man。以前初学的时候记录的信息太冗杂了。现在看也不方便看，这回力求精简，痛苦的重写一遍概要。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/2022-09-25-16-37-53.png">
+<meta property="article:published_time" content="2022-09-01T03:31:38.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:12:20.253Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="tips">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/2022-09-25-16-37-53.png">
+
+<link rel="canonical" href="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>网络_socket流程 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          网络_socket流程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-01 11:31:38" itemprop="dateCreated datePublished" datetime="2022-09-01T11:31:38+08:00">2022-09-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:12:20" itemprop="dateModified" datetime="2023-02-27T23:12:20+08:00">2023-02-27</time>
+              </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/2022-09-25-16-37-53.png"></p>
+<p>只记录API关键信息方便快速回忆。API的具体信息还请man。以前初学的时候记录的信息太冗杂了。现在看也不方便看，这回力求精简，痛苦的重写一遍概要。</p>
+<span id="more"></span>
+
+<h1 id="socket-API"><a href="#socket-API" class="headerlink" title="socket API"></a>socket API</h1><h2 id="server"><a href="#server" class="headerlink" title="server"></a>server</h2><ul>
+<li>最基本API使用流程  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  1. create socket</span></span><br><span class="line"><span class="keyword">int</span> lfd = <span class="built_in">socket</span>(PF_INET,SOCK_STREAM,<span class="number">0</span>);</span><br><span class="line"><span class="comment">//  2. bind socket with addr</span></span><br><span class="line">    <span class="comment">//  之前要先将protocol、ip、port以网络字节序存储入server_addr</span></span><br><span class="line"><span class="built_in">bind</span>(lfd,(sockaddr*)&amp;server_addr,<span class="keyword">sizeof</span> server_addr);</span><br><span class="line"><span class="comment">//  3. listen</span></span><br><span class="line"><span class="built_in">listen</span>(lfd,<span class="number">5</span>);</span><br><span class="line"><span class="comment">//  4. accept</span></span><br><span class="line"><span class="keyword">int</span> connfd = <span class="built_in">accept</span>(fd,(sockaddr*)&amp;cliet_addr,&amp;len);</span><br><span class="line"><span class="comment">//  5. read/write</span></span><br><span class="line"><span class="keyword">int</span> len = <span class="built_in">read</span>(fd,buf,BUFFER_SIZE<span class="number">-1</span>);</span><br><span class="line"><span class="comment">//  6. close</span></span><br><span class="line"><span class="built_in">close</span>(fd);</span><br></pre></td></tr></table></figure>
+<h3 id="socket地址"><a href="#socket地址" class="headerlink" title="socket地址"></a>socket地址</h3></li>
+<li>sockaddr_in :   <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    sa_family sin_family;       <span class="comment">//  protocol   :AF_INET</span></span><br><span class="line">    <span class="keyword">u_int16_t</span> sin_port;         <span class="comment">//  port       :网络字节序</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">in_addr</span> <span class="title">sin_addr</span>;</span>    <span class="comment">//  ip         :IPv4结构体</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">in_addr</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="keyword">u_int32_t</span> s_addr;           <span class="comment">//  ip address : 网络字节序 </span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>将 port(short) 和 ip(点分十进制字符串) 以网络字节序保存，供给socket使用。<ul>
+<li>程序员看到的 port 是 : 本地字节序 &amp;&amp; short。看到的ip是 本地字节序 &amp;&amp; 点分十进制字符串。</li>
+<li>将他们以网络字节序存入sockaddr_in<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  将protocol、ip、port以网络字节序存储入server_addr</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">server_addr</span>;</span></span><br><span class="line">    <span class="built_in">memset</span>(&amp;server_addr,<span class="number">0</span>,<span class="keyword">sizeof</span> server_addr);</span><br><span class="line">    server_addr.sin_family = AF_INET;                   <span class="comment">//  protocol    network</span></span><br><span class="line">    inet_pton(AF_INET,ip,&amp;server_addr.sin_addr.s_addr); <span class="comment">//  ip          str-&gt;network</span></span><br><span class="line">    server_addr.sin_port = htons(port);                 <span class="comment">//  port        network   </span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="socket"><a href="#socket" class="headerlink" title="socket"></a>socket</h3><ul>
+<li>原型<ul>
+<li>int socket(int domain,int type,int protocol);</li>
+<li>return fd;</li>
+</ul>
+</li>
+<li>使用<ul>
+<li>int listening_fd = socket(PF_INET,SOCK_STREAM,0);</li>
+</ul>
+</li>
+</ul>
+<h3 id="bind"><a href="#bind" class="headerlink" title="bind"></a>bind</h3><ul>
+<li>原型：<ul>
+<li>int bind(int sockfd, const struct sockaddr *addr,socklen_t addrlen);</li>
+<li>将socket地址addr结构体，绑定给sockfd。</li>
+</ul>
+</li>
+<li>使用：<ul>
+<li>bind(listening_fd,(sockaddr*)&amp;server_addr,sizeof server_addr);</li>
+</ul>
+</li>
+</ul>
+<h3 id="listen"><a href="#listen" class="headerlink" title="listen"></a>listen</h3><ul>
+<li><p>原型</p>
+<ul>
+<li>int listen(int sockfd, int backlog);</li>
+<li>创建监听队列以存放待处理客户连接</li>
+</ul>
+</li>
+<li><p>使用</p>
+<ul>
+<li>listen(listening_fd,5);</li>
+</ul>
+</li>
+<li><p>在listen之后listening_fd即变为监听socket，可以接受连接/epoll了。</p>
+</li>
+</ul>
+<h3 id="accept"><a href="#accept" class="headerlink" title="accept"></a>accept</h3><ul>
+<li>原型<ul>
+<li>int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);</li>
+<li>success : return connection fd;</li>
+<li>fail    : return -1 and set errno</li>
+</ul>
+</li>
+<li>使用<ul>
+<li>int connfd = accept(lfd,(sockaddr*)&amp;cliet_addr,&amp;cliet_len);</li>
+<li>accept之后即可对connfd进行读写操作</li>
+<li>即便client建立连接之后又断开网络或者退出程序，server也可连接<ul>
+<li>accept只是从监听队列中取出连接，而不论连接处于何种状态。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="client"><a href="#client" class="headerlink" title="client"></a>client</h2><ul>
+<li><p>client socketAPI流程</p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  1.  创建socket</span></span><br><span class="line"><span class="keyword">int</span> client_conn_fd = <span class="built_in">socket</span>(PF_INET, SOCK_STREAM, <span class="number">0</span>);</span><br><span class="line"><span class="comment">//  2.  发起连接 </span></span><br><span class="line">    <span class="comment">//  之前要将要连接的server的protocol、ip、port以网络字节序存储入server_addr</span></span><br><span class="line"><span class="built_in">connect</span>(client_conn_fd, (sockaddr *)&amp;server_address, <span class="keyword">sizeof</span> server_address);</span><br><span class="line"><span class="comment">//  3.   read/write</span></span><br><span class="line"><span class="built_in">send</span>(client_conn_fd, request.<span class="built_in">c_str</span>(), request.<span class="built_in">size</span>(), <span class="number">0</span>);</span><br><span class="line"><span class="comment">//  4.   close</span></span><br><span class="line"><span class="built_in">close</span>(client_conn_fd);</span><br></pre></td></tr></table></figure>
+<h3 id="connect"><a href="#connect" class="headerlink" title="connect"></a>connect</h3></li>
+<li><p>原型</p>
+<ul>
+<li>int connect(int sockfd, const struct sockaddr *addr,socklen_t addrlen);</li>
+<li>success : return 0</li>
+<li>fail : return -1 and set errno</li>
+</ul>
+</li>
+<li><p>使用</p>
+<ul>
+<li>connect(client_fd, (sockaddr *)&amp;server_address, sizeof server_address);</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/tips/" rel="tag"># tips</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/26/csapp-Cache-Lab/" rel="prev" title="Cache-Lab">
+      <i class="fa fa-chevron-left"></i> Cache-Lab
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/" rel="next" title="csapp-9-虚拟内存2-Linux内存系统">
+      csapp-9-虚拟内存2-Linux内存系统 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#socket-API"><span class="nav-number">1.</span> <span class="nav-text">socket API</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#server"><span class="nav-number">1.1.</span> <span class="nav-text">server</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#socket%E5%9C%B0%E5%9D%80"><span class="nav-number">1.1.1.</span> <span class="nav-text">socket地址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#socket"><span class="nav-number">1.1.2.</span> <span class="nav-text">socket</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bind"><span class="nav-number">1.1.3.</span> <span class="nav-text">bind</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#listen"><span class="nav-number">1.1.4.</span> <span class="nav-text">listen</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#accept"><span class="nav-number">1.1.5.</span> <span class="nav-text">accept</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#client"><span class="nav-number">1.2.</span> <span class="nav-text">client</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#connect"><span class="nav-number">1.2.1.</span> <span class="nav-text">connect</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '972f32d6d7b28966f764f1d6e655c99e',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

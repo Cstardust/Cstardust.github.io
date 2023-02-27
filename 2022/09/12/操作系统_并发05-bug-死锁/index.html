@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="死锁 理论以及学校考试上 四个条件:互斥 不可剥夺 请求与保持 循环等待 措施:预防,避免,检测&#x2F;恢复,忽略 死锁避免中的 银行家算法实现   实际 AA-Deadlock  Thread自己等待自己释放锁 : funcA持有lock , funcA调用funcB , funcB也需要lock   AB-BA-Deadlock T1先拿A后等B，T2先拿B后等A 应当严格按照固定的顺序获得所有锁">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统_并发05-死锁">
+<meta property="og:url" content="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="死锁 理论以及学校考试上 四个条件:互斥 不可剥夺 请求与保持 循环等待 措施:预防,避免,检测&#x2F;恢复,忽略 死锁避免中的 银行家算法实现   实际 AA-Deadlock  Thread自己等待自己释放锁 : funcA持有lock , funcA调用funcB , funcB也需要lock   AB-BA-Deadlock T1先拿A后等B，T2先拿B后等A 应当严格按照固定的顺序获得所有锁">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-10-17-09-21-38.png">
+<meta property="og:image" content="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-09-13-11-30-55.png">
+<meta property="og:image" content="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-09-13-12-05-37.png">
+<meta property="article:published_time" content="2022-09-12T08:26:39.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:21:27.152Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="OS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-10-17-09-21-38.png">
+
+<link rel="canonical" href="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统_并发05-死锁 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统_并发05-死锁
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-12 16:26:39" itemprop="dateCreated datePublished" datetime="2022-09-12T16:26:39+08:00">2022-09-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:27" itemprop="dateModified" datetime="2023-02-27T23:21:27+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>死锁<ul>
+<li>理论以及学校考试上<ul>
+<li>四个条件:互斥 不可剥夺 请求与保持 循环等待</li>
+<li>措施:预防,避免,检测/恢复,忽略</li>
+<li>死锁避免中的 银行家算法实现</li>
+</ul>
+</li>
+<li>实际<ul>
+<li>AA-Deadlock <ul>
+<li>Thread自己等待自己释放锁 : funcA持有lock , funcA调用funcB , funcB也需要lock</li>
+</ul>
+</li>
+<li>AB-BA-Deadlock<ul>
+<li>T1先拿A后等B，T2先拿B后等A</li>
+<li>应当严格按照固定的顺序获得所有锁</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="死锁"><a href="#死锁" class="headerlink" title="死锁"></a>死锁</h1><ul>
+<li>A deadlock is a state in which each member of a group is waiting for another member, including itself, to take action.</li>
+</ul>
+<p><img src="/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-10-17-09-21-38.png"></p>
+<h2 id="发生死锁的必要条件"><a href="#发生死锁的必要条件" class="headerlink" title="发生死锁的必要条件"></a>发生死锁的必要条件</h2><ul>
+<li>互斥（mutual exclusion）: 资源不能被共享，一个资源每次只能被一个进程使用</li>
+<li>不可剥夺（no preemption）：进程已获得的资源，在未使用完之前，不能强行剥夺</li>
+<li>请求与保持（hold and wait）：一个进程因请求资源而阻塞时，对已获得的资源保持不放</li>
+<li>循环等待（circular wait）：若干进程之间形成一种头尾相接的循环性资源等待关系</li>
+<li>破坏其中一个，就不会形成死锁.</li>
+</ul>
+<blockquote>
+<p>“理解了死锁的原因，尤其是产生死锁的四个必要条件，就可以最大可能地避免、预防和解除死锁。所以，在系统设计、进程调度等方面注意如何不让这四个必要条件成立，如何确定资源的合理分配算法，避免进程永久占据系统资源。此外，也要防止进程在处于等待状态的情况下占用资源。因此，对资源的分配要给予合理的规划。” ——Bullshit.</p>
+</blockquote>
+<h2 id="死锁预防"><a href="#死锁预防" class="headerlink" title="死锁预防"></a>死锁预防</h2><ul>
+<li>互斥和不可剥夺一般很难破坏,死锁预防主要是破坏请求与保持和循环等待这两个必要条件.</li>
+<li>方法一 : 破坏请求与保持<ul>
+<li>(要么不请求,要么不保持)</li>
+<li><strong>一次性申请所有资源</strong><ul>
+<li>缺点</li>
+<li>需要预先计算程序所需资源,这很难做到</li>
+<li>在很远的未来会用到的资源需要早早地预留下来,这会造成资源的极大浪费.</li>
+<li>…</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>方法二 : 破坏循环等待<ul>
+<li>存在环路–&gt;死锁<img src="/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-09-13-11-30-55.png"></li>
+<li>不让资源等待形成环路.</li>
+<li><strong>资源按序申请</strong><ul>
+<li>资源按序申请就一定不会出现环路,因此也就一定不会出现死锁.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="死锁避免"><a href="#死锁避免" class="headerlink" title="死锁避免"></a>死锁避免</h2><ul>
+<li>死锁预防:对进程申请资源做出限制,不能随意的发出申请.</li>
+<li>死锁避免:<ul>
+<li>进程可以随意申请资源,但是需要有一个<strong>机制</strong>来<ul>
+<li><strong>判断这次请求是否可能造成死锁</strong>.</li>
+<li>存在这种死锁危险就拒绝此次申请.</li>
+<li>(死锁危险实际上不一定会造成死锁)</li>
+</ul>
+</li>
+<li>这样,就能保证进程对资源的占用和申请总处于安全状态.</li>
+</ul>
+</li>
+</ul>
+<h3 id="银行家算法-bank’s-algorithm"><a href="#银行家算法-bank’s-algorithm" class="headerlink" title="银行家算法 bank’s algorithm"></a>银行家算法 bank’s algorithm</h3><ul>
+<li><p>思路: 遇到一个资源请求时,首先假设允许此次资源请求,</p>
+<ul>
+<li>如果发现允许该请求以后os上仍能找到安全序列,说明此次请求安全.可以分配资源</li>
+<li>如果找不到,虽然不是一定会发生死锁,但还是拒绝请求</li>
+<li>银行家算法是一个充分性算法(满足算法就必定安全),对资源的访问控制保守.</li>
+<li>例子<br><img src="/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/2022-09-13-12-05-37.png"></li>
+</ul>
+</li>
+<li><p>时间复杂度:O(m * n^2). m:资源数量 n:进程数量</p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://sunnysab.cn/2020/04/29/Banker-Algorithm/">代码地址</a></p>
+</li>
+<li><p>缺点</p>
+<ul>
+<li>保守:本来不会导致死锁的请求不被允许.资源浪费,用户进程拖延.因为进程所占用的资源不是在进程结束之后一起释放的,而是使用完立即释放.</li>
+<li>效率不高 : 首先时间复杂度O(m * n^2),其次在进程的每一次请求时都需要执行一次银行家算法.<ul>
+<li>对于P12..N各个进程的申请释放动作,判定系统执行状态S是否会引起死锁,这是个NPC问题.只能容忍bank的时间复杂度</li>
+</ul>
+</li>
+<li>参数难以获得:需要知道进程执行完毕所需要的资源总量</li>
+</ul>
+</li>
+</ul>
+<h2 id="死锁检测-死锁恢复"><a href="#死锁检测-死锁恢复" class="headerlink" title="死锁检测 + 死锁恢复"></a>死锁检测 + 死锁恢复</h2><ul>
+<li>死锁检测算法 + 死锁恢复机制</li>
+<li>思路:通过一种算法检测哪些进程死锁,并通过机制将陷入死锁的进程恢复.</li>
+</ul>
+<h3 id="死锁检测算法"><a href="#死锁检测算法" class="headerlink" title="死锁检测算法"></a>死锁检测算法</h3><ul>
+<li><p>死锁检测算法(银行家算法变形: </p>
+<ul>
+<li>遍历n个进程,check每个进程拿到其所请求的资源后(不是所需的全部资源,只是该进程此时请求的资源)是否可以运行,</li>
+<li>如果此时的系统状态下,不能满足任何一个等待运行的进程的请求<ul>
+<li>那么,此时即发生了死锁.即这些不能运行,等待资源的进程就陷入了死锁.记录下这些陷入死锁的进程.之后将这些进程恢复</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>时间复杂度: O(m * n^2)</p>
+</li>
+<li><p>死锁检测算法 vs 银行家算法</p>
+<ul>
+<li>死锁检测算法: 定时调用 或是 需要检查死锁时才调用. (调用频率低)</li>
+<li>银行家算法: 每次进程申请资源都要调用 (为了避免死锁发生)</li>
+</ul>
+</li>
+<li><p>缺点:死锁恢复机制不好实现</p>
+<ul>
+<li>死锁检测算法的系统开销可以接收,但是 死锁恢复 不好实现.例如如何回滚</li>
+<li>因此死锁检测/恢复 对 资源的访问没有限制,但是不好处理出现的死锁.</li>
+</ul>
+</li>
+</ul>
+<h2 id="死锁忽略"><a href="#死锁忽略" class="headerlink" title="死锁忽略"></a>死锁忽略</h2><ul>
+<li>对死锁不做任何处理</li>
+<li>PC机上的Linux Window都这样.<ul>
+<li>死锁概率低 + 重启代价小 </li>
+</ul>
+</li>
+</ul>
+<h1 id="排查死锁-线程池"><a href="#排查死锁-线程池" class="headerlink" title="排查死锁 线程池"></a>排查死锁 线程池</h1><h1 id="死锁实际"><a href="#死锁实际" class="headerlink" title="死锁实际"></a>死锁实际</h1><h2 id="AA-DeadLock"><a href="#AA-DeadLock" class="headerlink" title="AA-DeadLock"></a>AA-DeadLock</h2><ul>
+<li><p>Thread自己等待自己</p>
+<ul>
+<li>如：funcA 获得lockA , 在unlockA之前调用funcB , funcB需要lockA。</li>
+</ul>
+</li>
+<li><p>假设你的 spinlock 不小心发生了中断</p>
+<ul>
+<li>在不该打开中断的时候开了中断</li>
+<li>在不该切换的时候执行了 yield()<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">os_run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  spin_lock(&amp;list_lock);</span><br><span class="line">  spin_lock(&amp;xxx);</span><br><span class="line">  spin_unlock(&amp;xxx); <span class="comment">// ---------+</span></span><br><span class="line">&#125;                          <span class="comment">//    |</span></span><br><span class="line">                          <span class="comment">//    |</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">on_interrupt</span><span class="params">()</span> </span>&#123;      <span class="comment">//    |</span></span><br><span class="line">  spin_lock(&amp;list_lock);   <span class="comment">// &lt;--+</span></span><br><span class="line">  spin_unlock(&amp;list_lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>死锁避免</strong></p>
+<ul>
+<li>AA 型的死锁容易检测，及早报告，及早修复</li>
+<li>spinlock-xv6.c 中的各种防御性编程<ul>
+<li>if (holding(lk)) panic(); 检查，如果已经获得A锁了，此时还想获得，那么直接报错。而不是让死锁发生。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="AB-BA-DeadLock"><a href="#AB-BA-DeadLock" class="headerlink" title="AB-BA-DeadLock"></a>AB-BA-DeadLock</h2><ul>
+<li><p>T1先拿A后等B，T2先拿B后等A</p>
+<ul>
+<li>T1 拿到A。T2拿到B。T1等待B。T2等待A<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">swap</span><span class="params">(<span class="keyword">int</span> i, <span class="keyword">int</span> j)</span> </span>&#123;</span><br><span class="line">  spin_lock(&amp;lock[i]);</span><br><span class="line">  spin_lock(&amp;lock[j]);</span><br><span class="line">  arr[i] = <span class="literal">NULL</span>;</span><br><span class="line">  arr[j] = arr[i];</span><br><span class="line">  spin_unlock(&amp;lock[j]);</span><br><span class="line">  spin_unlock(&amp;lock[i]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>上锁的顺序很重要……</p>
+</li>
+<li><p>swap 本身看起来没有问题</p>
+<ul>
+<li>swap(1, 2); swap(2, 3), swap(3, 1) → 死锁。<ul>
+<li>swap(1,2) lock 1</li>
+<li>swap(2,3) lock 2</li>
+<li>swap(3,1) lock 3 (该thread应当调用swap(1,3) , 来先获取lock 1 而不是lock 3. 这样才做到和swap(1,2) , swap(2,3)保持上锁顺序一致)</li>
+<li>swap(1,2) wait for 2</li>
+<li>swap(2,3) wait for 3</li>
+<li>swap(3,1) wait for 1</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>死锁避免</strong></p>
+<ul>
+<li>任意时刻系统中的锁都是有限的</li>
+<li>严格按照固定的顺序获得所有锁 (lock ordering; 消除 “循环等待”)<ul>
+<li>“在任意时刻总是有获得 “最靠后” 锁的可以继续执行”</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OS/" rel="tag"># OS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/" rel="prev" title="CPU调度策略">
+      <i class="fa fa-chevron-left"></i> CPU调度策略
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/15/%E5%B7%A5%E5%85%B7-gdb%E8%B0%83%E8%AF%95/" rel="next" title="gdb调试">
+      gdb调试 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%AD%BB%E9%94%81"><span class="nav-number">1.</span> <span class="nav-text">死锁</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%91%E7%94%9F%E6%AD%BB%E9%94%81%E7%9A%84%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6"><span class="nav-number">1.1.</span> <span class="nav-text">发生死锁的必要条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E9%A2%84%E9%98%B2"><span class="nav-number">1.2.</span> <span class="nav-text">死锁预防</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E9%81%BF%E5%85%8D"><span class="nav-number">1.3.</span> <span class="nav-text">死锁避免</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%93%B6%E8%A1%8C%E5%AE%B6%E7%AE%97%E6%B3%95-bank%E2%80%99s-algorithm"><span class="nav-number">1.3.1.</span> <span class="nav-text">银行家算法 bank’s algorithm</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E6%A3%80%E6%B5%8B-%E6%AD%BB%E9%94%81%E6%81%A2%E5%A4%8D"><span class="nav-number">1.4.</span> <span class="nav-text">死锁检测 + 死锁恢复</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E6%A3%80%E6%B5%8B%E7%AE%97%E6%B3%95"><span class="nav-number">1.4.1.</span> <span class="nav-text">死锁检测算法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E5%BF%BD%E7%95%A5"><span class="nav-number">1.5.</span> <span class="nav-text">死锁忽略</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8E%92%E6%9F%A5%E6%AD%BB%E9%94%81-%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-number">2.</span> <span class="nav-text">排查死锁 线程池</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E5%AE%9E%E9%99%85"><span class="nav-number">3.</span> <span class="nav-text">死锁实际</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#AA-DeadLock"><span class="nav-number">3.1.</span> <span class="nav-text">AA-DeadLock</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AB-BA-DeadLock"><span class="nav-number">3.2.</span> <span class="nav-text">AB-BA-DeadLock</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '2382c2d98285ab3c64f675ac068eca29',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

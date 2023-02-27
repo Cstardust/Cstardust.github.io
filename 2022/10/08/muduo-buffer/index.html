@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="整理一下学习收获 先整理下muduo Buffer 因为属于是实现比较简单的组件。还比较巧妙。且便于移植。 muduo Buffer 参考 源码 以及 《Linux多线程服务器编程》">
+<meta property="og:type" content="article">
+<meta property="og:title" content="muduo-Buffer">
+<meta property="og:url" content="http://example.com/2022/10/08/muduo-buffer/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="整理一下学习收获 先整理下muduo Buffer 因为属于是实现比较简单的组件。还比较巧妙。且便于移植。 muduo Buffer 参考 源码 以及 《Linux多线程服务器编程》">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-buffer/2022-10-08-22-08-27.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-buffer/2022-10-08-22-39-57.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-buffer/2022-10-09-19-53-46.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-buffer/2022-10-09-20-41-31.png">
+<meta property="article:published_time" content="2022-10-08T01:08:15.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:19:02.706Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/08/muduo-buffer/2022-10-08-22-08-27.png">
+
+<link rel="canonical" href="http://example.com/2022/10/08/muduo-buffer/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>muduo-Buffer | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/08/muduo-buffer/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          muduo-Buffer
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-08 09:08:15" itemprop="dateCreated datePublished" datetime="2022-10-08T09:08:15+08:00">2022-10-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:19:02" itemprop="dateModified" datetime="2023-02-27T23:19:02+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>整理一下学习收获 先整理下muduo Buffer 因为属于是实现比较简单的组件。还比较巧妙。且便于移植。</li>
+<li>muduo Buffer</li>
+<li>参考 源码 以及 《Linux多线程服务器编程》</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="non-blocking-网络编程中-应用层Buffer的必要性"><a href="#non-blocking-网络编程中-应用层Buffer的必要性" class="headerlink" title="non-blocking 网络编程中 应用层Buffer的必要性"></a>non-blocking 网络编程中 应用层Buffer的必要性</h1><ul>
+<li><p><strong>non-blocking的核心思想</strong>：</p>
+<ul>
+<li>为了可以最大限度的<strong>复用 thread-of-control</strong>，让<strong>一个thread服务于多个socket连接</strong>。<ul>
+<li><strong>即，控制权应当尽量交给event loop</strong>（因为只有event loop才能接受新连接或者检测到socket的事件）</li>
+<li><strong>即，不让reactor的loop在没必要阻塞的地方阻塞</strong>。</li>
+<li><strong>IO thread 只能阻塞在 IO multiplexing函数</strong></li>
+</ul>
+</li>
+<li>因此要避免阻塞在read/write/或者其他IO系统调用上</li>
+</ul>
+</li>
+<li><p>TcpConnection中有一个inputBuffer和一个outputBuffer</p>
+<ul>
+<li>这里的intput output是针对user代码而言</li>
+</ul>
+</li>
+</ul>
+<h2 id="outputBuffer的必要性"><a href="#outputBuffer的必要性" class="headerlink" title="outputBuffer的必要性"></a>outputBuffer的必要性</h2><ul>
+<li><p><img src="/2022/10/08/muduo-buffer/2022-10-08-22-08-27.png"></p>
+</li>
+<li><p><strong>概述</strong>：muduo中，user不会自己直接write socket，也不会直接操作outputBuffer，而是<strong>间接</strong>的。通过TcpConnection::send(),来决定是write socket 还是操作outputBuffer。</p>
+<ul>
+<li>不是所有数据都会先写入outputBuffer 再发送给socket的。也会有不用写入outputBuffer直接write给socket的。但不是用户调用write。用户调用TcpConnection::send(),之后就是send的逻辑了。决定write还是outputBuffer。用户不必再管。</li>
+</ul>
+</li>
+<li><p>必要性</p>
+<ul>
+<li>场景：<ul>
+<li>程序通过TCP连接发送100KB数据，但是在write调用中，os只接受了80KB。<ul>
+<li>这也就是常说的：应用写的快，而内核发送数据慢，因此需要把待发送的数据写入缓冲区</li>
+</ul>
+</li>
+<li>如果没有缓冲区的话，此时我们可以选择原地等待。等到socket的缓冲区可写。那么，此时程序的控制权就不在event loop了。</li>
+<li>如果没有缓冲区的话，也可以不原地等待，而是直接将控制返回给event loop。那么，此时，剩下的20KB怎么办？<ul>
+<li><strong>那么</strong>，就需要有一个<strong>outputBuffer</strong>，来接管这20KB。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>关于责任：使用网络库的人不应当去关心如何发送数据，将数据发送了几次，应当只负责将数据交给网络库去发送（muduo中是提供TcpConnection::send()给user）。<ul>
+<li>user —data—&gt; tcpConnection –send–&gt; socket</li>
+</ul>
+</li>
+<li>因此，网络库中需要有一个outputBuffer，来接管上文中user生成的，网络库未发送完的20KB数据。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>Buffer设计逻辑</strong>：<ul>
+<li>感觉很合理啊。</li>
+<li>对于每个TcpConnection都有一个outputBuffer</li>
+<li>user想要发送XXKB。（通过调用TcpConnection::Send())<ul>
+<li><strong>如果outputBuffer中没有数据的话</strong>，那么直接发送。<ul>
+<li>如果一次发送完，那么并不需要将数据加入outputBuffer，也不需要在Poller上注册EPOLLOUT事件。</li>
+<li>如果发送完还剩20KB的话，TcpConnection将未发送完的数据20KB保存在outputBuffer中，并再Poller上给fd注册POLLOUT事件。</li>
+<li>之后，如果socket缓冲区变得可写，那么，event loop就会监测到该事件，并调用TcpConnection::handleWrite() 将outputBuffer中的剩余数据发送出去。</li>
+<li>当outputBuffer中的数据写完时，Poller就停止监听POLLOUT。避免busy loop。</li>
+</ul>
+</li>
+<li><strong>如果outputBuffer中有数据的话</strong>，那么不直接发送，而是先将这xxKBappend到outputBuffer的20KB的data之后，等到socket可写时，一并写入socket。而不是直接发送。</li>
+<li>当该TcpConnection的Buffer中还有数据未写，也即Poller上仍监听该fd的POLLOUT事件时，如果程序想要关闭连接。那么，不会立刻关闭，而是先等到outputBuffer中的数据全都写完，再关闭链接。<ul>
+<li>见TcpConnection::shutdown()<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  保证在IO thread中调用</span></span><br><span class="line"><span class="comment">//  当outputBuffer里面没有待发送数据时 关闭本connection的socket写端</span></span><br><span class="line"><span class="comment">//  当outputBuffer里面有待发送数据时   等handleWrite将outputBuffer全部写出之后 handleWrite会调用shutdownInLoop</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::shutdownInLoop</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  outputBuffer中的bytes已经全部发送完成</span></span><br><span class="line">    <span class="keyword">if</span>(!channel_-&gt;<span class="built_in">isWriting</span>())          </span><br><span class="line">    &#123;</span><br><span class="line">        socket_-&gt;<span class="built_in">shutdownWrite</span>();       <span class="comment">//  关闭写端</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  如果outputBuffer没全部发送</span></span><br><span class="line">        <span class="comment">//  之后也会调用到shutdownInLoop</span></span><br><span class="line">        <span class="comment">//  见handleWrite</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="inputBuffer的必要性"><a href="#inputBuffer的必要性" class="headerlink" title="inputBuffer的必要性"></a>inputBuffer的必要性</h2><ul>
+<li><p><img src="/2022/10/08/muduo-buffer/2022-10-08-22-39-57.png"></p>
+</li>
+<li><p><strong>概述</strong>：socket从网卡中读来的数据 都会由TcpConnection先读入inputBuffer。然后，将inputBuffer交由user来处理。user拿到inputBuffer时，里面就已经有了这次读到的所有数据。</p>
+</li>
+<li><p><strong>必要性</strong></p>
+<ul>
+<li><p>场景：接收方需要接受2KB数据</p>
+<ul>
+<li>一次性收到2KB</li>
+<li>分两次收到，一次600B，一次1400B</li>
+<li>分两次收到，一次1KB</li>
+<li>….</li>
+<li>所以</li>
+</ul>
+</li>
+<li><p>关于责任</p>
+<ul>
+<li>网络库在处理socket可读事件时，必须<strong>一次性把socket 接收缓冲区里的数据读完，user从网络库的Buffer里面取数据即可</strong>。（从kenrel的Buffer搬到应用层的Buffer），否则会反复触发POLLIN事件，造成busy-loop。<ul>
+<li>如果网络库不提供缓冲区，仅仅通知user某个socket可读/可写. 或者只提供一个固定大小的缓冲区如char <a href="%E8%BF%99%E4%B8%8D%E5%B0%B1%E8%B7%9Fuser%E8%87%AA%E5%B7%B1%E8%B4%9F%E8%B4%A3buffer%E4%B8%80%E6%A0%B7">8192</a></li>
+<li>那么user需要自己负责读取所有数据到user的应用层buffer。不方便。（如果user自己的buffer不够大，那么就需要读很多次）</li>
+</ul>
+</li>
+<li><blockquote>
+<p>网络库必然会遇到 “数据不完整” 的情况，如上，分多次收到一批数据。应对：收到的数据先放到inputBuffer中，等构成一条完成的消息再通知程序的业务逻辑。[这个实现还没看。应当是7.3节]</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>Buffer设计思路</strong></p>
+<ul>
+<li>user不会自己操作read socket，而是操作TcpConnection的inputBuffer。</li>
+<li>与user间接outputBuffer不同，user可以直接操作inputBuffer。</li>
+<li>user在onMessage()中，收到的data已经被存储在inputBuffer中，user可以直接操作inputBuffer。<ul>
+<li><code>void onMessage(const TcpConnectionPtr&amp; conn,Buffer *buffer,Timestamp time)</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="inputBuffer相关代码"><a href="#inputBuffer相关代码" class="headerlink" title="inputBuffer相关代码"></a>inputBuffer相关代码</h2><ul>
+<li>connfd刚被accept，就会将其读事件注册在Poller上。channel的callback就是TcpConnection::handleRead().<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::connectionEstablished</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 给新建立的connfd 注册读事件到Poller</span></span><br><span class="line">    channel_-&gt;<span class="built_in">enableReading</span>();           </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  设置回调</span></span><br><span class="line">channel_-&gt;<span class="built_in">setReadCallback</span>(std::<span class="built_in">bind</span>(&amp;TcpConnection::handleRead,<span class="keyword">this</span>,std::placeholders::_1));</span><br><span class="line"></span><br><span class="line"><span class="comment">//  注册给channel 这个函数最终会被ioloop调用</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleRead</span><span class="params">(Timestamp receiveTime)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> savedErrno = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">//  将fd中可读的数据 读到inputBuffer中</span></span><br><span class="line">    <span class="keyword">ssize_t</span> n = inputBuffer_.<span class="built_in">readFd</span>(channel_-&gt;<span class="built_in">fd</span>(),&amp;savedErrno);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;handle read %lu bytes&quot;</span>,n);</span><br><span class="line">    <span class="keyword">if</span>(n&gt;<span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">messageCallback_</span>(<span class="built_in">shared_from_this</span>(),&amp;inputBuffer_,receiveTime);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(n == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">handleClose</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        errno = savedErrno;</span><br><span class="line">        <span class="built_in">LOG_ERROR</span>(<span class="string">&quot;TcpConnection::handleRead&quot;</span>);</span><br><span class="line">        <span class="built_in">handleError</span>();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="outputBuffer相关代码"><a href="#outputBuffer相关代码" class="headerlink" title="outputBuffer相关代码"></a>outputBuffer相关代码</h2><ul>
+<li>user通过调用TcpConnection::send()来发送data。</li>
+<li>user -&gt; send -&gt; sendInLoop。sendInLoop中的逻辑见上文中outputBuffer的设计逻辑。</li>
+<li>poller监测到write事件时，loop会调用TcpConnection::handleWrite 将outputBuffer中的数据发送。</li>
+<li>TcpConnection.cpp  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  send -&gt; sendInLoop</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::send</span><span class="params">(<span class="keyword">const</span> std::string &amp;buf)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// LOG_INFO(&quot;send bytes buf %s&quot;,buf.c_str());</span></span><br><span class="line">    <span class="keyword">int</span> n = buf.<span class="built_in">size</span>();</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">char</span> *str = buf.<span class="built_in">c_str</span>();</span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;test send %d : %s&quot;</span>,n,str);</span><br><span class="line">    <span class="keyword">if</span>(state_ == kConnected)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  sendInLoop</span></span><br><span class="line">            <span class="comment">//  会根据 output queue中是否还有未发送数据</span></span><br><span class="line">            <span class="comment">//  来决定是直接发送buf 还是先将buf送入outputBuffer 再发送</span></span><br><span class="line">        <span class="keyword">if</span>(loop_-&gt;<span class="built_in">isInLoopThread</span>())</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">sendInLoop</span>(buf.<span class="built_in">c_str</span>(),buf.<span class="built_in">size</span>());</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            loop_-&gt;<span class="built_in">runInLoop</span>(std::<span class="built_in">bind</span>(</span><br><span class="line">                &amp;TcpConnection::sendInLoop,</span><br><span class="line">                <span class="keyword">this</span>,</span><br><span class="line">                buf.<span class="built_in">c_str</span>(),</span><br><span class="line">                buf.<span class="built_in">size</span>()</span><br><span class="line">            ));</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">发送数据：</span></span><br><span class="line"><span class="comment">    应用写的快 而内核发送数据慢</span></span><br><span class="line"><span class="comment">    需要把待发送的数据写入缓冲区</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::sendInLoop</span><span class="params">(<span class="keyword">const</span> <span class="keyword">void</span> *data,<span class="keyword">size_t</span> len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">ssize_t</span> nwrote = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">size_t</span> remaning = len;</span><br><span class="line">    <span class="keyword">bool</span> faultError = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  之前调用过该connection的shutdown 不能再进行发送了</span></span><br><span class="line">    <span class="keyword">if</span>(state_ == kDisconnected)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">LOG_ERROR</span>(<span class="string">&quot;disconnected give up writing!&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  如果output queue(outputBuffer_) 中没有任何数据的话，那么就直接发送给fd。</span></span><br><span class="line">        <span class="comment">//  表示channel第一次开始写数据 而且缓冲区没有待发送数据</span></span><br><span class="line">    <span class="keyword">if</span>(!channel_-&gt;<span class="built_in">isWriting</span>() &amp;&amp; outputBuffer_.<span class="built_in">readableBytes</span>()==<span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">LOG_INFO</span>(<span class="string">&quot;直接将data发送，而不是先送入outputBuffer&quot;</span>);</span><br><span class="line">        <span class="comment">//  output queue中没有待发送数据 因此 直接将data写给fd</span></span><br><span class="line">        nwrote = ::<span class="built_in">write</span>(channel_-&gt;<span class="built_in">fd</span>(),data,len);</span><br><span class="line">        <span class="built_in">LOG_INFO</span>(<span class="string">&quot;nwrote = %d&quot;</span>,nwrote);</span><br><span class="line">        <span class="keyword">if</span>(nwrote &gt;= <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  是否将data都发送完</span></span><br><span class="line">            remaning = len - nwrote;</span><br><span class="line">            <span class="keyword">if</span>(remaning == <span class="number">0</span> &amp;&amp; writeCompleteCallback_)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  如果发送完了 那么就调用一下writeCompleteCallback_</span></span><br><span class="line">                <span class="comment">//  既然在这里 数据全部发送完成 就不用再给channel 设置 epollout事件了</span></span><br><span class="line">                loop_-&gt;<span class="built_in">queueInLoop</span>(</span><br><span class="line">                    std::<span class="built_in">bind</span>(writeCompleteCallback_,<span class="built_in">shared_from_this</span>())</span><br><span class="line">                );</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//  else ? </span></span><br><span class="line">            <span class="comment">//  没发送完的话不是应当write more data 吗 ？</span></span><br><span class="line">            <span class="comment">//  为什么没处理 ？</span></span><br><span class="line">                <span class="comment">//  在这个if外面处理了</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span>    <span class="comment">//  nwrote &lt; 0</span></span><br><span class="line">        &#123;</span><br><span class="line">            nwrote = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">if</span>(errno != EWOULDBLOCK)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="built_in">LOG_ERROR</span>(<span class="string">&quot;TcpConnection::sendInLoop error&quot;</span>);</span><br><span class="line">                <span class="comment">//  对方socket重置</span></span><br><span class="line">                    <span class="comment">//  server收到</span></span><br><span class="line">                    <span class="comment">//  SIGPIPE</span></span><br><span class="line">                    <span class="comment">//  RESET</span></span><br><span class="line">                <span class="keyword">if</span>(errno == EPIPE || errno == ECONNRESET)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;errno == %s&quot;</span>,<span class="built_in">strerror</span>(errno));</span><br><span class="line">                    faultError = <span class="literal">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  说明当前这一次write并没有把数据全部发送出去</span></span><br><span class="line">    <span class="comment">//  剩余的数据需要保存到缓冲区当中 </span></span><br><span class="line">    <span class="comment">//  然后给channel注册epollout事件</span></span><br><span class="line">    <span class="comment">//  poller发现tcp的发送缓冲区有空间</span></span><br><span class="line">    <span class="comment">//  会通知相应的sock-&gt;channel</span></span><br><span class="line">    <span class="comment">//  调用writeCallback_ 回调方法</span></span><br><span class="line">    <span class="comment">//  也就是TcpConnection::handleWrite方法 把发送缓冲区的数据全部发送完成为止</span></span><br><span class="line">    <span class="keyword">if</span>(!faultError &amp;&amp; remaning &gt; <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">LOG_INFO</span>(<span class="string">&quot;data没能全部发送走 因此将剩余的data放入outputBuffer&quot;</span>);</span><br><span class="line">        <span class="comment">//  目前发送缓冲区剩余的待发送数据的长度</span></span><br><span class="line">        <span class="keyword">size_t</span> oldlen = outputBuffer_.<span class="built_in">readableBytes</span>();</span><br><span class="line">        <span class="keyword">if</span>(oldlen + remaning &gt;= highWaterMark_</span><br><span class="line">            &amp;&amp; oldlen &lt; highWaterMark_</span><br><span class="line">            &amp;&amp; highWaterMarkCallback_)</span><br><span class="line">        &#123;</span><br><span class="line">            loop_-&gt;<span class="built_in">queueInLoop</span>(</span><br><span class="line">                std::<span class="built_in">bind</span>(highWaterMarkCallback_,<span class="built_in">shared_from_this</span>(),oldlen + remaning)</span><br><span class="line">            );   </span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//  将data中没有发送的数据 存入outputBuffer</span></span><br><span class="line">        outputBuffer_.<span class="built_in">append</span>((<span class="keyword">char</span>*)data+nwrote,remaning);</span><br><span class="line">        <span class="comment">//  这里一定要注册Channel的写事件</span></span><br><span class="line">        <span class="comment">//  否则poller不会给channel通知epollout</span></span><br><span class="line">        <span class="keyword">if</span>(!channel_-&gt;<span class="built_in">isWriting</span>())</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">LOG_INFO</span>(<span class="string">&quot;将fd = %d的写事件 注册给poller&quot;</span>,channel_-&gt;<span class="built_in">fd</span>());</span><br><span class="line">            channel_-&gt;<span class="built_in">enableWriting</span>();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">channel_-&gt;<span class="built_in">setWriteCallback</span>(std::<span class="built_in">bind</span>(&amp;TcpConnection::handleWrite,<span class="keyword">this</span>));</span><br><span class="line"></span><br><span class="line"><span class="comment">//  outputBuffer中有未发送数据 且 tcp socket的写缓冲区可写的时候 loop会执行这个call back</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleWrite</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;fd = %d , outputBuffer data size = %ld &quot;</span>,channel_-&gt;<span class="built_in">fd</span>(),outputBuffer_.<span class="built_in">readableBytes</span>());</span><br><span class="line">    <span class="comment">//  channel_ 封装的fd 有注册在epoll上的writing事件</span></span><br><span class="line">    <span class="keyword">if</span>(channel_-&gt;<span class="built_in">isWriting</span>())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">int</span> savedErrno = <span class="number">0</span>;</span><br><span class="line">        <span class="comment">//  outputBuffer中的bytes 写入 可写的fd</span></span><br><span class="line">        <span class="keyword">ssize_t</span> n = outputBuffer_.<span class="built_in">writeFd</span>(channel_-&gt;<span class="built_in">fd</span>(),&amp;savedErrno);</span><br><span class="line">        <span class="keyword">if</span>(n &gt; <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  将已经写出的bytes取出 ：readerIdx向前移动nbytes</span></span><br><span class="line">            outputBuffer_.<span class="built_in">retrieve</span>(n);</span><br><span class="line">            <span class="comment">//  如果已经没有数据可以从buffer中取出  可取bytes : [readerIdx,writerIdx) </span></span><br><span class="line">                <span class="comment">//  即buffer中的数据都已经写给fd</span></span><br><span class="line">                <span class="comment">//  那么我们需要立刻停止epoll对writable事件的监听</span></span><br><span class="line">            <span class="comment">//  !=0的话 代表buffer中还有可写数据 那么不必取消监听。epoll稍后应当检测到可写事件 然后继续调用本函数进行写</span></span><br><span class="line">            <span class="keyword">if</span>(outputBuffer_.<span class="built_in">readableBytes</span>() == <span class="number">0</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  取消监听！！！</span></span><br><span class="line">                channel_-&gt;<span class="built_in">disableWriting</span>();</span><br><span class="line">                <span class="comment">//  执行写完成回调</span></span><br><span class="line">                <span class="keyword">if</span>(writeCompleteCallback_)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="comment">//  唤醒loop对应的thread线程 执行回调</span></span><br><span class="line">                        <span class="comment">//  这个writeCompleteCallback 是什么？</span></span><br><span class="line">                    loop_-&gt;<span class="built_in">queueInLoop</span>(</span><br><span class="line">                        std::<span class="built_in">bind</span>(writeCompleteCallback_,<span class="built_in">shared_from_this</span>())</span><br><span class="line">                    );</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">//  如果全部outputBuffer里面的数据全部写出 并且server已经要求关闭这个连接，但是之前由于outputBuffer里面有要写的数据 因此没有关闭连接 的话</span></span><br><span class="line">                <span class="comment">//  那么 此时 数据全部写出 就要调用刚才没执行的shutdownInLoop()</span></span><br><span class="line">                <span class="keyword">if</span>(state_ == kDisconnecting)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="comment">//  关闭socket的write方向</span></span><br><span class="line">                    <span class="built_in">shutdownInLoop</span>();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="built_in">LOG_INFO</span>(<span class="string">&quot;I&#x27;m going to write more data&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">LOG_ERROR</span>(<span class="string">&quot;TcpConnection : outputBuffer write error\n&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">LOG_ERROR</span>(<span class="string">&quot;TcpConnection fd = %d is down , no more is writing\n&quot;</span>,channel_-&gt;<span class="built_in">fd</span>());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="Buffer实现"><a href="#Buffer实现" class="headerlink" title="Buffer实现"></a>Buffer实现</h1><h2 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h2><ul>
+<li>结构如下<br>  <img src="/2022/10/08/muduo-buffer/2022-10-09-19-53-46.png"></li>
+<li>readable和writable都是针对Buffer来说的。<ul>
+<li>readable : 可以从Buffer中读出的数据</li>
+<li>writable : 还可以向Buffer中写入</li>
+</ul>
+</li>
+<li>prependable = readInx</li>
+<li>readable = writeIndex - readIndex</li>
+<li>writable = buffer_.size() - writeIndex</li>
+</ul>
+<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><p><img src="/2022/10/08/muduo-buffer/2022-10-09-20-41-31.png"></p>
+<ul>
+<li>Buffer中的readable writeable都是针对Buffer来说的。<ul>
+<li>可从buffer中读出(读出来给fd) ；可向buffer中写入（从fd中读出来写给buffer）</li>
+<li>[readerIdx,writerIdx) 有效数据 可从buffer中读出</li>
+<li>[writerIdx,size)      剩余的可向buffer中写入的byte数</li>
+</ul>
+</li>
+<li><strong>Interface for user</strong><ul>
+<li>readFd fd               : 用户使用readFd   从fd读取数据 输入给Bufferd的writable区域[writeIdx,size)</li>
+<li>writeFd  fd             : 用户使用writeFd  将Buffer中的readable数据 全部输入给fd文件</li>
+<li>retrieveAllAsString     : 用户从buffer中拿走全部readable bytes。以string形式获得。会改变readIdx</li>
+<li>append                  : Buffer使用者 通过append 向Buffer中增添数据。buffer数据增加最终只有一种方式：append (可能是通过readFd调用，也可能是直接调用）</li>
+</ul>
+</li>
+<li>Important memeber Function<ul>
+<li>makeSpace : 无需user自己调用。扩容/腾挪。确保有nbytes的writable</li>
+<li>retrieve : 无需user自己调用。清除Buffer中已经被读走的bytes。（通过移动readerIdx）</li>
+</ul>
+</li>
+<li>user不必关心Buffer的大小。Buffer是自适应扩张的。<ul>
+<li>Buffer会自己扩充内存 管理writeIdx readIdx</li>
+</ul>
+</li>
+<li>因此 user只需要负责 读数据到buffer，从buffer中拿出数据。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/" rel="prev" title="记一次stack-use-after-scope和ASAN">
+      <i class="fa fa-chevron-left"></i> 记一次stack-use-after-scope和ASAN
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/" rel="next" title="bind与shared_ptr">
+      bind与shared_ptr <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#non-blocking-%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B%E4%B8%AD-%E5%BA%94%E7%94%A8%E5%B1%82Buffer%E7%9A%84%E5%BF%85%E8%A6%81%E6%80%A7"><span class="nav-number">1.</span> <span class="nav-text">non-blocking 网络编程中 应用层Buffer的必要性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#outputBuffer%E7%9A%84%E5%BF%85%E8%A6%81%E6%80%A7"><span class="nav-number">1.1.</span> <span class="nav-text">outputBuffer的必要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#inputBuffer%E7%9A%84%E5%BF%85%E8%A6%81%E6%80%A7"><span class="nav-number">1.2.</span> <span class="nav-text">inputBuffer的必要性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#inputBuffer%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81"><span class="nav-number">1.3.</span> <span class="nav-text">inputBuffer相关代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#outputBuffer%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81"><span class="nav-number">1.4.</span> <span class="nav-text">outputBuffer相关代码</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Buffer%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">Buffer实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">2.1.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3"><span class="nav-number">2.2.</span> <span class="nav-text">接口</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '5359663bc728f70471e4165e7e8a700c',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

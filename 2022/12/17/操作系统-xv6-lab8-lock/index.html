@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本节的重点  一在于锁机制的优化 二在于物理内存如何分配 三在于buffer cache如何分配。 关于锁机制的优化，我基本上是参考博客 至于buffer cache如何分配，在操作系统-xv6-文件系统 buffercache中也已经讲过。 下面重点介绍 物理内存是如何分配的，也即user是如何通过malloc申请到物理内存的。   物理内存分配流程  kernel是如何组织free phys">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab8-lock">
+<meta property="og:url" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="本节的重点  一在于锁机制的优化 二在于物理内存如何分配 三在于buffer cache如何分配。 关于锁机制的优化，我基本上是参考博客 至于buffer cache如何分配，在操作系统-xv6-文件系统 buffercache中也已经讲过。 下面重点介绍 物理内存是如何分配的，也即user是如何通过malloc申请到物理内存的。   物理内存分配流程  kernel是如何组织free phys">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-09-51-43.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-14-01-22.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-18-22.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-14-26.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-24-53.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-24-36.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-14-01-22.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-13-28-25.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-11-19-58.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-11-20-13.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-13-29-54.png">
+<meta property="og:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-12-53-01.png">
+<meta property="article:published_time" content="2022-12-17T01:32:50.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:39.355Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-09-51-43.png">
+
+<link rel="canonical" href="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab8-lock | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab8-lock
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-12-17 09:32:50" itemprop="dateCreated datePublished" datetime="2022-12-17T09:32:50+08:00">2022-12-17</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:39" itemprop="dateModified" datetime="2023-02-27T23:22:39+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><p>本节的重点</p>
+<ul>
+<li>一在于锁机制的优化</li>
+<li>二在于物理内存如何分配</li>
+<li>三在于buffer cache如何分配。</li>
+<li>关于锁机制的优化，我基本上是参考<a target="_blank" rel="noopener" href="https://blog.miigon.net/posts/s081-lab8-locks/">博客</a></li>
+<li>至于buffer cache如何分配，在操作系统-xv6-文件系统 buffercache中也已经讲过。</li>
+<li>下面重点介绍 物理内存是如何分配的，也即user是如何通过malloc申请到物理内存的。<br><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-09-51-43.png"></li>
+</ul>
+</li>
+<li><p>物理内存分配流程</p>
+<ul>
+<li>kernel是如何组织free physical page的。<ul>
+<li>xv6 : freelist</li>
+</ul>
+</li>
+<li>kernel为user提供的sycall接口<ul>
+<li>sbrk-&gt;sys_sbrk()</li>
+</ul>
+</li>
+<li>user层是如何封装sbrk的。<ul>
+<li>malloc and free (维护了user态的cache list)<br><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-14-01-22.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="xv6-物理内存分配流程"><a href="#xv6-物理内存分配流程" class="headerlink" title="xv6 物理内存分配流程"></a>xv6 物理内存分配流程</h1><h2 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h2><p>先看一下xv6中，physical memory是如何被组织起来的.</p>
+<ul>
+<li>kernel以freelist的形式将free physical memory 组织起来<ul>
+<li><strong>kernel如何组织free physical page是一个值得优化的策略。本lab实现的就是优化该策略</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">run</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">freelist</span>;</span></span><br><span class="line">&#125; kmem;</span><br></pre></td></tr></table></figure>
+<img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-18-22.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>初始化<ul>
+<li>entry.S -&gt; start -&gt; main -&gt; kinit -&gt; freerange -&gt; kfree<blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-14-26.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><ul>
+<li><p>kalloc: 从freelist头部取下一个page 返回给调用者</p>
+<blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-24-53.png"></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Allocate one 4096-byte page of physical memory.</span></span><br><span class="line"><span class="comment">// Returns a pointer that the kernel can use.</span></span><br><span class="line"><span class="comment">// Returns 0 if the memory cannot be allocated.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> *</span></span><br><span class="line"><span class="function"><span class="title">kalloc</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line"></span><br><span class="line">    acquire(&amp;kmem.lock);</span><br><span class="line">    r = kmem.freelist;</span><br><span class="line">    <span class="keyword">if</span>(r)</span><br><span class="line">        kmem.freelist = r-&gt;next;</span><br><span class="line">    release(&amp;kmem.lock);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(r)</span><br><span class="line">        <span class="built_in">memset</span>((<span class="keyword">char</span>*)r, <span class="number">5</span>, PGSIZE); <span class="comment">// fill with junk</span></span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">void</span>*)r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></blockquote>
+</li>
+<li><p>kfree: 将一个无用的page 头插法插入freelist</p>
+<blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-10-24-36.png"></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Free the page of physical memory pointed at by v,</span></span><br><span class="line"><span class="comment">// which normally should have been returned by a</span></span><br><span class="line"><span class="comment">// call to kalloc().  (The exception is when</span></span><br><span class="line"><span class="comment">// initializing the allocator; see kinit above.)</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">kfree</span><span class="params">(<span class="keyword">void</span> *pa)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(((uint64)pa % PGSIZE) != <span class="number">0</span> || (<span class="keyword">char</span>*)pa &lt; end || (uint64)pa &gt;= PHYSTOP)</span><br><span class="line">        panic(<span class="string">&quot;kfree&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Fill with junk to catch dangling refs.</span></span><br><span class="line">    <span class="built_in">memset</span>(pa, <span class="number">1</span>, PGSIZE);</span><br><span class="line"></span><br><span class="line">    r = (struct run*)pa;</span><br><span class="line"></span><br><span class="line">    acquire(&amp;kmem.lock);</span><br><span class="line">    r-&gt;next = kmem.freelist;</span><br><span class="line">    kmem.freelist = r;</span><br><span class="line">    release(&amp;kmem.lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></blockquote>
+</li>
+</ul>
+<h2 id="请求流程"><a href="#请求流程" class="headerlink" title="请求流程"></a>请求流程</h2><ul>
+<li><p><strong>malloc 和 free 共同维护了user态的cache list</strong></p>
+</li>
+<li><p>如果user直接调用syscall sbrk的话，则并没有通过cache list</p>
+</li>
+<li><p>物理内存分配相关API层次如下</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">    user </span><br><span class="line"><span class="comment">///////////////////////         user态</span></span><br><span class="line">    <span class="built_in">malloc</span> / <span class="built_in">free</span></span><br><span class="line">**user cache <span class="built_in">list</span>**</span><br><span class="line"><span class="comment">///////////////////////</span></span><br><span class="line">    syscall : sbrk</span><br><span class="line"><span class="comment">///////////////////////    trap into kernel态</span></span><br><span class="line">    sys_sbrk</span><br><span class="line">    growproc</span><br><span class="line">    uvmalloc    deamalloc</span><br><span class="line">    kalloc      kfree       </span><br><span class="line">    mappage     unmap</span><br><span class="line">**<span class="built_in">free</span> physical pages in freelist** </span><br><span class="line"><span class="comment">///////////////////////</span></span><br><span class="line">    DRAM</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>整体图</strong><br>  <img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-14-01-22.png"></p>
+</li>
+</ul>
+<h3 id="malloc-sbrk-n-gt-0"><a href="#malloc-sbrk-n-gt-0" class="headerlink" title="malloc (sbrk(n&gt;0))"></a>malloc (sbrk(n&gt;0))</h3><ul>
+<li><p>user向kernel（也可能会是从user态的cache list中取出page）申请内存(malloc –&gt; sbrk (n&gt;0))</p>
+<ul>
+<li><strong>核心思路</strong>：<ul>
+<li><strong>0.  先检查user态中的cache list中是否有足够的cache pages，如果有从cache list中取出内存则返回；如果没有则进入1：通过syscall sbrk向kernel请求free physical pages</strong></li>
+<li><strong>1.  sbrk : kernel返回一个free physical page（即空闲物理页）给user。</strong> </li>
+<li><strong>2.  在user pgtbl建立user va 到pa的映射</strong>。<br><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-13-28-25.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>kernel如何分配free physical page给user</strong>？这就涉及到可以<strong>优化的策略</strong>了。本lab的内容就是优化该策略。</p>
+<ul>
+<li><strong>xv6原先策略</strong>：所有free physical page都位于一个freelist上，所有cpu核使用同一个freelist。每个cpu核上的kernel可能会同时向freelist发出kalloc/kfree请求。因此需要采用一把大锁保护整个freelist。降低效率。<blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-11-19-58.png"></p>
+</blockquote>
+</li>
+<li><strong>lab优化后策略</strong>：每个cpu核心拥有一个独立的freelist，physical page散布在这些freelist上，每个kernel要分配物理内存时，只会操作属于自己的freelist，这样可以减少锁竞争情况的发生。<blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-11-20-13.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>xv6 API流程</strong>：user -&gt; malloc -&gt; sbrk -&gt; sys_sbrk -&gt; growproc(n&gt;0) —-&gt; uvmalloc(va,sz) —-&gt; pa = kalloc —-&gt; mappages(va-&gt;pa)</p>
+<ul>
+<li><strong>kalloc</strong> : <strong>kernel从freelist中取下一个free page，并交给user process</strong></li>
+<li><strong>如何交给user process ?</strong> : <strong>通过mappages , 建立user va 到 pa的映射</strong></li>
+</ul>
+</li>
+</ul>
+<h3 id="sbrk-n-lt-0"><a href="#sbrk-n-lt-0" class="headerlink" title="sbrk (n&lt;0)"></a>sbrk (n&lt;0)</h3><ul>
+<li><strong>user释放kernel分配的内存，真正的还给kernel</strong>(sbrk(n) &lt; 0)<ul>
+<li><strong>核心思路</strong><ul>
+<li><strong>1. userpgtbl 解除 va 到pa的映射</strong></li>
+<li><strong>2. kernel将page重新挂在freelist上</strong>。（重新作为freepage维护起来） </li>
+</ul>
+</li>
+<li><strong>xv6 API流程</strong>：user -&gt; sbrk(n&lt;0) -&gt; sys_sbrk -&gt; growproc(n&lt;0) —-&gt; uvmdealloc(va) —&gt; <strong>munmap(va,pa)</strong>, <strong>kfree()</strong><ul>
+<li><strong>munmap</strong> : 解除user对于va到pa的映射</li>
+<li><strong>kfree</strong>：将不再映射到的phyiscal page重新挂到freelist</li>
+</ul>
+</li>
+<li><blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-13-29-54.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="free"><a href="#free" class="headerlink" title="free"></a>free</h3><ul>
+<li><strong>user释放内存到用户态</strong>(通过 free)<ul>
+<li><strong>user态维护了一个cache list，里面存储的是user之前通过malloc-&gt;sbrk从kernel申请来的、没被使用的pages(page在这个cachelist中是以virtual address的形式）。</strong><ul>
+<li><strong>也即，是物理内存分配机制在用户态维护的缓存。</strong></li>
+<li><strong>这也应当是一个可以思考优化的策略</strong></li>
+</ul>
+</li>
+<li>user 调用free(page)。会将该page加入user态的cache list，该page还是由user process占据，而非真正的释放、返回给kernel。</li>
+<li><blockquote>
+<p><img src="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-lock/2022-12-17-12-53-01.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>物理内存的分配机制感觉也就如下几个关键点</p>
+<ul>
+<li><ol>
+<li>kernel是<strong>如何组织</strong>free physical page的。（上述xv6是以freelist。优化方法为每个cpu核一个freelist。）因为这会影响到kernel是如何将free physical page分配给user，kernel又会如何回收free physical page。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>kernel为user提供的：直接获取/直接释放(即不涉及用户态缓存) physical page的系统调用<strong>接口</strong>是什么：sbrk-&gt;sys_sbrk()</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>user层是如何封装sbrk的。一般都是将sbrk封装成malloc和free供给user使用。为什么封装？：一大作用就是<strong>缓存</strong>：<strong>为user process 在 用户态 维护了 一个 从kernel中申请来的内存的 缓存</strong>。缓存中存的是user暂时用不到的free pages。</li>
+</ol>
+<ul>
+<li>xv6中是维护了一个cache list：<ul>
+<li>malloc时先到cache list中寻找有无足够大的内存，没有则通过sbrk向kernel请求</li>
+<li>free时则是将不用的内存放入cache list中</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h1 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h1><p>日后有时间应该会做个简单的malloc<br>然后研究下slab内存分配器和伙伴系统<br>所谓内存分配器和伙伴系统：内核做出的设计而非user<br>感受：把做的是哪个层次的事情给搞明白了，剩下的对于具体的设计方法，就是数据结构层面的事情了，就好办很多了。<br>学校赶人收拾行李了，回家再研究.</p>
+<h2 id="伯克利-malloc-lab"><a href="#伯克利-malloc-lab" class="headerlink" title="伯克利 malloc lab"></a>伯克利 malloc lab</h2><p>TODO<br>malloc : 链表(显/隐) , 红黑树… </p>
+<h2 id="slab内存分配器-amp-伙伴系统"><a href="#slab内存分配器-amp-伙伴系统" class="headerlink" title="slab内存分配器 &amp; 伙伴系统"></a>slab内存分配器 &amp; 伙伴系统</h2><p>TODO</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/12/13/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab9-mmap/" rel="prev" title="操作系统-xv6-lab9-mmap">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-lab9-mmap
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/12/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab%E6%80%BB%E7%BB%93/" rel="next" title="操作系统-xv6-lab总结">
+      操作系统-xv6-lab总结 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#xv6-%E7%89%A9%E7%90%86%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E6%B5%81%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">xv6 物理内存分配流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">1.1.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.2.</span> <span class="nav-text">接口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%B7%E6%B1%82%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">请求流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#malloc-sbrk-n-gt-0"><span class="nav-number">1.3.1.</span> <span class="nav-text">malloc (sbrk(n&gt;0))</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sbrk-n-lt-0"><span class="nav-number">1.3.2.</span> <span class="nav-text">sbrk (n&lt;0)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#free"><span class="nav-number">1.3.3.</span> <span class="nav-text">free</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">1.4.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TODO"><span class="nav-number">2.</span> <span class="nav-text">TODO</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%AF%E5%85%8B%E5%88%A9-malloc-lab"><span class="nav-number">2.1.</span> <span class="nav-text">伯克利 malloc lab</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#slab%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E5%99%A8-amp-%E4%BC%99%E4%BC%B4%E7%B3%BB%E7%BB%9F"><span class="nav-number">2.2.</span> <span class="nav-text">slab内存分配器 &amp; 伙伴系统</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '58df2451b2aa1806b97b2cc0d7c0c473',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

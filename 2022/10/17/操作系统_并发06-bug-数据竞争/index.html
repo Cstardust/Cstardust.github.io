@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="并发bug 之 数据竞争 Data Race  不同的线程同时访问同一段内存，且至少有一个是写 为处理Data Race,我们需要一个互斥的协议，而peterson这种纯软的算法，太难了。故 我们应当使用(互斥)锁 消灭datarace   ThreadSanitizer原理  不同线程对一块共享内存操作 且至少有一个是写。对这些动作的执行顺序进行排序，若检验出无法排序的（即排序结果不唯一），则">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-并发06-bug-数据竞争">
+<meta property="og:url" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="并发bug 之 数据竞争 Data Race  不同的线程同时访问同一段内存，且至少有一个是写 为处理Data Race,我们需要一个互斥的协议，而peterson这种纯软的算法，太难了。故 我们应当使用(互斥)锁 消灭datarace   ThreadSanitizer原理  不同线程对一块共享内存操作 且至少有一个是写。对这些动作的执行顺序进行排序，若检验出无法排序的（即排序结果不唯一），则">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-10-35-59.png">
+<meta property="og:image" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-10-37-23.png">
+<meta property="og:image" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-12-47-55.png">
+<meta property="og:image" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-12-09-05.png">
+<meta property="article:published_time" content="2022-10-17T02:02:35.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:21:30.421Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="OS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-10-35-59.png">
+
+<link rel="canonical" href="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-并发06-bug-数据竞争 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-并发06-bug-数据竞争
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-17 10:02:35" itemprop="dateCreated datePublished" datetime="2022-10-17T10:02:35+08:00">2022-10-17</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:30" itemprop="dateModified" datetime="2023-02-27T23:21:30+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><p>并发bug 之 数据竞争 <strong>Data Race</strong></p>
+<ul>
+<li><strong>不同的线程同时访问同一段内存，且至少有一个是写</strong></li>
+<li>为处理Data Race,我们需要一个互斥的协议，而peterson这种纯软的算法，太难了。故 我们应当使用(互斥)锁 消灭datarace</li>
+</ul>
+</li>
+<li><p><strong>ThreadSanitizer原理</strong></p>
+<ul>
+<li><strong>不同线程对一块共享内存操作 且至少有一个是写。对这些动作的执行顺序进行排序，若检验出无法排序的（即排序结果不唯一），则error</strong></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>学习自jyy</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="Data-Race"><a href="#Data-Race" class="headerlink" title="Data Race"></a>Data Race</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+<li><p>起因：不上锁不就没有死锁了吗？</p>
+</li>
+<li><p>概念：<strong>不同的线程同时访问同一段内存，且至少有一个是写</strong>。</p>
+</li>
+<li><p>两个内存访问在 “赛跑”，“跑赢” 的操作先执行。</p>
+<ul>
+<li>因此我们不知道执行后的状态到底是什么，是否是我们想要的状态。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>如peterson-barrier.c: 内存访问都在赛跑<ul>
+<li>对于peterson算法，我们回想，如何留下最少的 fence，依然保证算法正确？很难的。</li>
+</ul>
+</li>
+</ul>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><ul>
+<li>Peterson 算法告诉大家：<ul>
+<li>你们写不对无锁的并发程序</li>
+<li>所以事情反而简单了</li>
+</ul>
+</li>
+<li>解决：<ul>
+<li><strong>用互斥锁保护好共享数据，消灭一切数据竞争</strong></li>
+</ul>
+</li>
+<li>以下代码概括了你们遇到数据竞争的大部分情况<ul>
+<li>bug 几乎都是这两种情况的变种<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Case #1: 上错了锁</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread1</span><span class="params">()</span> </span>&#123; spin_lock(&amp;lk1); sum++; spin_unlock(&amp;lk1); &#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread2</span><span class="params">()</span> </span>&#123; spin_lock(&amp;lk2); sum++; spin_unlock(&amp;lk2); &#125;</span><br><span class="line"><span class="comment">// Case #2: 忘记上锁</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread1</span><span class="params">()</span> </span>&#123; spin_lock(&amp;lk1); sum++; spin_unlock(&amp;lk1); &#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread2</span><span class="params">()</span> </span>&#123; sum++; &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h1 id="其他类型的并发bug"><a href="#其他类型的并发bug" class="headerlink" title="其他类型的并发bug"></a>其他类型的并发bug</h1><ul>
+<li><p>回顾我们实现并发控制的工具</p>
+<ul>
+<li>互斥锁 (lock/unlock) - 原子性</li>
+<li>条件变量 (wait/signal) - 同步</li>
+</ul>
+</li>
+<li><p>忘记上锁——原子性违反 (Atomicity Violation, AV)</p>
+</li>
+<li><p>忘记同步——顺序违反 (Order Violation, OV)</p>
+</li>
+<li><p>Empirical study: 在 105 个并发 bug 中 (non-deadlock/deadlock)</p>
+<ul>
+<li>MySQL (14/9), Apache (13/4), Mozilla (41/16), OpenOffice (6/2)</li>
+<li>97% 的非死锁并发 bug 都是 AV 或 OV。</li>
+</ul>
+</li>
+</ul>
+<h2 id="原子性违反-AV"><a href="#原子性违反-AV" class="headerlink" title="原子性违反(AV)"></a>原子性违反(AV)</h2><ul>
+<li>ABA<ul>
+<li>我以为一段代码没啥事呢，但被人强势插入了<br><img src="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-10-35-59.png"></li>
+</ul>
+</li>
+</ul>
+<h2 id="顺序违反-OV"><a href="#顺序违反-OV" class="headerlink" title="顺序违反 (OV)"></a>顺序违反 (OV)</h2><ul>
+<li>BA<ul>
+<li>怎么就没按我预想的顺序来呢？<ul>
+<li>例子： concurrent use after free<br><img src="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-10-37-23.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="bug排查"><a href="#bug排查" class="headerlink" title="bug排查"></a>bug排查</h1><h2 id="Lockdep-运行时死锁检查"><a href="#Lockdep-运行时死锁检查" class="headerlink" title="Lockdep 运行时死锁检查"></a>Lockdep 运行时死锁检查</h2><p><img src="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-12-47-55.png"></p>
+<h2 id="ThreadSanitizer-运行时的数据竞争检查"><a href="#ThreadSanitizer-运行时的数据竞争检查" class="headerlink" title="ThreadSanitizer: 运行时的数据竞争检查"></a>ThreadSanitizer: 运行时的数据竞争检查</h2><ul>
+<li>检验dataRace ; 为所有事件建立 happens-before 关系图<ul>
+<li>对于发生在不同线程且至少有一个是写的 x,y检查</li>
+<li><strong>会有不能排队的事件 检验出来</strong><br><img src="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/2022-10-17-12-09-05.png"></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OS/" rel="tag"># OS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" rel="prev" title="操作系统_并发-真实世界的并发编程">
+      <i class="fa fa-chevron-left"></i> 操作系统_并发-真实世界的并发编程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/17/muduo-%E5%85%B3%E4%BA%8Eweak-ptr%E7%9A%84%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B/" rel="next" title="关于weak_ptr的使用">
+      关于weak_ptr的使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Data-Race"><span class="nav-number">1.</span> <span class="nav-text">Data Race</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3"><span class="nav-number">1.2.</span> <span class="nav-text">解决</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%B9%B6%E5%8F%91bug"><span class="nav-number">2.</span> <span class="nav-text">其他类型的并发bug</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8E%9F%E5%AD%90%E6%80%A7%E8%BF%9D%E5%8F%8D-AV"><span class="nav-number">2.1.</span> <span class="nav-text">原子性违反(AV)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%BA%E5%BA%8F%E8%BF%9D%E5%8F%8D-OV"><span class="nav-number">2.2.</span> <span class="nav-text">顺序违反 (OV)</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#bug%E6%8E%92%E6%9F%A5"><span class="nav-number">3.</span> <span class="nav-text">bug排查</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Lockdep-%E8%BF%90%E8%A1%8C%E6%97%B6%E6%AD%BB%E9%94%81%E6%A3%80%E6%9F%A5"><span class="nav-number">3.1.</span> <span class="nav-text">Lockdep 运行时死锁检查</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ThreadSanitizer-%E8%BF%90%E8%A1%8C%E6%97%B6%E7%9A%84%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89%E6%A3%80%E6%9F%A5"><span class="nav-number">3.2.</span> <span class="nav-text">ThreadSanitizer: 运行时的数据竞争检查</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '143d3fad30152312192254d99281e7e2',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

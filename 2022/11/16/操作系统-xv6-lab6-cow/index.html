@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="本实验之前 fork之后 child process 立刻 拷贝 parent的physical mem 并建立映射.  本实验之后 ：不必拷贝. copy on write.  思想：推迟为child分配和复制物理内存页，直到实际需要副本。 实现  fork , 进行假分配    copy on write , 进行真分配   根据physical page的ref cnt(是否为1)来判断是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab6-cow">
+<meta property="og:url" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="本实验之前 fork之后 child process 立刻 拷贝 parent的physical mem 并建立映射.  本实验之后 ：不必拷贝. copy on write.  思想：推迟为child分配和复制物理内存页，直到实际需要副本。 实现  fork , 进行假分配    copy on write , 进行真分配   根据physical page的ref cnt(是否为1)来判断是">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-18-11-40-42.png">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-18-08-14-32.png">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-08-09-48.png">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-08-09-48.png">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-09-08-22.png">
+<meta property="og:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-16-22-26-44.png">
+<meta property="article:published_time" content="2022-11-16T01:44:29.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:40.423Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-18-11-40-42.png">
+
+<link rel="canonical" href="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab6-cow | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab6-cow
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-16 09:44:29" itemprop="dateCreated datePublished" datetime="2022-11-16T09:44:29+08:00">2022-11-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:40" itemprop="dateModified" datetime="2023-02-27T23:22:40+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><p>本实验之前 fork之后 child process 立刻 拷贝 parent的physical mem 并建立映射.</p>
+</li>
+<li><p>本实验之后 ：不必拷贝. copy on write.</p>
+<ul>
+<li>思想：推迟为child分配和复制物理内存页，直到实际需要副本。</li>
+<li>实现<ul>
+<li><ol>
+<li>fork , 进行假分配</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>copy on write , 进行真分配</li>
+</ol>
+<ul>
+<li>根据physical page的ref cnt(是否为1)来判断是否需要cow</li>
+<li>cow分为三部分<ul>
+<li>复制物理内存</li>
+<li>取消pte的cow标志位</li>
+<li>proc的pgtbl上建立映射</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>cow之后 返回到造成pgfault的指令继续执行.</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>哪个process copy on write ? </p>
+<ul>
+<li>哪个process先写，就哪个porcess的pgtbl进行copy on write. </li>
+</ul>
+</li>
+<li><p>当parent process A fork 出 BCDE process 后 </p>
+<ul>
+<li><ol>
+<li>A写. 触发pgfault</li>
+</ol>
+<ul>
+<li>则A进行cow. 且A只会影响自己的pgtbl. 不会改变BCDE的pgtbl</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>BCD写. 触发pgfault</li>
+</ol>
+<ul>
+<li>则BCD进行cow. 同1</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>E写. </li>
+</ol>
+<ul>
+<li>尽管此时只有E一个proc引用该mem，但仍然会pagefault. 因为E的pgtbl上的pte并没有任何改变. 仍然有cow的标志位</li>
+<li>故E也进入pgfault handler.(walkaddrforwrite)</li>
+<li>E发现physical page的ref cnt = 1 , 故不再需要复制物理内存,重新建立映射. 直接去掉cow标志位即可返回.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li><p>xv6 中的 fork() 系统调用将父进程的所有用户空间内存复制到子进程中。</p>
+</li>
+<li><p>如果父级很大，复制可能需要很长时间。更糟糕的是，工作往往大部分都被浪费了</p>
+<ul>
+<li>例如，子进程中的 fork() 后跟 exec() 将导致子进程丢弃复制的内存，可能从未使用过大部分内存。</li>
+<li>当Shell处理指令时，它会通过fork创建一个子进程。fork会创建一个Shell进程的拷贝，所以这时我们有一个父进程（原来的Shell）和一个子进程。Shell的子进程执行的第一件事情就是调用exec运行一些其他程序，比如运行echo。现在的情况是，fork创建了Shell地址空间的一个完整的拷贝，而exec做的第一件事情就是丢弃这个地址空间，取而代之的是一个包含了echo的地址空间。这里看起来有点浪费。</li>
+</ul>
+</li>
+<li><p>另一方面，如果我们让parent和child映射同一个page的话，那么当父母和孩子有一个需要对其进行写，那么就需要一个拷贝副本。</p>
+</li>
+<li><p>由此，就有了<strong>copy on write</strong> : 写时复制</p>
+<ul>
+<li>copy on write 的目的时推迟为child process 的 page table分配要映射到的物理页，一直使用parent的物理页。直到这个物理页被写的时候，才会拷贝一个page的副本给child process 的 pgtbl去映射。</li>
+<li>也即，<strong>推迟为child分配和复制物理内存页，直到实际需要副本（如果有的话）</strong>。</li>
+</ul>
+</li>
+<li><p><strong>hint</strong><br><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-18-11-40-42.png"></p>
+</li>
+</ul>
+<h2 id="Solution"><a href="#Solution" class="headerlink" title="Solution"></a>Solution</h2><ul>
+<li><p>下面称<strong>cow pte / va</strong>为</p>
+<ul>
+<li>该 pte / va 还没有分配属于自己的映射到的physical page，和另一个pgtbl的pte共同映射一个物理页。</li>
+<li>*pte &amp;= ~PTE_W<ul>
+<li>不可写，当发生写动作时触发pgfault</li>
+</ul>
+</li>
+<li>*pte |= PTE_RSW_1<ul>
+<li>在pgfault handler中 ，通过该位判断是否是cow 的pte，是则如下处理</li>
+<li>当发生对该pte对应的va的写动作时，会为该pte kalloc一个physical page 去映射。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>再简洁一点，约定 </p>
+<ul>
+<li><strong>假分配</strong>：<strong>使得一个pte/va成为cow pte /va。</strong></li>
+<li><strong>真分配</strong>：<strong>为一个cow pte/va 分配其属于自己映射到的physical page，并更新pte。使其从一个cow pte/va变成一个普通的pte/va。</strong>  </li>
+</ul>
+</li>
+<li><p>我所做的工作如下</p>
+</li>
+</ul>
+<h3 id="1-fork-进行假分配"><a href="#1-fork-进行假分配" class="headerlink" title="1. fork , 进行假分配"></a>1. fork , 进行假分配</h3><p><strong>令fork时不会立刻分配内存，并对pte进行假分配</strong><br>手段：先修改fork中的相关函数：uvmcopy，并添加leafptecow。</p>
+<ul>
+<li><strong>修改uvmcopy：使得fork时不会立即分配物理内存给child。</strong><ul>
+<li>uvmcopy在fork中被调用，用于拷贝old user pagetable 给 new user pagetable</li>
+<li>原先是新kalloc一块physical page然后映射到new user pagetable的va，现在变为直接将old user pagetable映射到的physical page(pp) 给 new user pagetable去映射。<ul>
+<li>mappages(new_pgtbl, i, PGSIZE, old_pa, flags)</li>
+</ul>
+</li>
+<li>并且在new user pgtbl映射到 pp 时，将pp的引用计数+1。<ul>
+<li>incref(pa);</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>添加leafptecow：使得pte为cow的pte。（其实可以将这步优化到上一步uvmcopy中去做，不过懒得做了，就这样吧）</strong><ul>
+<li>下述的pte为child的user pgtbl和parent的user pgtbl的有效叶子pte。（text、data、stack、heap段的，不包括trampoline和trapframe段的）</li>
+<li>使得pte均为可读不可写，以便在user对该pte指向的内存进行写时触发异常。<ul>
+<li>*pte &amp;= ~(PTE_W)</li>
+</ul>
+</li>
+<li>标记pte为copy on write的pte，这样才能和其他原本就是只读的pte区分开。<ul>
+<li>取pte中的RSW中的一位作为cow的标志位。</li>
+<li>*pte |= PTE_RSW_1。</li>
+<li><blockquote>
+<p><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-18-08-14-32.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="2-copy-on-write-进行真分配"><a href="#2-copy-on-write-进行真分配" class="headerlink" title="2. copy on write , 进行真分配"></a>2. copy on write , 进行真分配</h3><p>当发生写造成的<strong>pagefault时，进行copy on write</strong>。也即实现对写造成的pgfault的handler。也即<strong>对pte进行真分配</strong>。<br>这里就可分为<strong>两种情况</strong>下的pagefault。与lazy allocation类似。<br>分为在<strong>user和在kernel</strong>。</p>
+<ul>
+<li><p><strong>一种是在user态对cow的va进行写</strong>，</p>
+<ul>
+<li>此时对于user pgtbl的使用是由mmu来负责的。mmu检测到pte为只读，故触发pagefault，进入usertrap。</li>
+<li>因此，需要在usertrap对这种pagefault进行处理。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  检验页面写错误</span></span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span>(r_scause() == <span class="number">15</span>)&#123;    </span><br><span class="line"><span class="comment">//  发生页面错误的va</span></span><br><span class="line">uint64 va = r_stval();</span><br><span class="line"><span class="comment">//  处理pagefault : 分配新physical mem，建立新映射，不再和另一process pgtbl 映射在同一physical mem</span></span><br><span class="line"><span class="keyword">int</span> ret = walkaddrforwrite(p-&gt;pagetable,va);</span><br><span class="line"><span class="comment">//  没有内存了. 杀掉process.不杀掉的话会陷入死循环. 回到user,发现还是不可写.然后硬件触发.然后继续到这里.还是没内存.循环往复.</span></span><br><span class="line"><span class="keyword">if</span>(ret == <span class="number">0</span>)</span><br><span class="line">  p-&gt;killed = <span class="number">1</span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>另一种是在kernel态，想对user cow的va进行写</strong>。</p>
+<ul>
+<li>此时对于user pgtbl的使用是由软件模拟的（即walkaddr），故不会触发page fault。是一种不会触发page fault的page faulthhhh，这个page fault需要我们自己来检验，并处理。</li>
+<li>因此，在copyout中，对user的cow的va进行检测并处理。核心代码如下，也是通过walkaddrforwrite进行检测并处理。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy from kernel to user.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">copyout</span><span class="params">(<span class="keyword">pagetable_t</span> pagetable, uint64 dstva, <span class="keyword">char</span> *src, uint64 len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="keyword">while</span>(condition)&#123;</span><br><span class="line">    va0 = PGROUNDDOWN(dstva);</span><br><span class="line">    pa0 = walkaddrforwrite(pagetable,va0);</span><br><span class="line">    <span class="keyword">if</span>(pa0 == <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    memmove((<span class="keyword">void</span> *)(pa0 + (dstva - va0)), src, n);</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>核心函数：walkaddrforwrite</strong>   </p>
+<ul>
+<li>uint64 walkaddrforwrite(pagetable_t pgtbl,uint64 va)</li>
+<li><strong>功能</strong>：传入va及对应的pgtbl，并返回一个va映射到的可写的pa地址。<strong>且如果之前对va进行了假分配。那么这里会对va进行真分配。</strong></li>
+<li><strong>逻辑：</strong><ul>
+<li><strong>如果pte是个cow的pte</strong>，<ul>
+<li><strong>如果其指向的physical page的引用计数为1</strong>，那么直接改变该pte的控制位，并返回指向的物理内存。（因为此时只有一个user pgtbl占据这个physical page，直接变成PTE_W可写并取消RSW位即可。）</li>
+<li><strong>如果其指向的physical page的引用计数不为1</strong>，那么为va分配新的physical page，取消原先pte的映射（会改变old physical page的引用计数），并建立pte到新pa的映射。</li>
+</ul>
+</li>
+<li><strong>如果pte不是个cow的pte</strong><ul>
+<li>那么直接返回其映射到的pa即可。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>所以可以看到，写的这个walkaddrforwrite，也可以作为page fault handler。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">uint64 <span class="title">walkaddrforwrite</span><span class="params">(<span class="keyword">pagetable_t</span> pgtbl,uint64 va)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(va &gt;= MAXVA) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">pte_t</span> *pte = walk(pgtbl,va,<span class="number">0</span>);</span><br><span class="line">    <span class="comment">//  检测pte是否有效 --- 即va是否有效</span></span><br><span class="line">    <span class="keyword">if</span>(pte == <span class="number">0</span> || *pte == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="comment">//  需要copy on write</span></span><br><span class="line">    <span class="keyword">if</span>(((*pte) &amp; PTE_W) == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>(((*pte) &amp; PTE_RSW_1) == <span class="number">0</span>)</span><br><span class="line">            panic(<span class="string">&quot;pte is supposed to be cow when pte_w == 0&quot;</span>);</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(getref(PTE2PA(*pte))&lt;=<span class="number">1</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                *pte |= PTE_W;</span><br><span class="line">                *pte &amp;= ~PTE_RSW_1; </span><br><span class="line">                <span class="keyword">return</span> PTE2PA(*pte);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            uint64 old_pa = PTE2PA(*pte);</span><br><span class="line">            uint64 mem = (uint64) kalloc();</span><br><span class="line">            <span class="comment">//  没有空余内存了</span></span><br><span class="line">            <span class="keyword">if</span>(mem == <span class="number">0</span>)  <span class="keyword">return</span> <span class="number">0</span>;         </span><br><span class="line">            memmove((<span class="keyword">void</span>*)mem,(<span class="keyword">const</span> <span class="keyword">void</span>*)old_pa,PGSIZE);</span><br><span class="line">            uvmunmap(pgtbl,PGROUNDDOWN(va),<span class="number">1</span>,<span class="number">1</span>);   <span class="comment">//  munmap 1 : --ref_cnt</span></span><br><span class="line">            <span class="comment">//  建立va到新pa的新映射</span></span><br><span class="line">            mappages(pgtbl,PGROUNDDOWN(va),PGSIZE,mem,PTE_W|PTE_R|PTE_X|PTE_U);</span><br><span class="line">            <span class="keyword">return</span> mem;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  不需要copy on write</span></span><br><span class="line">    <span class="keyword">return</span> PTE2PA(*pte);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="3-physical-page的引用计数"><a href="#3-physical-page的引用计数" class="headerlink" title="3. physical page的引用计数"></a>3. physical page的引用计数</h3><p><strong>重点：对physical page的引用计数</strong></p>
+<ul>
+<li><p>对DRAM段每一个physical page进行引用计数。</p>
+<ul>
+<li>范围为<code>[kernel text/data即first address after kernel,PHSTOP)</code>。</li>
+<li>因为user process的pgtbl只会映射到这里的physical page。</li>
+</ul>
+</li>
+<li><p>注意freelist上的引用计数必须都是0；kfree时检查引用计数，当为0时才能将该pp放回freelist。</p>
+</li>
+<li><p><strong>什么结构来引用计数：数组</strong></p>
+<ul>
+<li>对每一个pp的引用计数，需要用一个lock来保护。防止不同process对同一pp的ref_cnt进行操作，导致data race。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> IDX(pa) ((pa - KERNBASE) / PGSIZE)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MAXN ((PHYSTOP - KERNBASE) / PGSIZE + 5)</span></span><br><span class="line"><span class="comment">//  仅限DRAM进行引用计数 即 pa位于 KERNBASE PHYSTOP之间</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">ref</span>&#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line">    <span class="keyword">int</span> ref_cnt;</span><br><span class="line">&#125; refs[MAXN];</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>何时改变引用计数：</strong></p>
+<ul>
+<li><strong>++ref_cnt</strong><ul>
+<li><strong>kalloc时</strong>，需要++ref_cnt。也即，将physical page 从freelist上摘下来时，需要令ref_cnt = 1。  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> *</span></span><br><span class="line"><span class="function"><span class="title">kalloc</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line"></span><br><span class="line">    acquire(&amp;kmem.lock);</span><br><span class="line">    r = kmem.freelist;</span><br><span class="line">    <span class="keyword">if</span>(r)</span><br><span class="line">        kmem.freelist = r-&gt;next;</span><br><span class="line">    release(&amp;kmem.lock);</span><br><span class="line">    <span class="keyword">if</span>(r)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">memset</span>((<span class="keyword">char</span>*)r, <span class="number">5</span>, PGSIZE); <span class="comment">// fill with junk</span></span><br><span class="line">        incref((uint64)r);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">void</span>*)r;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><strong>uvmcopy时</strong>，当对pte进行一个假分配后，也即令一个pte成为cow pte后，需要对其映射到的pa进行一个++ref_cnt。  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">(mappages(<span class="keyword">new</span>, i, PGSIZE, pa, flags);</span><br><span class="line"><span class="comment">//  对于两个user pgtbl都使用的mem，则引用计数++</span></span><br><span class="line">incref(pa);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>–ref_cnt</strong><ul>
+<li>当<strong>kfree时</strong>，需要–ref_cnt，当ref_cnt为0时再释放pp.  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">kfree</span><span class="params">(<span class="keyword">void</span> *pa)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span>;</span></span><br><span class="line">    <span class="comment">//  check whether the pa is legal</span></span><br><span class="line">    <span class="keyword">if</span>(((uint64)pa % PGSIZE) != <span class="number">0</span> || (<span class="keyword">char</span>*)pa &lt; end || (uint64)pa &gt;= PHYSTOP)</span><br><span class="line">        panic(<span class="string">&quot;kfree&quot;</span>);</span><br><span class="line"></span><br><span class="line">    acquire(&amp;kmem.lock);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> idx = ((uint64)pa - KERNBASE) / PGSIZE;</span><br><span class="line">    <span class="keyword">if</span>(idx &lt;= <span class="number">0</span> ) panic(<span class="string">&quot;idx is expected to be &gt; 0 &quot;</span>);</span><br><span class="line"></span><br><span class="line">    acquire(&amp;(refs[idx].lock));</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(--refs[idx].ref_cnt &lt; <span class="number">0</span>) panic(<span class="string">&quot;&gt;= 0&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>((refs[idx].ref_cnt) == <span class="number">0</span>)  </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// Fill with junk to catch dangling refs.</span></span><br><span class="line">        <span class="built_in">memset</span>(pa, <span class="number">1</span>, PGSIZE);</span><br><span class="line">        r = (struct run*)pa;</span><br><span class="line">        r-&gt;next = kmem.freelist;</span><br><span class="line">        kmem.freelist = r;</span><br><span class="line">    &#125;</span><br><span class="line">    release(&amp;(refs[idx].lock));</span><br><span class="line">    </span><br><span class="line">    release(&amp;kmem.lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>bug</p>
+<ul>
+<li><ol>
+<li>一开始想在run结构体增加成员 ref_cnt 代表该page正在引用的次数。</li>
+</ol>
+<ul>
+<li>想想就不行。不能在run里增加成员。因为那个也是physical page的头部。当把pg分配出去，那个结构体就被覆盖了。何谈引用计数</li>
+<li>所以单独建一个数组，来表示每个pg的引用次数。</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>一开始想在mappages和munmap的时候，增加/减少引用计数。而并不是在kalloc和kfree时。结果一输入命令就panic init exiting.</li>
+</ol>
+<ul>
+<li>不能这样。因为一开始kernel pgtbl就会建立所有映射，可也没有kalloc。如果按如上方案的话，在kfree的时候，ref_cnt的引用计数应当为1，(并且我们还只对dram进行计数，还需要判断)。</li>
+<li><blockquote>
+<p><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-08-09-48.png"></p>
+</blockquote>
+</li>
+<li>如果只是这样倒也罢了。可是还有一些其他地方只kalloc了，却并没有建立映射。并且从逻辑上来讲这个引用计数就应当只涉及调用了fork的user pgtbl，这样做会引入kernel pgtbl，徒增复杂性。且如hint所说，kfree() should only place a page back on the free list if its reference count is zero。调试的时候就这里耗时醉酒，赶紧放弃这种计数方法。</li>
+<li>改成在kfree和kalloc和uvmcopy时维护计数。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><ol start="4">
+<li>exec不需要修改</li>
+</ol>
+</li>
+</ul>
+<ul>
+<li><ol start="5">
+<li>开机成功</li>
+</ol>
+<ul>
+<li>大部分时间都耗在了开机能正常运行命令之前，开机成功之后直接过了cowtest，然后usertests也几分钟就改完了。爽!<ul>
+<li>usertests过不去的test看一眼是咋写的，然后改一下就行。能正常运行命令就应该是逻辑没错误了，test出来的是极限/故意写错的情况。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="bug"><a href="#bug" class="headerlink" title="bug"></a>bug</h3><ul>
+<li><ol>
+<li><strong>修改fork时遇到的bug</strong></li>
+</ol>
+<ul>
+<li>我之前将pgtbl的所有pte都改变成cow的page了。结果陷入了死循环，连$都没打印出来。在这里卡了好久。<ul>
+<li>调试之后发现是在从usertrapret出去之后到trampoline的userret，然后sret之后就陷入了死循环，不断进入kerneltrap再出去。</li>
+<li>原因：我认为是这样的，因为将userpgtbl映射到trapframe的pte设置为不可写，而后会有动作对trapframe进行了写，且当时(usertrapret中有intr_off)关中断。当sret打开中断后，cpu接受中断，进入kerneltrap，没处理，再离开，再进入。如此死循环。</li>
+</ul>
+</li>
+<li><strong>所以注意child拷贝parent只是拷贝了text,data,stack,heap段，也即只有这些段是需要copy on write的。剩下的trapframe和trapoline不是cow的</strong>。</li>
+</ul>
+</li>
+<li><ol start="2">
+<li><strong>copy on write时遇到的问题，解决</strong>。</li>
+</ol>
+<ul>
+<li>关于getref(PTE2PA(*pte) &lt;= 1)</li>
+<li>关于walkaddrforwrite的问题<ul>
+<li>如果1child 1parent<ul>
+<li>那么如果是一个child写的话，那么除了将child本身的这个pte重新建立映射之外，还需要将其parent置为可写。</li>
+<li>那么如果是一个parent写的话，那么除了将parent本身的这个pte重新建立映射之外，还需要将其child置为可写，那么如何获取其child？</li>
+</ul>
+</li>
+<li>如果多child 1parent<ul>
+<li>那么1child写了，只是将1child本身的相应pte进行更新，其余的仍然映射到那个pg，仍然只读</li>
+<li>如果1parent写了，只是将1parent本身的相应pte进行更新，其余的仍然映射到那个pg，仍然只读</li>
+<li>只有当最后一个写proc的时候（即其他proc都已经写过），才不需要新建mem，改变pte，重新建立映射，只要将置成pte可写，然后直接写内存即可。</li>
+</ul>
+</li>
+<li>显然上述想法有些可笑，不必在一个user的pte进行真分配的时候考虑其他process。每个process只考虑izji就可以。</li>
+</ul>
+</li>
+<li>所以通过pagefault handler时检查physical page的引用计数解决上述问题。当引用计数为1时代表只有一个人引用这个内存。</li>
+</ul>
+</li>
+<li><ol start="3">
+<li><strong>引用计数时遇到的bug</strong></li>
+</ol>
+<ul>
+<li><ol>
+<li>一开始想在run结构体增加成员 ref_cnt 代表该page正在引用的次数。</li>
+</ol>
+<ul>
+<li>想想就不行。不能在run里增加成员。因为那个也是physical page的头部。当把pg分配出去，那个结构体就被覆盖了。何谈引用计数</li>
+<li>所以单独建一个数组，来表示每个pg的引用次数。</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>一开始想在mappages和munmap的时候，增加/减少引用计数。而并不是在kalloc和kfree时。结果一输入命令就panic init exiting.</li>
+</ol>
+<ul>
+<li>不能这样。因为一开始kernel pgtbl就会建立所有映射，可也没有kalloc。如果按如上方案的话，在kfree的时候，ref_cnt的引用计数应当为1，(并且我们还只对dram进行计数，还需要判断)。</li>
+<li><blockquote>
+<p><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-08-09-48.png"></p>
+</blockquote>
+</li>
+<li>如果只是这样倒也罢了。可是还有一些其他地方只kalloc了，却并没有建立映射。并且从逻辑上来讲这个引用计数就应当只涉及调用了fork的user pgtbl，这样做会引入kernel pgtbl，徒增复杂性。且如hint所说，kfree() should only place a page back on the free list if its reference count is zero。调试的时候就这里耗时醉酒，赶紧放弃这种计数方法。</li>
+<li>改成在kfree和kalloc和uvmcopy时维护计数。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
+<li><ol>
+<li>ok : fork在什么时候被调用。cow和那些pgtbl有关，与kernel pgtbl有关吗？</li>
+</ol>
+<ul>
+<li>fork只会由user process调用</li>
+<li>只和user pgtbl有关。   <ul>
+<li>cow va只会在fork情况下产生。而fork又只会由sys_fork调用，也即，只会由用户程序通过fork()调用。因此cow只和user pgtbl有关。</li>
+</ul>
+</li>
+<li>对于kernel pagetable 很显然不会有copy on write发生，因为全局始终只有一个kernel pagetable。且child拷贝pagetable也不会拷贝kernel pagetable。最一开始的fork拷贝的是initcode的pgtbl吧？</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>ok : mem被映射和被使用并不是完全相同的概念。</li>
+</ol>
+<ul>
+<li>对于kernel pagetable 映射了所有的physical memory ，但是却并没有都使用。因此 mappages时不可ref_cnt++。</li>
+<li>但是对于user pgtbl，其映射了一块另一个user pgtbl的所拥有的mem，即代表这块mem为本user pgtbl所拥有，则引用计数++。因此kalloc和uvmcopy都需要ref_cnt++。</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>ok : kernel给user分配dram段内存需要通过kalloc，那么kernel自己使用dram段的内存呢？</li>
+</ol>
+<ul>
+<li>也需要。</li>
+<li>诚然，kernel在刚一开始就全权拥有所有物理内存，鉴于直接映射，kernel也可以直接使用dram的物理内存。不过还是要通过kalloc来获取一下，以防止其使用的内存被其他地方使用或者被user使用。如下kernel使用kalloc给kernel使用</li>
+<li><blockquote>
+<p><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-17-09-08-22.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><ol start="4">
+<li>同学问的问题：父进程对一个地址进行了写 触发pagefault,进行了copy on write之后，子进程再写还会不会触发page fault？</li>
+</ol>
+<ul>
+<li>会, 因为u</li>
+<li>会 , fork的时候比如说父进程fork出ABCDEF这些个进程，他们的pagetable是一样的。（因为子进程拷贝了父进程的pagetable），然后当某一进程比如说A进程在用户态对A进程的virtual address写，会触发pagefault，因为pte之前在fork的时候就被标记成需要copy on write的，对该pte引用的地址写会被mmu检测并触发pagefault，然后在pagefault handler中，会在该A进程的page table上，找到这个va对应的pte，修改pte，为这个va建立一个到新一块物理页的映射（不再是之前和其他进程共用的物理页），然后将pte的标志位置成不需要copy on write的。然后，当又有B进程对该va进行写入，那么，同理，B pagetable的pte仍然是被标志成需要copy on write的，所以他也会触发pagefault，同样会进入pagefaulthandler，进行新物理页的分配。</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p><img src="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/2022-11-16-22-26-44.png"></p>
+</blockquote>
+<p>大部分时间都耗在了开机之前<br>开机成功之后直接过了cowtest<br>然后usertests也几分钟就改完了.爽!</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/" rel="prev" title="操作系统-xv6-Interrupt">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-Interrupt
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/" rel="next" title="操作系统-xv6-thread">
+      操作系统-xv6-thread <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Solution"><span class="nav-number">2.</span> <span class="nav-text">Solution</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-fork-%E8%BF%9B%E8%A1%8C%E5%81%87%E5%88%86%E9%85%8D"><span class="nav-number">2.1.</span> <span class="nav-text">1. fork , 进行假分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-copy-on-write-%E8%BF%9B%E8%A1%8C%E7%9C%9F%E5%88%86%E9%85%8D"><span class="nav-number">2.2.</span> <span class="nav-text">2. copy on write , 进行真分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-physical-page%E7%9A%84%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0"><span class="nav-number">2.3.</span> <span class="nav-text">3. physical page的引用计数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bug"><span class="nav-number">2.4.</span> <span class="nav-text">bug</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98"><span class="nav-number">2.5.</span> <span class="nav-text">问题</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '94e26b9cf4f43827f2c75c1a926a7dd2',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

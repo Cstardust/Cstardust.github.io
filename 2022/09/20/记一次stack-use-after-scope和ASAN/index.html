@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="参考 参考 参考  bug及解决日志 起因：参考《Linux多线程服务端编程》第8章写my_muduo的class EventLoopThread时,想通过timerfd定时器测试功能,结果死循环。  注册回调：在main中给EventLoopThread注册回调函数，在回调函数中创建channel以及事件。注册的回调函数会在EventLoopThread startLoop前调用。   两处罪">
+<meta property="og:type" content="article">
+<meta property="og:title" content="记一次stack-use-after-scope和ASAN">
+<meta property="og:url" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="参考 参考 参考  bug及解决日志 起因：参考《Linux多线程服务端编程》第8章写my_muduo的class EventLoopThread时,想通过timerfd定时器测试功能,结果死循环。  注册回调：在main中给EventLoopThread注册回调函数，在回调函数中创建channel以及事件。注册的回调函数会在EventLoopThread startLoop前调用。   两处罪">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-24-01.png">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-29-50.png">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-58-12.png">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-03-44.png">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-48-25.png">
+<meta property="og:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-52-55.png">
+<meta property="article:published_time" content="2022-09-20T05:00:50.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:24:46.046Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="工具">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-24-01.png">
+
+<link rel="canonical" href="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>记一次stack-use-after-scope和ASAN | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          记一次stack-use-after-scope和ASAN
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-20 13:00:50" itemprop="dateCreated datePublished" datetime="2022-09-20T13:00:50+08:00">2022-09-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:24:46" itemprop="dateModified" datetime="2023-02-27T23:24:46+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%B7%A5%E5%85%B7/" itemprop="url" rel="index"><span itemprop="name">工具</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>7 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/google/sanitizers">参考</a></li>
+<li><a target="_blank" rel="noopener" href="https://hardcore.feishu.cn/docx/doxcnXfsINxeICDFXePBelN3p5f">参考</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/143187115#:~:">参考</a></li>
+</ul>
+<h2 id="bug及解决"><a href="#bug及解决" class="headerlink" title="bug及解决"></a>bug及解决</h2><h3 id="日志"><a href="#日志" class="headerlink" title="日志"></a>日志</h3><ul>
+<li><p>起因：参考《Linux多线程服务端编程》第8章写my_muduo的class EventLoopThread时,想通过timerfd定时器测试功能,结果死循环。</p>
+<ul>
+<li>注册回调：在main中给EventLoopThread注册回调函数，在回调函数中创建channel以及事件。注册的回调函数会在EventLoopThread startLoop前调用。</li>
+</ul>
+</li>
+<li><p>两处罪魁祸首<br>  <img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-24-01.png"><br>  <img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-29-50.png"></p>
+</li>
+<li><p>问题发生处<br><img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-13-58-12.png"></p>
+</li>
+<li><p>因此会与预期不符。</p>
+</li>
+<li><p>可以看到 注册到epoll上的是timerfd=5，实际上返回的events.data.ptr指向的channel却是fd=0。<br><img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-03-44.png"></p>
+</li>
+<li><p>日志打到这里时怀疑是使用了一个已经释放的对象，当时以为会是移动造成，又或者是使用了已经free的堆造成的。</p>
+</li>
+<li><p>但其实还是不能肯定是内存方面的问题。因为没core dump.很奇怪为啥没core dump?</p>
+</li>
+</ul>
+<h3 id="ASAN"><a href="#ASAN" class="headerlink" title="ASAN"></a>ASAN</h3><ul>
+<li>参考<a target="_blank" rel="noopener" href="https://hardcore.feishu.cn/docx/doxcnXfsINxeICDFXePBelN3p5f">资料</a>配置AddressSanitizer</li>
+<li>很强。一下子确定了在何处发生了什么错误。如下，在channel-&gt;handleEvent()时，发生stack-use-after-scope。比吭哧吭哧打日志方便很多。<ul>
+<li>并且还可以编译时warning是否有初始化顺序不恰当的代码，比如类的成员在构造函数中初始化与在类中的声明顺序不一致。</li>
+</ul>
+</li>
+<li>如此，可以确定时channel指针引用的对象已经不存在，并且是stack-use-after-scope而非heap-use-after-free。问题范围缩小一大半，直接去找定义该channel的地方。发现是在注册的回调函数中定义。因此，该channel出了回调函数就会被析构。（之前误以为注册给EventLoopThread的回调函数在其内部调用会展开，故认为loop结束前channel不会被析构，槽点过多）。</li>
+<li>更改channel定义的位置，使其不会在loop结束前被析构即可。</li>
+<li>也不是什么难bug，就是之前对这个内存方面的错误有些阴影，又恰好了解了asan这么好用的工具，因此在这里记录下。  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br></pre></td><td class="code"><pre><span class="line">[INFO] <span class="number">2022</span><span class="number">-09</span><span class="number">-20</span><span class="number">-12</span><span class="number">-30</span><span class="number">-33</span> : /home/shc/Muduo/src/main.<span class="built_in">cpp</span> (<span class="number">64</span>) &lt;main&gt;   startloop <span class="keyword">return</span> eventloop <span class="number">0x7f329bafdc40</span> </span><br><span class="line"></span><br><span class="line">[INFO] <span class="number">2022</span><span class="number">-09</span><span class="number">-20</span><span class="number">-12</span><span class="number">-30</span><span class="number">-38</span> : /home/shc/Muduo/src/EpollPoller.<span class="built_in">cpp</span> (<span class="number">147</span>) &lt;poll&gt;   <span class="number">1</span> events happneded</span><br><span class="line"></span><br><span class="line">[INFO] <span class="number">2022</span><span class="number">-09</span><span class="number">-20</span><span class="number">-12</span><span class="number">-30</span><span class="number">-38</span> : /home/shc/Muduo/src/EpollPoller.<span class="built_in">cpp</span> (<span class="number">180</span>) &lt;fillActiveChannels&gt;   fill <span class="number">5</span> </span><br><span class="line"></span><br><span class="line">[INFO] <span class="number">2022</span><span class="number">-09</span><span class="number">-20</span><span class="number">-12</span><span class="number">-30</span><span class="number">-38</span> : /home/shc/Muduo/src/EventLoop.<span class="built_in">cpp</span> (<span class="number">109</span>) &lt;loop&gt;   <span class="number">1</span> IN HANDLING <span class="number">0</span></span><br><span class="line"></span><br><span class="line">=================================================================</span><br><span class="line"><span class="meta"># <span class="meta-keyword">error</span> ：stack-use-after-scope</span></span><br><span class="line">==<span class="number">14905</span>==ERROR: AddressSanitizer: stack-use-after-scope on address <span class="number">0x7f329bafd1d8</span> at pc <span class="number">0x55840a7a315c</span> bp <span class="number">0x7f329bafba70</span> sp <span class="number">0x7f329bafba60</span></span><br><span class="line">READ of size <span class="number">1</span> at <span class="number">0x7f329bafd1d8</span> thread T1</span><br><span class="line"># 显示过程调用栈 自出现问题处回溯一个个函数</span><br><span class="line">    #<span class="number">0</span> <span class="number">0x55840a7a315b</span> in Channel::<span class="built_in">handleEvent</span>(Timestamp <span class="keyword">const</span>&amp;) /home/shc/Muduo/src/Channel.cpp:<span class="number">44</span></span><br><span class="line">    #<span class="number">1</span> <span class="number">0x55840a7b2707</span> in EventLoop::<span class="built_in">loop</span>() /home/shc/Muduo/src/EventLoop.cpp:<span class="number">112</span></span><br><span class="line">    #<span class="number">2</span> <span class="number">0x55840a7bab27</span> in EventLoopThread::<span class="built_in">threadFunc</span>() /home/shc/Muduo/src/EventLoopThread.cpp:<span class="number">93</span></span><br><span class="line">    #<span class="number">3</span> <span class="number">0x55840a7bc5f3</span> in <span class="keyword">void</span> std::__invoke_impl&lt;<span class="keyword">void</span>, <span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*&amp;)(), EventLoopThread*&amp;&gt;(std::__invoke_memfun_deref, <span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*&amp;)(), EventLoopThread*&amp;) /usr/include/c++/<span class="number">7</span>/bits/invoke.h:<span class="number">73</span></span><br><span class="line">    #<span class="number">4</span> <span class="number">0x55840a7bc450</span> in std::__invoke_result&lt;<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*&amp;)(), EventLoopThread*&amp;&gt;::type std::__invoke&lt;<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*&amp;)(), EventLoopThread*&amp;&gt;(<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*&amp;)(), EventLoopThread*&amp;) /usr/include/c++/<span class="number">7</span>/bits/invoke.h:<span class="number">95</span></span><br><span class="line">    #<span class="number">5</span> <span class="number">0x55840a7bc2e9</span> in <span class="keyword">void</span> std::_Bind&lt;<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*(EventLoopThread*))()&gt;::__call&lt;<span class="keyword">void</span>, , <span class="number">0ul</span>&gt;(std::tuple&lt;&gt;&amp;&amp;, std::_Index_tuple&lt;<span class="number">0ul</span>&gt;) /usr/include/c++/<span class="number">7</span>/functional:<span class="number">467</span></span><br><span class="line">    #<span class="number">6</span> <span class="number">0x55840a7bbf99</span> in <span class="keyword">void</span> std::_Bind&lt;<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*(EventLoopThread*))()&gt;::<span class="built_in"><span class="keyword">operator</span></span>()&lt;, <span class="keyword">void</span>&gt;() /usr/include/c++/<span class="number">7</span>/functional:<span class="number">551</span></span><br><span class="line">    #<span class="number">7</span> <span class="number">0x55840a7bb9a2</span> in std::_Function_handler&lt;<span class="built_in"><span class="keyword">void</span></span> (), std::_Bind&lt;<span class="built_in"><span class="keyword">void</span></span> (EventLoopThread::*(EventLoopThread*))()&gt; &gt;::_M_invoke(std::_Any_data <span class="keyword">const</span>&amp;) /usr/include/c++/<span class="number">7</span>/bits/std_function.h:<span class="number">316</span></span><br><span class="line">    #<span class="number">8</span> <span class="number">0x55840a7a483b</span> in std::function&lt;<span class="built_in"><span class="keyword">void</span></span> ()&gt;::<span class="built_in"><span class="keyword">operator</span></span>()() <span class="keyword">const</span> /usr/include/c++/<span class="number">7</span>/bits/std_function.h:<span class="number">706</span></span><br><span class="line">    #<span class="number">9</span> <span class="number">0x55840a7c27c2</span> in <span class="built_in"><span class="keyword">operator</span></span>() /home/shc/Muduo/src/Thread.cpp:<span class="number">63</span></span><br><span class="line">    #<span class="number">10</span> <span class="number">0x55840a7c2f78</span> in __invoke_impl&lt;<span class="keyword">void</span>, Thread::<span class="built_in">start</span>()::&lt;<span class="built_in">lambda</span>()&gt; &gt; /usr/include/c++/<span class="number">7</span>/bits/invoke.h:<span class="number">60</span></span><br><span class="line">    #<span class="number">11</span> <span class="number">0x55840a7c2bc2</span> in __invoke&lt;Thread::<span class="built_in">start</span>()::&lt;<span class="built_in">lambda</span>()&gt; &gt; /usr/include/c++/<span class="number">7</span>/bits/invoke.h:<span class="number">95</span></span><br><span class="line">    #<span class="number">12</span> <span class="number">0x55840a7c32e5</span> in _M_invoke&lt;<span class="number">0</span>&gt; /usr/include/c++/<span class="number">7</span>/thread:<span class="number">234</span></span><br><span class="line">    #<span class="number">13</span> <span class="number">0x55840a7c326b</span> in <span class="built_in"><span class="keyword">operator</span></span>() /usr/include/c++/<span class="number">7</span>/thread:<span class="number">243</span></span><br><span class="line">    #<span class="number">14</span> <span class="number">0x55840a7c31cf</span> in _M_run /usr/include/c++/<span class="number">7</span>/thread:<span class="number">186</span></span><br><span class="line">    #<span class="number">15</span> <span class="number">0x7f329f47e4bf</span>  (/usr/lib/x86_64-linux-gnu/libstdc++.so<span class="number">.6</span>+<span class="number">0xd44bf</span>)</span><br><span class="line">    #<span class="number">16</span> <span class="number">0x7f329f7be6da</span> in <span class="built_in">start_thread</span> (/lib/x86_64-linux-gnu/libpthread.so<span class="number">.0</span>+<span class="number">0x76da</span>)</span><br><span class="line">    #<span class="number">17</span> <span class="number">0x7f329eec261e</span> in __clone (/lib/x86_64-linux-gnu/libc.so<span class="number">.6</span>+<span class="number">0x12161e</span>)</span><br><span class="line"># 在哪里发生错误</span><br><span class="line">Address <span class="number">0x7f329bafd1d8</span> is located in stack of thread T1 at offset <span class="number">5720</span> in frame</span><br><span class="line">    #<span class="number">0</span> <span class="number">0x55840a7b189d</span> in EventLoop::<span class="built_in">loop</span>() /home/shc/Muduo/src/EventLoop.cpp:<span class="number">81</span></span><br><span class="line"></span><br><span class="line">This frame has <span class="number">26</span> <span class="built_in">object</span>(s):</span><br><span class="line">    [<span class="number">32</span>, <span class="number">33</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">96</span>, <span class="number">97</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">160</span>, <span class="number">161</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">224</span>, <span class="number">225</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">288</span>, <span class="number">289</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">352</span>, <span class="number">353</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">416</span>, <span class="number">417</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">480</span>, <span class="number">481</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">544</span>, <span class="number">552</span>) <span class="string">&#x27;__for_begin&#x27;</span></span><br><span class="line">    [<span class="number">608</span>, <span class="number">616</span>) <span class="string">&#x27;__for_end&#x27;</span></span><br><span class="line">    [<span class="number">672</span>, <span class="number">704</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">736</span>, <span class="number">768</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">800</span>, <span class="number">832</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">864</span>, <span class="number">896</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">928</span>, <span class="number">960</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">992</span>, <span class="number">1024</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">1056</span>, <span class="number">1088</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">1120</span>, <span class="number">1152</span>) <span class="string">&#x27;&lt;unknown&gt;&#x27;</span></span><br><span class="line">    [<span class="number">1184</span>, <span class="number">1696</span>) <span class="string">&#x27;header&#x27;</span></span><br><span class="line">    [<span class="number">1728</span>, <span class="number">2240</span>) <span class="string">&#x27;header&#x27;</span></span><br><span class="line">    [<span class="number">2272</span>, <span class="number">2784</span>) <span class="string">&#x27;header&#x27;</span></span><br><span class="line">    [<span class="number">2816</span>, <span class="number">3328</span>) <span class="string">&#x27;header&#x27;</span></span><br><span class="line">    [<span class="number">3360</span>, <span class="number">4384</span>) <span class="string">&#x27;buf&#x27;</span></span><br><span class="line">    [<span class="number">4416</span>, <span class="number">5440</span>) <span class="string">&#x27;buf&#x27;</span></span><br><span class="line">    [<span class="number">5472</span>, <span class="number">6496</span>) <span class="string">&#x27;buf&#x27;</span> &lt;== Memory access at offset <span class="number">5720</span> is inside <span class="keyword">this</span> variable</span><br><span class="line">    [<span class="number">6528</span>, <span class="number">7552</span>) <span class="string">&#x27;buf&#x27;</span></span><br><span class="line">HINT: <span class="keyword">this</span> may be a <span class="literal">false</span> positive <span class="keyword">if</span> your program uses some custom stack unwind mechanism <span class="keyword">or</span> <span class="built_in">swapcontext</span></span><br><span class="line">    (longjmp <span class="keyword">and</span> C++ exceptions *are* supported)</span><br><span class="line"></span><br><span class="line"># Thred T1在何处由T0生成</span><br><span class="line">Thread T1 created by T0 here:</span><br><span class="line">    #<span class="number">0</span> <span class="number">0x7f329fa0dd2f</span> in __interceptor_pthread_create (/usr/lib/x86_64-linux-gnu/libasan.so<span class="number">.4</span>+<span class="number">0x37d2f</span>)</span><br><span class="line">    #<span class="number">1</span> <span class="number">0x7f329f47e765</span> in std::thread::_M_start_thread(std::unique_ptr&lt;std::thread::_State, std::default_delete&lt;std::thread::_State&gt; &gt;, <span class="built_in"><span class="keyword">void</span></span> (*)()) (/usr/lib/x86_64-linux-gnu/libstdc++.so<span class="number">.6</span>+<span class="number">0xd4765</span>)</span><br><span class="line">    #<span class="number">2</span> <span class="number">0x55840a7c2931</span> in Thread::<span class="built_in">start</span>() /home/shc/Muduo/src/Thread.cpp:<span class="number">64</span></span><br><span class="line">    #<span class="number">3</span> <span class="number">0x55840a7ba49a</span> in EventLoopThread::<span class="built_in">startLoop</span>() /home/shc/Muduo/src/EventLoopThread.cpp:<span class="number">53</span></span><br><span class="line">    #<span class="number">4</span> <span class="number">0x55840a7c5b0a</span> in main /home/shc/Muduo/src/main.cpp:<span class="number">62</span></span><br><span class="line">    #<span class="number">5</span> <span class="number">0x7f329edc2c86</span> in __libc_start_main (/lib/x86_64-linux-gnu/libc.so<span class="number">.6</span>+<span class="number">0x21c86</span>)</span><br><span class="line"></span><br><span class="line"># 总结：handleEvent时 发生 stack-use-after-scope</span><br><span class="line">SUMMARY: AddressSanitizer: stack-use-after-scope /home/shc/Muduo/src/Channel.cpp:<span class="number">44</span> in Channel::<span class="built_in">handleEvent</span>(Timestamp <span class="keyword">const</span>&amp;)</span><br><span class="line">Shadow bytes around the buggy address:</span><br><span class="line"><span class="number">0x0fe6d37579e0</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d37579f0</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a00</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a10</span>: f8 f8 f8 f8 f8 f8 f8 f8 f2 f2 f2 f2 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a20</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line">=&gt;<span class="number">0x0fe6d3757a30</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8[f8]f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a40</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a50</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a60</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a70</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line"><span class="number">0x0fe6d3757a80</span>: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8</span><br><span class="line">Shadow byte <span class="built_in">legend</span> (one shadow byte represents <span class="number">8</span> application bytes):</span><br><span class="line">Addressable:           <span class="number">00</span></span><br><span class="line">Partially addressable: <span class="number">01</span> <span class="number">02</span> <span class="number">03</span> <span class="number">04</span> <span class="number">05</span> <span class="number">06</span> <span class="number">07</span> </span><br><span class="line">Heap left redzone:       fa</span><br><span class="line">Freed heap region:       fd</span><br><span class="line">Stack left redzone:      f1</span><br><span class="line">Stack mid redzone:       f2</span><br><span class="line">Stack right redzone:     f3</span><br><span class="line">Stack after <span class="keyword">return</span>:      f5</span><br><span class="line">Stack use after scope:   f8</span><br><span class="line">Global redzone:          f9</span><br><span class="line">Global init order:       f6</span><br><span class="line">Poisoned by user:        f7</span><br><span class="line">Container overflow:      fc</span><br><span class="line">Array cookie:            ac</span><br><span class="line">Intra object redzone:    bb</span><br><span class="line">ASan internal:           fe</span><br><span class="line">Left alloca redzone:     ca</span><br><span class="line">Right alloca redzone:    cb</span><br><span class="line">==<span class="number">14905</span>==ABORTING</span><br></pre></td></tr></table></figure></li>
+<li>epoll注册上去的是指针？epoll_wait返回的data.ptr也是指针。都是同一个对象？？？</li>
+</ul>
+<h2 id="ASan-Address-Sanitizer"><a href="#ASan-Address-Sanitizer" class="headerlink" title="ASan Address Sanitizer"></a>ASan Address Sanitizer</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://hardcore.feishu.cn/docx/doxcnXfsINxeICDFXePBelN3p5f">以下来自</a></li>
+<li>谷歌有一系列Sanitizer官网见<a target="_blank" rel="noopener" href="https://github.com/google/sanitizers%EF%BC%8C%E5%8F%AF%E4%BB%A5%E7%94%A8%E4%BA%8E%E5%AE%9A%E4%BD%8D%E7%A8%8B%E5%BA%8F%E4%B8%AD%E7%9A%84%E7%B3%BB%E5%88%97%E9%97%AE%E9%A2%98%EF%BC%8C%E5%B8%B8%E7%94%A8%E7%9A%84Sanitizer%E5%8C%85%E6%8B%AC">https://github.com/google/sanitizers，可以用于定位程序中的系列问题，常用的Sanitizer包括</a><ul>
+<li>Address Sanitizer（ASan）：用于检测内存使用错误</li>
+<li>Leak Sanitizer（LSan）：用于检测内存泄漏</li>
+<li>Thread Sanitizer（TSan）：用于检测多线程间的数据竞争和死锁</li>
+<li>Memory Sanitizer（MSan）：用于检测使用未初始化内存的行为</li>
+</ul>
+</li>
+</ul>
+<h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><ul>
+<li>ASan 是 Address Sanitizer 简称，它是一种基于编译器用于快速检测原生代码中内存错误的工具。</li>
+<li>简而言之，ASan 就是一个用于快速检测内存错误的工具，目前已经集成在LLVM 3.1+和GCC 4.8+中</li>
+<li>可检测类型<br>  <img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-48-25.png"></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/google/sanitizers/wiki/AddressSanitizerAlgorithm">原理</a><ul>
+<li>在编译时，ASan会替换malloc/free接口</li>
+<li>在程序申请内存时，ASan会额外分配一部分内存来标识该内存的状态</li>
+<li>在程序使用内存时，ASan会额外进行判断，确认该内存是否可以被访问，并在访问异常时输出错误信息</li>
+</ul>
+</li>
+</ul>
+<h3 id="设置"><a href="#设置" class="headerlink" title="设置"></a>设置</h3><ul>
+<li><p>CMakeLists.txt</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 编译设置</span><br><span class="line">add_compile_options(-O0 -ggdb -<span class="built_in">std</span>=c++<span class="number">14</span> -Wall -Wextra -mavx2</span><br><span class="line">    -fsanitize=address</span><br><span class="line">    -fno-omit-frame-pointer</span><br><span class="line">    -fno-optimize-sibling-calls</span><br><span class="line">    -fsanitize-address-use-after-scope</span><br><span class="line">    -fsanitize-recover=address)</span><br><span class="line"># 链接设置</span><br><span class="line">target_link_libraries(muduo pthread -fsanitize=address)</span><br></pre></td></tr></table></figure></li>
+<li><p>环境变量</p>
+<ul>
+<li>llvm-symbolizer运行路径：export ASAN_SYMBOLIZER_PATH=”/usr/bin/llvm-symbolizer”</li>
+<li>ASAN_OPTIONS为ASan运行的Flags：export ASAN_OPTIONS=”halt_on_error=0:log_path=xxx/asan.log:detect_stack_use_after_return=1”<br><img src="/2022/09/20/%E8%AE%B0%E4%B8%80%E6%AC%A1stack-use-after-scope%E5%92%8CASAN/2022-09-20-14-52-55.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h3><ul>
+<li>ASan版本程序在Linux环境下运行时会额外申请20TB的虚拟内存<ul>
+<li>需要确保/proc/sys/vm/overcommit_memory的值不为2</li>
+<li>这也可以作为检验ASan是否工作的标志</li>
+</ul>
+</li>
+<li>ASan版本性能大幅受损，大约会下降2x左右</li>
+<li>ASan工具不是万能的，他必须要跑到有问题的代码才可以暴漏出来</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%B7%A5%E5%85%B7/" rel="tag"># 工具</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/15/%E5%B7%A5%E5%85%B7-gdb%E8%B0%83%E8%AF%95/" rel="prev" title="gdb调试">
+      <i class="fa fa-chevron-left"></i> gdb调试
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/08/muduo-buffer/" rel="next" title="muduo-Buffer">
+      muduo-Buffer <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#bug%E5%8F%8A%E8%A7%A3%E5%86%B3"><span class="nav-number">1.</span> <span class="nav-text">bug及解决</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%A5%E5%BF%97"><span class="nav-number">1.1.</span> <span class="nav-text">日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ASAN"><span class="nav-number">1.2.</span> <span class="nav-text">ASAN</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ASan-Address-Sanitizer"><span class="nav-number">2.</span> <span class="nav-text">ASan Address Sanitizer</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">2.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%BE%E7%BD%AE"><span class="nav-number">2.2.</span> <span class="nav-text">设置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F"><span class="nav-number">2.3.</span> <span class="nav-text">注意</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'd823c186089a78769eb99e298b2c7ab6',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

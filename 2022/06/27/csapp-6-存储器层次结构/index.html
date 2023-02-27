@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="各类存储技术  RAM：SRAM DRAM ROM 磁盘   访问主存，访问磁盘流程">
+<meta property="og:type" content="article">
+<meta property="og:title" content="csapp_6_存储器层次结构">
+<meta property="og:url" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="各类存储技术  RAM：SRAM DRAM ROM 磁盘   访问主存，访问磁盘流程">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-12-34-52.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-16-29.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-19-34.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-49-20.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-11-39.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-28-22.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-13-49-41.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-41-07.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-08.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-26.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-41.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-07.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-29.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-39.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-00-35.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-04-47.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-08-36.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-10-14.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-40-45.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-38-24.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-42-13.png">
+<meta property="og:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-50-09.png">
+<meta property="article:published_time" content="2022-06-26T23:31:03.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:00.246Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-12-34-52.png">
+
+<link rel="canonical" href="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>csapp_6_存储器层次结构 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          csapp_6_存储器层次结构
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-27 07:31:03" itemprop="dateCreated datePublished" datetime="2022-06-27T07:31:03+08:00">2022-06-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:00" itemprop="dateModified" datetime="2023-02-27T23:18:00+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>各类存储技术 <ul>
+<li>RAM：SRAM DRAM</li>
+<li>ROM</li>
+<li>磁盘</li>
+</ul>
+</li>
+<li>访问主存，访问磁盘流程<span id="more"></span></li>
+</ul>
+<h1 id="Storage-technologies-存储技术"><a href="#Storage-technologies-存储技术" class="headerlink" title="Storage technologies 存储技术"></a>Storage technologies 存储技术</h1><h2 id="Random-Access-Memory（RAM）随机访问存储器"><a href="#Random-Access-Memory（RAM）随机访问存储器" class="headerlink" title="Random-Access Memory（RAM）随机访问存储器"></a>Random-Access Memory（RAM）随机访问存储器</h2><ul>
+<li>Random-Access Memory（RAM）：随机访问存储器<ul>
+<li><strong>RAM就是所说的内存</strong></li>
+</ul>
+</li>
+<li>分为SRAM（快）和DRAM（慢）。<br>  <img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-12-34-52.png"></li>
+<li><strong>SRAM和DRAM都是易失性存储器</strong>（volatile memories）<ul>
+<li>当断电得时候存储的信息就会丢失。</li>
+</ul>
+</li>
+</ul>
+<h3 id="SRAM-静态RAM"><a href="#SRAM-静态RAM" class="headerlink" title="SRAM   静态RAM"></a>SRAM   静态RAM</h3><ul>
+<li>用作<strong>高速缓存存储器</strong></li>
+<li>双稳态特性，只要有点，就会永远地保持它的值。只要有电，SRAM就会保持不变。</li>
+<li>对干扰（光、电噪）不敏感</li>
+<li>贵（需要晶体管多，密集度低）</li>
+</ul>
+<h3 id="DRAM-动态RAM"><a href="#DRAM-动态RAM" class="headerlink" title="DRAM   动态RAM"></a>DRAM   动态RAM</h3><ul>
+<li>用作<strong>主存</strong></li>
+<li>有许多原因会导致DRAM单元漏电，因此内存系统必须周期性的通过读出然后重写，来刷新内存每一位。</li>
+<li>对干扰敏感</li>
+<li>便宜</li>
+</ul>
+<h2 id="ROM-：nonvolatile-memory-非易失性存储器"><a href="#ROM-：nonvolatile-memory-非易失性存储器" class="headerlink" title="ROM ：nonvolatile memory 非易失性存储器"></a>ROM ：nonvolatile memory 非易失性存储器</h2><ul>
+<li><p><strong>非易失性存储器（nonvolatile memory）</strong>：即使在断电之后，仍然保存着他们的信息。（ROM就是非易失性存储器）</p>
+</li>
+<li><p><strong>ROM</strong>：由于历史原因，虽然ROM中有的类型既可以读又可以写，但是他们整体上都被称为<strong>只读存储器（Read-Only Memory，ROM）</strong></p>
+</li>
+<li><p>ROM以他们能被重新编程的<strong>次数</strong>和对他们重新编程所用的<strong>机制</strong>来区分。</p>
+<ul>
+<li>可编程ROM  (Programmable ROM，PROM)：只能被编程一次</li>
+<li>可擦写可编程ROM（Erasable Programmable ROM，EPROM）：能够被擦除和重编程。（1000次）</li>
+<li>电子可擦除PROM（Electrically Erasable Programmable ROM：EEPROM）。（100000次）：为大量电子设备提供快速而持久的非易失性存储，如数码相机，手机，笔记本，台式机等。</li>
+<li>闪存（flash memory）：基于EEPROM的非易失性存储器。</li>
+<li>固态硬盘（Solid State）：基于闪存的磁盘驱动器，提供相对于传统旋转磁盘的一种更快速、更强健和更低能耗的选择。</li>
+</ul>
+</li>
+<li><p><strong>固件 firmware</strong>：存储在ROM设备中的程序。</p>
+<ul>
+<li>当一个计算机系统通电之后，它会运行存储在ROM中的固件。</li>
+<li>一些系统在固件中提供了少量的基本输入输出函数。如PC的BIOS例程。<ul>
+<li>BIOS,controllers    for    disks,network cards,graphics accelerators,security subsystems,…</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>有个之前没搞懂的问题，现在懂了<ul>
+<li>RAM就是内存。SRAM 高速缓冲 DRAM 主存</li>
+<li>ROM不意味着硬盘<ul>
+<li>旋转磁盘：不是基于ROM。是靠磁性物质</li>
+<li>固态硬盘：基于flash memroy。是ROM</li>
+</ul>
+</li>
+<li>RAM、ROM都算半导体存储器利用逻辑电路读写，磁盘就是磁介质存储加上机械传动读写</li>
+</ul>
+</li>
+</ul>
+<h2 id="Disk-磁盘"><a href="#Disk-磁盘" class="headerlink" title="Disk 磁盘"></a>Disk 磁盘</h2><p>略</p>
+<h3 id="磁盘构造"><a href="#磁盘构造" class="headerlink" title="磁盘构造"></a>磁盘构造</h3><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-16-29.png"></p>
+<ul>
+<li>盘片以固定速率旋转</li>
+</ul>
+<p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-19-34.png"></p>
+<ul>
+<li>磁盘（disk）由多个盘片（platter）组成。每个盘片有两个表面（surface），表面覆盖着磁性记录材料。</li>
+<li>每个表面由多个同心环组成，被称为磁道（track）。</li>
+<li>每个磁道由一组扇区（sector）组成。一组中的每个扇区被间隙（gap）分隔开。每个扇区包含数量相等的数据位；间隙不存储数据位。</li>
+<li>磁盘：由一或多个盘片组成，封装起来。称为磁盘驱动器(disk driver)，也称为磁盘(disk)，也叫玄幻磁盘(rotating disk)（以区分固态硬盘ssd）</li>
+</ul>
+<h3 id="磁盘容量"><a href="#磁盘容量" class="headerlink" title="磁盘容量"></a>磁盘容量</h3><ul>
+<li><p>磁盘容量：一个磁盘可以记录的最大位数</p>
+<ul>
+<li>记录密度（recording density）：磁道一英寸的段可以放入的位数</li>
+<li>磁道密度（track density）：从盘片中心出发半径一英寸的段内可以有的磁道数</li>
+<li>面密度（areal density）：记录密度 * 磁道密度的乘积。</li>
+</ul>
+</li>
+<li><p>公式<br>  <img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-49-20.png"></p>
+</li>
+<li><p>单位 K M G T</p>
+<ul>
+<li>对于DRAM、SRAM容量相关的计量单位：2^10进制，<code>K=2^10,M=2^20,G=2^30</code></li>
+<li>对于磁盘和网络这样的IO设备的容量计量单位：10^3进制，<code>K=10^3,M=10^6,G=10^9,T=10^12</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="磁盘操作"><a href="#磁盘操作" class="headerlink" title="磁盘操作"></a>磁盘操作</h3><ul>
+<li>大体有两个操作，一个是传动臂，一个是盘面</li>
+<li>寻道：传动臂沿半径轴前后移动，驱动读写头定位任意一个磁道。称为寻道。<ul>
+<li>寻道是为了确定目标扇区所在磁道</li>
+<li>（即将读写头定位到正确柱面。柱面：所有盘片到主轴中心举例相等的磁道集合，即垂直看重合的磁道称为一个柱面）</li>
+</ul>
+</li>
+<li>盘面：以固定速率旋转。<ul>
+<li>盘面旋转是为了让扇区处于读写头下。<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-11-39.png"></li>
+</ul>
+</li>
+<li>对磁盘的访问时间<ul>
+<li>寻道时间：寻道所花时间</li>
+<li>旋转时间：寻道结束后，旋转扇区所花时间</li>
+<li>传送时间：当目标山区第一个位位于读写头希望，驱动器就可以开始读或者写该扇区内容了。</li>
+</ul>
+</li>
+</ul>
+<h3 id="逻辑磁盘块"><a href="#逻辑磁盘块" class="headerlink" title="逻辑磁盘块"></a>逻辑磁盘块</h3><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-28-22.png"></p>
+<ul>
+<li>Disk Controller：磁盘控制器。<ul>
+<li>维护逻辑块号码和物理扇区的关系。</li>
+<li>控制器上的固件：将逻辑块号翻译成（盘片、磁盘、扇区）三元组</li>
+<li>磁盘控制器上的硬件会解释这个三元组，将读写头移动到适当的柱面，等待扇区移动到读写头下，将读写狗感知的位放到控制器上的一个小缓冲区中，然后将他们复制到主存。</li>
+</ul>
+</li>
+</ul>
+<h2 id="Solid-State-Disk-SSD-固态硬盘"><a href="#Solid-State-Disk-SSD-固态硬盘" class="headerlink" title="Solid State Disk (SSD) 固态硬盘"></a>Solid State Disk (SSD) 固态硬盘</h2><ul>
+<li>solid state disk 基于闪存实现的存储技术。<ul>
+<li>由一个或多个闪存芯片和闪存翻译曾组成。</li>
+<li>闪存芯片 &lt;—&gt; 旋转磁盘的机械驱动盘</li>
+<li>闪存翻译层 &lt;—&gt; 磁盘控制器 </li>
+<li>ssd大部分取代旋转磁盘。</li>
+</ul>
+</li>
+</ul>
+<h2 id="访问主存"><a href="#访问主存" class="headerlink" title="访问主存"></a>访问主存</h2><h3 id="总线"><a href="#总线" class="headerlink" title="总线"></a>总线</h3><ul>
+<li><p>总线（bus）：数据流通过被称为总线的共享电子电路在处理器和DRAM主存之间传递。</p>
+<ul>
+<li>一组并行的导线，可以携带地址，数据和控制信号。</li>
+<li>数据和地址信号是否共享同一组导线，取决于总线的设计。同时，总线通常被不同设备共享。</li>
+<li>控制线携带的信号会同步事务，并表示出当前正在被执行的事务的类型。</li>
+</ul>
+</li>
+<li><p>总线事务：每次cpu和主存之间的数据传送都是通过一系列步骤完成的，这些步骤，称为总线事务</p>
+<ul>
+<li>读事务：数据从主存传送到cpu</li>
+<li>写事务：数据从cpu-&gt;主存。</li>
+</ul>
+</li>
+<li><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-13-49-41.png"></p>
+</li>
+<li><p>总共有三个总线</p>
+<ul>
+<li><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-20-41-07.png"></li>
+<li>系统总线</li>
+<li>内存总线</li>
+<li>IO总线</li>
+</ul>
+</li>
+</ul>
+<h3 id="读事务"><a href="#读事务" class="headerlink" title="读事务"></a>读事务</h3><p>没画高速缓存L123</p>
+<ul>
+<li><code>movq A,%rax</code>：地址A的内容被加载入寄存器<ul>
+<li>cpu芯片上被称为<strong>总线接口</strong>的的电路在总线上<strong>发起读事务</strong></li>
+<li><strong>1</strong>. cpu将地址A放在系统总线上，IO桥将信号传递到内存总线<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-08.png"></li>
+<li><strong>2</strong>. 主存感受到内存总线上的地址信号，从内存总线上读地址，然后从DRAM中取数据，并将数据写到内存总线；IO桥将内存总线的信号转化成系统总线的信号，然后通过系统总线传递给cpu<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-26.png"></li>
+<li><strong>3</strong>. cpu感觉到系统总线上的数据，从总线上读数据，然后将数据复制到寄存器%eax<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-18-54-41.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="写事务"><a href="#写事务" class="headerlink" title="写事务"></a>写事务</h3><ul>
+<li><code>mov %rax,A</code>：寄存器的内容被写入地址A<ul>
+<li>cpu芯片发起<strong>写事务</strong></li>
+<li><ol>
+<li>cpu将地址A放在内存总线上，IO桥将信号传递到内存总线，DRAM主存从内存总线上读地址。DRAM然后等待数据信息到达。<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-07.png"></li>
+</ol>
+</li>
+<li><ol start="2">
+<li>cpu将数据信息放在系统总线上。<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-29.png"></li>
+</ol>
+</li>
+<li><ol start="3">
+<li>主存从总线上读取字，并存储在地址A中。<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-19-01-39.png"></li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="访问磁盘"><a href="#访问磁盘" class="headerlink" title="访问磁盘"></a>访问磁盘</h2><h3 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h3><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-00-35.png"></p>
+<ul>
+<li>**内存映射I/O(memory-mapped I/O)**：CPU使用该技术来向IO设备发射命令。<ul>
+<li>在使用内存映射io的系统中，地址空间有一块地址是为与io设备通信保留的。每个这样的地址称为一个IO端口。当一个设备连接到总线时，她与一个或多个这样的端口相关联。（或他被映射到一或多个端口）</li>
+<li>这不是Linux的mmaped，我第一眼还以为是hhh</li>
+</ul>
+</li>
+</ul>
+<h3 id="访问磁盘过程："><a href="#访问磁盘过程：" class="headerlink" title="访问磁盘过程："></a>访问磁盘过程：</h3><ul>
+<li><p>CPU 将【命令、逻辑块号、目的内存地址】 写到 【与磁盘相关联的】【内存映射地址】，发起一个【磁盘读】。<img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-04-47.png"></p>
+</li>
+<li><p>磁盘控制器读扇区，并执行到主存的DMA传送<img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-08-36.png"></p>
+<ul>
+<li>cpu发出请求后，在磁盘执行读的时候，通常会执行其他工作。</li>
+<li><strong>DMA(direct memory access)传送</strong>：磁盘控制器收到cpu的读命令后，将逻辑块号翻译成一个扇区地址，读取该扇区内容，然后将这些内容传送给主存，无需cpu干涉。也即，设备可以自己执行读或写总线事务而无需cpu参与的过程。</li>
+</ul>
+</li>
+<li><p>当DMA传送完成时，磁盘控制器用中断的方式通知CPU<img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-10-14.png"></p>
+<ul>
+<li>基本思想：中断会发出信号给cpu芯片的引脚，使得cpu暂停当前工作，将控制传递给一个os的例程。这个例程记录下IO已经完成，然后将控制返还给cpu刚刚被中断的地方。</li>
+</ul>
+</li>
+<li><p>例子：假设磁盘控制器映射到IO端口0xa0，随后cpu可能通过执行三个对地址0xa0的存储指令，发起磁盘读。</p>
+</li>
+<li><p>CPU执行三个对地址0xa0的存储指令，发起磁盘读</p>
+<ul>
+<li>第一条指令是发送一个命令字，告诉磁盘发起一个读（还可能有其他参数，如是否中断cpu）。</li>
+<li>第二条指令指明应该读取的逻辑块号。（磁盘控制器会找到相应物理扇区）。</li>
+<li>第三条指令指明应该存储磁盘扇区内容的贮存地址。</li>
+</ul>
+</li>
+</ul>
+<h2 id="Trend"><a href="#Trend" class="headerlink" title="Trend"></a>Trend</h2><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-06-21-40-45.png"></p>
+<ul>
+<li>内存和磁盘技术：增加密度（从而降低成本）比降低访问时间容易得多</li>
+<li>SRAM的性能滞后于CPU的性能，但SRAM还在保持继续增长。</li>
+<li>DRAM和磁盘的性能滞后于CPU的性能（时间），且差距逐渐增大。</li>
+<li>现代计算机频繁使用基于SRAM的告诉缓存，试图弥补处理器-内存（cpu-memory）的之间的差距。（原理：程序的局部性属性）</li>
+</ul>
+<h1 id="Locality-局部性"><a href="#Locality-局部性" class="headerlink" title="Locality 局部性"></a>Locality 局部性</h1><ul>
+<li><p>分为<strong>时间局部性</strong>和<strong>空间局部性</strong></p>
+</li>
+<li><p><strong>时间局部性 (temporal locality)</strong></p>
+<ul>
+<li>在一个具有良好时间局部性的程序中，被引用过一次的内存位置很可能在不远的将来再被多次引用。（重复引用<strong>同一</strong>数据项）</li>
+</ul>
+</li>
+<li><p><strong>空间局部性 (spatial locality)</strong></p>
+<ul>
+<li>在一个具有良好空间局部性的程序中，如果一个内存位置被引用了一次，那么程序很可能在不远的将来引用<strong>附近</strong>的一个内存位置。（引用邻近于最近使用过的数据项的数据项</li>
+</ul>
+</li>
+<li><p>评价局部性的简单原则</p>
+<ul>
+<li>data<ul>
+<li>时间局部性良好：重新引用相同变量</li>
+<li>空间局部性良好：步长为k的引用模式，k越小越好（不在内存中大步长跳来跳去。</li>
+</ul>
+</li>
+<li>instruction<ul>
+<li>对于取指令来说，循环有好的时间局部性和空间局部性。</li>
+<li>循环体越小，循环迭代次数越多（相同频率下），局部性越好。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="程序例子"><a href="#程序例子" class="headerlink" title="程序例子"></a>程序例子</h2><p><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-38-24.png"></p>
+<h2 id="对程序数据引用的局部性"><a href="#对程序数据引用的局部性" class="headerlink" title="对程序数据引用的局部性"></a>对程序数据引用的局部性</h2><ul>
+<li><p>变量sum  </p>
+<ul>
+<li>时间局部性很好：每次循环被引用一次</li>
+<li>不存在空间局部性：sum是标量</li>
+</ul>
+</li>
+<li><p>变量v：</p>
+<ul>
+<li>时间局部性很差：因为每个向量元素只被访问一次。</li>
+<li>空间局部性很好<ul>
+<li>步长为1的引用模式<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-42-13.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>看出时间局部性和空间起码占一样儿。</p>
+</li>
+<li><p><strong>步长为1的引用模式</strong>（顺序访问一个向量）</p>
+<ul>
+<li>stride-1 reference pattern / sequential reference pattern</li>
+<li>在一个连续向量中，每隔k个元素进行访问，称为步长为k的引用模式（stride-k reference pattern）</li>
+<li>k越大，空间局部性越差。</li>
+</ul>
+</li>
+<li><p>…<br><img src="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/2022-07-07-08-50-09.png"></p>
+</li>
+</ul>
+<h2 id="取指令的局部性"><a href="#取指令的局部性" class="headerlink" title="取指令的局部性"></a>取指令的局部性</h2><ul>
+<li>cpu需要从内存读出指令，所以我们也能够评价一个程序关于指令的局部性。</li>
+<li><strong>空间局部性</strong>：for循环体里的指令是按照连续的内存顺序执行的，因此循环有良好的空间局部性。</li>
+<li><strong>时间局部性</strong>：for循环体会被执行多次。（Loop:… goto Loop;）</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">mystring</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">char</span> *s;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//一元操作符重载</span></span><br><span class="line">    <span class="comment">//重载1</span></span><br><span class="line">    <span class="built_in">mystring</span> (mystring &amp;a)&#123;cout&lt;&lt;<span class="string">&quot;wrong!&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">    <span class="built_in">mystring</span> ()&#123;&#125;</span><br><span class="line">    mystring <span class="keyword">operator</span>=(<span class="keyword">const</span> mystring &amp;it)</span><br><span class="line">    &#123;   <span class="built_in">memset</span>(s,<span class="number">0</span>,<span class="number">1024</span>);</span><br><span class="line">        <span class="built_in">strcpy</span>(s,it.s);</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;111&quot;</span>&lt;&lt;endl;</span><br><span class="line">        <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    mystring s1;</span><br><span class="line">    s1.s=<span class="string">&quot;111&quot;</span>;</span><br><span class="line">    mystring s2=s1;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">因为<span class="string">&quot;111&quot;</span>在rodata段，所以报错。</span><br></pre></td></tr></table></figure>
+
+
+
+<p><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/26672661/for-write-back-cache-policy-why-data-should-first-be-read-from-memory-before-w">https://stackoverflow.com/questions/26672661/for-write-back-cache-policy-why-data-should-first-be-read-from-memory-before-w</a></p>
+<p><a target="_blank" rel="noopener" href="https://xiaolincoding.com/os/1_hardware/cpu_mesi.html#%E5%86%99%E5%9B%9E">https://xiaolincoding.com/os/1_hardware/cpu_mesi.html#%E5%86%99%E5%9B%9E</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/" rel="prev" title="csapp_3_程序的机器级表示2">
+      <i class="fa fa-chevron-left"></i> csapp_3_程序的机器级表示2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/07/07/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%842/" rel="next" title="csapp_6_存储器层次结构2">
+      csapp_6_存储器层次结构2 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Storage-technologies-%E5%AD%98%E5%82%A8%E6%8A%80%E6%9C%AF"><span class="nav-number">1.</span> <span class="nav-text">Storage technologies 存储技术</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Random-Access-Memory%EF%BC%88RAM%EF%BC%89%E9%9A%8F%E6%9C%BA%E8%AE%BF%E9%97%AE%E5%AD%98%E5%82%A8%E5%99%A8"><span class="nav-number">1.1.</span> <span class="nav-text">Random-Access Memory（RAM）随机访问存储器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#SRAM-%E9%9D%99%E6%80%81RAM"><span class="nav-number">1.1.1.</span> <span class="nav-text">SRAM   静态RAM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DRAM-%E5%8A%A8%E6%80%81RAM"><span class="nav-number">1.1.2.</span> <span class="nav-text">DRAM   动态RAM</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ROM-%EF%BC%9Anonvolatile-memory-%E9%9D%9E%E6%98%93%E5%A4%B1%E6%80%A7%E5%AD%98%E5%82%A8%E5%99%A8"><span class="nav-number">1.2.</span> <span class="nav-text">ROM ：nonvolatile memory 非易失性存储器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Disk-%E7%A3%81%E7%9B%98"><span class="nav-number">1.3.</span> <span class="nav-text">Disk 磁盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A3%81%E7%9B%98%E6%9E%84%E9%80%A0"><span class="nav-number">1.3.1.</span> <span class="nav-text">磁盘构造</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A3%81%E7%9B%98%E5%AE%B9%E9%87%8F"><span class="nav-number">1.3.2.</span> <span class="nav-text">磁盘容量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A3%81%E7%9B%98%E6%93%8D%E4%BD%9C"><span class="nav-number">1.3.3.</span> <span class="nav-text">磁盘操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%BB%E8%BE%91%E7%A3%81%E7%9B%98%E5%9D%97"><span class="nav-number">1.3.4.</span> <span class="nav-text">逻辑磁盘块</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Solid-State-Disk-SSD-%E5%9B%BA%E6%80%81%E7%A1%AC%E7%9B%98"><span class="nav-number">1.4.</span> <span class="nav-text">Solid State Disk (SSD) 固态硬盘</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE%E4%B8%BB%E5%AD%98"><span class="nav-number">1.5.</span> <span class="nav-text">访问主存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BA%BF"><span class="nav-number">1.5.1.</span> <span class="nav-text">总线</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%BB%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.5.2.</span> <span class="nav-text">读事务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%99%E4%BA%8B%E5%8A%A1"><span class="nav-number">1.5.3.</span> <span class="nav-text">写事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE%E7%A3%81%E7%9B%98"><span class="nav-number">1.6.</span> <span class="nav-text">访问磁盘</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">1.6.1.</span> <span class="nav-text">结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE%E7%A3%81%E7%9B%98%E8%BF%87%E7%A8%8B%EF%BC%9A"><span class="nav-number">1.6.2.</span> <span class="nav-text">访问磁盘过程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Trend"><span class="nav-number">1.7.</span> <span class="nav-text">Trend</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Locality-%E5%B1%80%E9%83%A8%E6%80%A7"><span class="nav-number">2.</span> <span class="nav-text">Locality 局部性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A8%8B%E5%BA%8F%E4%BE%8B%E5%AD%90"><span class="nav-number">2.1.</span> <span class="nav-text">程序例子</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9%E7%A8%8B%E5%BA%8F%E6%95%B0%E6%8D%AE%E5%BC%95%E7%94%A8%E7%9A%84%E5%B1%80%E9%83%A8%E6%80%A7"><span class="nav-number">2.2.</span> <span class="nav-text">对程序数据引用的局部性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%96%E6%8C%87%E4%BB%A4%E7%9A%84%E5%B1%80%E9%83%A8%E6%80%A7"><span class="nav-number">2.3.</span> <span class="nav-text">取指令的局部性</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'f1261ca1fd576c93fa3bb8d6e9a95778',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

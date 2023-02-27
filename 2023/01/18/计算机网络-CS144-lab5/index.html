@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="关于如何发送TCP segment  user负责 TCP user负责 TCP,IP user负责 TCP IP Ethernet CS144目标实现的就是从TCP到Ethernet全部在用户态实现. Ethernet报文的封装和解封装就由NetWorkInterface来做   实现一个NetWorkInterface  发送IP datagram –封装–&gt; linker-layer">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab5">
+<meta property="og:url" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="关于如何发送TCP segment  user负责 TCP user负责 TCP,IP user负责 TCP IP Ethernet CS144目标实现的就是从TCP到Ethernet全部在用户态实现. Ethernet报文的封装和解封装就由NetWorkInterface来做   实现一个NetWorkInterface  发送IP datagram –封装–&gt; linker-layer">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-08-09-26-11.png">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-20-09-15-12.png">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-08-11-00-35.png">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-11-51-58.png">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-11-57-06.png">
+<meta property="og:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-17-21-02.png">
+<meta property="article:published_time" content="2023-01-18T14:58:25.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:39.183Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-08-09-26-11.png">
+
+<link rel="canonical" href="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab5 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab5
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-18 22:58:25" itemprop="dateCreated datePublished" datetime="2023-01-18T22:58:25+08:00">2023-01-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:39" itemprop="dateModified" datetime="2023-02-27T23:23:39+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><p>关于如何发送TCP segment</p>
+<ul>
+<li>user负责 TCP</li>
+<li>user负责 TCP,IP</li>
+<li>user负责 TCP IP Ethernet</li>
+<li>CS144目标实现的就是从TCP到Ethernet全部在用户态实现.</li>
+<li>Ethernet报文的封装和解封装就由NetWorkInterface来做</li>
+</ul>
+</li>
+<li><p>实现一个NetWorkInterface</p>
+<ul>
+<li>发送IP datagram –封装–&gt; <strong>linker-layer frame</strong></li>
+<li>接收 linker-layer frame —解封–&gt; IP datagram</li>
+<li>在执行封装IP datagram成linker-layer frame时 , 需要ip-&gt;mac地址,这时就需要用到<strong>arp协议</strong><ul>
+<li>涉及处理 arp table , 缓存未知mac的ipdatagram等</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li><p>本实验，我们将到达协议栈的最底层 并实现一个 InetWork Interface : 一个将Internet Datagram 送入世界的桥梁 ; 并且实现在每一跳之间传送的链路层Ethernet以太网帧(frame).</p>
+<ul>
+<li>这个InetWork Interface组件适用于你之前实现的TCP/IP的底层 , 并且可以以另一种不同的上下文使用 : 当你在lab6中建立了路由器router,其将在network interface之间路由datagrams. Figure 1 展示了network interface在主机和路由器两种上下文下的层次位置<br><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-08-09-26-11.png"></li>
+</ul>
+</li>
+<li><p>在过去的实验中 你实现了一个可以成功和其他主机交流TCP segment . 这些segment 实际上到底是如何传送到对端的tcp呢 ? 有以下几个选项</p>
+</li>
+<li><p>How are these segments actually conveyed to the peer’s TCP implementation?</p>
+</li>
+</ul>
+<h2 id="如何封装并发送TCP-segment"><a href="#如何封装并发送TCP-segment" class="headerlink" title="如何封装并发送TCP segment"></a>如何封装并发送TCP segment</h2><h3 id="TCP-in-UDP-in-IP"><a href="#TCP-in-UDP-in-IP" class="headerlink" title="TCP-in-UDP-in-IP"></a>TCP-in-UDP-in-IP</h3><p><strong>TCP-in-UDP-in-IP</strong></p>
+<ul>
+<li><p>TCP segment 可以作为 user datagram 的 payload. 当tcp运行在用户态 , 这是一种最简单的实现.</p>
+  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># Ethernet Header # IP Header # UDP Header # [ TCPSegment (TCP Header # Http # payload) ]  </span><br></pre></td></tr></table></figure></li>
+<li><p>Linux提供了一个udp socket的接口 </p>
+<ul>
+<li>code : class UDPSocket -&gt; socket(AF_INET, SOCK_DGRAM , 0)</li>
+<li>udp socket的user只需提供user datagram(udp datagram)的payload 和 目标 address(ip and port). kernel的send接口如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">msghdr message&#123;&#125;;</span><br><span class="line">message.msg_name = <span class="keyword">const_cast</span>&lt;sockaddr *&gt;(destination_address);</span><br><span class="line">message.msg_namelen = destination_address_len;</span><br><span class="line">message.msg_iov = iovecs.data();</span><br><span class="line">message.msg_iovlen = iovecs.size();</span><br><span class="line">sendmsg(fd_num, &amp;message, <span class="number">0</span>);   </span><br><span class="line"><span class="comment">//  msghr message : 目标ip和port(sockaddr*) + 要发送数据payload</span></span><br><span class="line"><span class="comment">//  本lab中 该sendmsg 用于通过udp socket fd 发送 udp segment</span></span><br><span class="line"><span class="comment">//  udp 的 payload 为 tcp segment. 存入 msghdr</span></span><br></pre></td></tr></table></figure></li>
+<li>kernel 负责构造UDP header , IP header 和 Ethernet header , 然后将packet发送到正确的下一跳(next hop)</li>
+<li>kernel 负责确保 每个socket都由独占的 本地和远端的端口组合(exclusive combination of local and remote addresses and port numbers).</li>
+<li>由于kernel 负责构造 UDP 和 IP header , 他会保证不同应用之间的独立 </li>
+</ul>
+</li>
+<li><p>听起来很神奇是吧，居然udp的负载是tcp segment. code见下<br><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-20-09-15-12.png"></p>
+</li>
+</ul>
+<h3 id="TCP-In-IP"><a href="#TCP-In-IP" class="headerlink" title="TCP-In-IP"></a>TCP-In-IP</h3><p><strong>TCP-in-IP</strong></p>
+<ul>
+<li><p>普遍情况下 , TCP Segment 是直接放入 Internet datagram中的 , 没有udp header夹在 ip header和tcp header之间</p>
+<ul>
+<li>这就是人们所说的 <strong>“TCP/IP”</strong><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># Ethernet Header # IP Header # [ TCPSegment (TCP Header # Http Header # payload) ]</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>比上一个难实现一点. Linux 提供接口 : <strong>TUN device</strong></p>
+<ul>
+<li>让应用提供完整的Internet datagram. 也即应用需要提供IP Header 而不仅仅是payload</li>
+<li>kernel 负责剩余部分 <ul>
+<li>writing the Ethernet header 构造 Ethernet Header </li>
+<li>actually sending via the physical Ethernet card 实际通过网卡发送帧 </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>我们已经完整这个了.</p>
+<ul>
+<li>在lab4中, 我们有一个object 代表 Inernet datagrams 并且 其知道如何解析和序列化自身. (tcp helpers/ipv4_datagram)</li>
+<li>The CS144TCPSocket uses these tools to connect your TCPConnection to a TUN device</li>
+<li>实验都做完之后 先分析fullstack 然后分析cs144tcp<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//! \class TCPSpongeSocket</span></span><br><span class="line"><span class="comment">//! This class involves the simultaneous operation of two threads.</span></span><br><span class="line"><span class="comment">//!</span></span><br><span class="line"><span class="comment">//! One, the &quot;owner&quot; or foreground thread, interacts with this class in much the</span></span><br><span class="line"><span class="comment">//! same way as one would interact with a TCPSocket: it connects or listens, writes to</span></span><br><span class="line"><span class="comment">//! and reads from a reliable data stream, etc. Only the owner thread calls public</span></span><br><span class="line"><span class="comment">//! methods of this class.</span></span><br><span class="line"><span class="comment">//!</span></span><br><span class="line"><span class="comment">//! The other, the &quot;TCPConnection&quot; thread, takes care of the back-end tasks that the kernel would</span></span><br><span class="line"><span class="comment">//! perform for a TCPSocket: reading and parsing datagrams from the wire, filtering out</span></span><br><span class="line"><span class="comment">//! segments unrelated to the connection, etc.</span></span><br><span class="line"><span class="comment">//!</span></span><br><span class="line"><span class="comment">//! There are a few notable differences between the TCPSpongeSocket and TCPSocket interfaces:</span></span><br><span class="line"><span class="comment">//!</span></span><br><span class="line"><span class="comment">//! - a TCPSpongeSocket can only accept a single connection</span></span><br><span class="line"><span class="comment">//! - listen_and_accept() is a blocking function call that acts as both [listen(2)](\ref man2::listen)</span></span><br><span class="line"><span class="comment">//!   and [accept(2)](\ref man2::accept)</span></span><br><span class="line"><span class="comment">//! - if TCPSpongeSocket is destructed while a TCP connection is open, the connection is</span></span><br><span class="line"><span class="comment">//!   immediately terminated with a RST (call `wait_until_closed` to avoid this)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//! Helper class that makes a TCPOverIPv4SpongeSocket behave more like a (kernel) TCPSocket</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CS144TCPSocket</span> :</span> <span class="keyword">public</span> TCPOverIPv4SpongeSocket &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    CS144TCPSocket();</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">connect</span><span class="params">(<span class="keyword">const</span> Address &amp;address)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-in-IP-in-Ethernet"><a href="#TCP-in-IP-in-Ethernet" class="headerlink" title="TCP-in-IP-in-Ethernet"></a>TCP-in-IP-in-Ethernet</h3><p><strong>TCP-in-IP-in-Ethernet</strong></p>
+<ul>
+<li>在TCP-in-IP方法中 , 我们依然依赖于Linux kernel 去实现部分networking stack.<ul>
+<li>每次我们的code write一个IP datagram到TUN device , Linux kernel需要负责创建一个正确的链路层frame(如Ethernet frame). 将我们的IPdatagram作为帧的payload.</li>
+<li>这就意味着Linux kernel需要负责依据给定的IP addr , 来找出下一跳的正确Mac addr ; 如果 kernel还不知道该&lt; ip-mac &gt; , 其需要广播一个ARP查询分组 (asks, “Who claims the following IP address? What’s your Ethernet address?” and waits for a response.)</li>
+<li>这些函数由network interface负责执行<ul>
+<li><strong>network interface 功能 :  转换 IP datagram和 linker-layer frame(Ethernet)</strong> </li>
+<li><strong>在真实系统中 , network interface 的经典命名是(eth0, eth1, wlan0, etc.)</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>lab5</strong> , 实现<strong>network interface</strong> , 并将其插入到我们TCP/IP协议栈的最底层. <ul>
+<li>我们的代码将生成未经加工的 Ethernet frame. </li>
+<li>该frame会被传递给Linux的<strong>TAP device</strong>(比 TUN device更底层). TAP device传输未经加工的我们生成的linker-layer frames.</li>
+<li>下图中<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># Ethernet Header # IP Header # UDP Header # [ TCPSegment (TCP Header # Http # payload) ]  </span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/293658778">TAP device介绍</a><ul>
+<li>tap是链路层的虚拟网络设备，等同于一个以太网设备，它可以收发第二层数据报文包，如以太网数据帧。Tap最常见的用途就是做为虚拟机的网卡，因为它和普通的物理网卡更加相近，也经常用作普通机器的虚拟网卡。</li>
+<li><strong>TAP device接收上层构造好的链路层帧(link-layer frames)并直接发送出去 ;</strong> </li>
+<li><strong>TUN device接收上层的IP数据报(IP datagrams) , TUN负责构造链路层帧(link-layer frames) 再发送出去</strong></li>
+<li><blockquote>
+<p><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-08-11-00-35.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>network interface的主要工作都在于ARP协议 : 获取IP addr对应的 Ethernet addr.</li>
+</ul>
+<h2 id="地址解析协议-Address-Resolution-Protocol"><a href="#地址解析协议-Address-Resolution-Protocol" class="headerlink" title="地址解析协议 Address Resolution Protocol"></a>地址解析协议 Address Resolution Protocol</h2><ul>
+<li><p><strong>ARP : Address Resolution Protocol</strong></p>
+<ul>
+<li><strong>负责网络层地址(IP地址)和链路层地址(MAC地址)的转换</strong><br><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-11-51-58.png"> </li>
+</ul>
+</li>
+<li><p>在LAN上的每个IP节点都有一个ARP表</p>
+</li>
+<li><p>ARP表：包括一些LAN节点IP/MAC地址的映射</p>
+<ul>
+<li>&lt; IP address; MAC address; TTL&gt; </li>
+<li>TTL时间是指MAC地址映射失效的时间 ,典型是20min<br><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-11-57-06.png"></li>
+</ul>
+</li>
+<li><p>A要发送帧给B(B的IP地址已知),A需要根据ipB解析出macB.</p>
+<ul>
+<li>如果arp table中有该ipB的entry，那么易得mac地址</li>
+<li>如果arp table中没有该ipB的entry(如222.222.222.222)，那么如何 ?<ul>
+<li><strong>A广播包含B的IP地址的ARP查询包</strong><ul>
+<li>ARP查询分组</li>
+<li>目的地址使用MAC广播地址，子网LAN上的所有节点都会收到该查询包<ul>
+<li>Dest MAC address = FF-FF-FF-FF-FF-FF </li>
+</ul>
+</li>
+<li>子网中的其他适配器接收到该用于arp查询的帧，将该帧中的ARP分组向上传递给arp模块，arp模块检验该arp分组要查询的ip地址是否是本机的ip地址. <ul>
+<li>无论是否匹配 , 都缓存下收到的该查询分组&lt; sender_ip - sender_mac_addr &gt; </li>
+<li>若匹配, B给A发送回一个响应ARP分组，告知其B的MAC地址 ; 该响应分组的目的地址为A的MAC地址</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>ARP报文结构</strong><br><img src="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/2023-02-07-17-21-02.png"></p>
+</li>
+<li><p>ARP是即插即用的 : 节点自己创建ARP的表项  ; 无需网络管理员干预</p>
+</li>
+<li><p>ARP协议是网络层协议还是链路层协议.</p>
+<ul>
+<li>ARP分组既包含链路层地址，又包含网络层地址.</li>
+<li>将ARP看成是跨越链路层和网络层边界的协议<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">===================</span><br><span class="line">    传输层 </span><br><span class="line">    TCP/UDP</span><br><span class="line">===================</span><br><span class="line">    网络层</span><br><span class="line">    ICMP</span><br><span class="line">    IP</span><br><span class="line">======# ARP #=======</span><br><span class="line">    链路层</span><br><span class="line">    Ethernet 以太网帧</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>A发出的ARP查询报文 , B响应arp分组<ul>
+<li>dst_mac src_mac type 是 Ethernet报文字段. 只有mac addr 而没有ip addr</li>
+<li>opcode开始 是 arp报文. arp message中既有ip addr又有mac addr. </li>
+<li>arp查询分组的目的mac地址是广播地址 , 该BROADCAST地址填入链路层linker-layer(Ethernet)的dst mac addr , 而非 arp 报文字段中的dst mac addr. arp 报文字段中的dst mac addr应该填0<table>
+<thead>
+<tr>
+<th>dst_mac</th>
+<th>src_mac</th>
+<th>type</th>
+<th>opcode</th>
+<th>sender_mac</th>
+<th>sender_ip</th>
+<th>target_mac</th>
+<th>target_ip</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FF-FF-FF-FF-FF-FF</td>
+<td>mac_A</td>
+<td>ARP</td>
+<td>REQUET</td>
+<td>mac_A</td>
+<td>ip_A</td>
+<td>00-00-00-00-00-00</td>
+<td>ip_B</td>
+</tr>
+<tr>
+<td>mac_A</td>
+<td>mac_B</td>
+<td>ARP</td>
+<td>REPLY</td>
+<td>mac_B</td>
+<td>ip_B</td>
+<td>mac_A</td>
+<td>ip_A</td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="接口及实现"><a href="#接口及实现" class="headerlink" title="接口及实现"></a>接口及实现</h2><p><a target="_blank" rel="noopener" href="https://github.com/Cstardust/CS144_LAB/blob/master/libsponge/network_interface.cc">code</a> </p>
+<p>简单 按照逻辑实现就好 比lab0-4简单多了去了</p>
+<ul>
+<li><p><strong>class NetworkInterface 重要成员</strong></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">本network interface mac addr</span><br><span class="line"><span class="comment">//! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface</span></span><br><span class="line">EthernetAddress _ethernet_address;</span><br><span class="line"></span><br><span class="line">本network interface ip addr</span><br><span class="line"><span class="comment">//! IP (known as internet-layer or network-layer) address of the interface</span></span><br><span class="line">Address _ip_address;</span><br><span class="line"></span><br><span class="line">frames to send</span><br><span class="line"><span class="comment">//! outbound queue of Ethernet frames that the NetworkInterface wants sent</span></span><br><span class="line"><span class="built_in">std</span>::<span class="built_in">queue</span>&lt;EthernetFrame&gt; _frames_out&#123;&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">arp_table: &lt;mac addr , ttl&gt;</span><br><span class="line"><span class="keyword">using</span> MacAddrInfo = <span class="built_in">std</span>::<span class="built_in">pair</span>&lt;EthernetAddress,<span class="keyword">int</span>&gt;;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">int</span> TTL = <span class="number">30</span> * <span class="number">1000</span>;    <span class="comment">//  keep each &lt;ip-mac&gt; for 30s</span></span><br><span class="line"><span class="comment">//  ARP table : &lt;IP addr , MAC addr&gt;</span></span><br><span class="line"><span class="built_in">std</span>::<span class="built_in">unordered_map</span>&lt;<span class="keyword">uint32_t</span>,MacAddrInfo&gt; _arp_table&#123;&#125;;</span><br><span class="line"></span><br><span class="line">由于不知道ip对应的mac , 等待被发送的datagrams</span><br><span class="line"><span class="comment">//  data buffer : &lt;IP addr , datagrams&gt; </span></span><br><span class="line"><span class="built_in">std</span>::<span class="built_in">unordered_map</span>&lt;<span class="keyword">uint32_t</span>,<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;InternetDatagram&gt; &gt; _data_buffer&#123;&#125;;</span><br><span class="line"><span class="comment">//  ip - time_since_last_req</span></span><br><span class="line"></span><br><span class="line">对于每个ip的请求过去的时间</span><br><span class="line"><span class="built_in">std</span>::<span class="built_in">unordered_map</span>&lt;<span class="keyword">uint32_t</span>,<span class="keyword">int</span>&gt; _wait_for_req&#123;&#125;;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">int</span> WAITING_TIME = <span class="number">5</span> * <span class="number">1000</span>;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>network interface 功能 :  在 IP datagram 和 linker-layer frame(Ethernet) 之间转换</strong></p>
+<ul>
+<li>发送IP datagram -&gt; linker-layer frame</li>
+<li>接收 linker-layer frame -&gt; IP datagram</li>
+<li>在执行封装ipdatagram成linker-layer frame时 , 需要ip-&gt;mac地址,这时就需要用到<strong>arp协议</strong></li>
+</ul>
+</li>
+<li><p>void NetworkInterface::send_datagram(const InternetDatagram &amp;dgram,const Address &amp;next_hop)</p>
+<ul>
+<li>This method is called when the caller (e.g., your TCPConnection or a router) wants to send an outbound Internet (IP) datagram to the next hop.1</li>
+<li>将 IP datagram 封装成 Ethernet frame , 发送到下一跳next_hop<ul>
+<li>需要获取next_hop对应的mac addr<ul>
+<li>send TYPE_IPv4 : 已知mac , 则直接使用mac addr,填入ethernet字段,封装成帧,发送</li>
+<li>send TYPE_ARP : 未知mac , 广播arp request分组(查询分组封装成帧并发送),将该IP datagram缓存起来 收到arp reply后发送. <ul>
+<li>对于同一ip对应的mac 的arp request分组 , 每5s至多发送一个<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (find &lt;ip-mac&gt; <span class="keyword">and</span> <span class="keyword">not</span> expired) &#123;</span><br><span class="line">    <span class="comment">// Encapsulate the IP datagram into Ethernet frame and send it</span></span><br><span class="line">    ethernet_frame = buildEthernetFrame(TYPE_IPv4,<span class="built_in">string</span>(datagram));</span><br><span class="line">    send ipv4 frame</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">//   If the network interface already sent an ARP request about the same IP address in the last five seconds, don’t send a second request—just wait for a reply to the first one</span></span><br><span class="line">    <span class="keyword">if</span>(pass <span class="number">5</span>s since last req)</span><br><span class="line">    &#123;</span><br><span class="line">        arp = buildArpRequest(next_hop_ip);</span><br><span class="line">        ethernet_frame = buildEthernetFrame(EthernetHeader::TYPE_ARP,<span class="built_in">string</span>(arp));</span><br><span class="line">        send arp req</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  queue the dgram</span></span><br><span class="line">    _data_buffer[next_hop_ip].push_back(dgram);  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &amp;frame)</InternetDatagram></p>
+<ul>
+<li>This method is called when an Ethernet frame arrives from the network. The code should ignore any frames not destined for the network interface (meaning, the Ethernet destination is either the broadcast address or the interface’s own Ethernet address stored in the ethernet address member variable).</li>
+<li>接收从network中发来的linker-layer frame. </li>
+<li>对于不是本网卡需要接收的frame，丢弃<ul>
+<li>本网卡接收的frame : frame.dst_mac = local_mac || frame.dst_mac = ff-ff-ff-ff-ff-ff</li>
+</ul>
+</li>
+<li>对于frame的payload<ul>
+<li>IPv4 : return the resulting InternetDatagram to the caller.</li>
+<li>ARP : <ul>
+<li>无论是reply还是request,记录下该分组的&lt; sender_ip - sender_mac &gt; . 每个entry的ttl为30s。<ul>
+<li>及时发送之前由于mac未知而缓存的frame</li>
+</ul>
+</li>
+<li>对于arp request , 发送一个arp reply. 封装成帧, 发送.</li>
+</ul>
+</li>
+<li>丢弃<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (checkInValidFrame(frame)) &#123; <span class="comment">//  dst is local mac addr or broad cast</span></span><br><span class="line">    <span class="keyword">return</span> &#123;&#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (recv IPv4) &#123;</span><br><span class="line">    <span class="keyword">return</span> ipv4_data;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (recv ARP)&#123;</span><br><span class="line">    record &lt;ip-mac&gt; in arp table</span><br><span class="line"></span><br><span class="line">    clear waiting buffer of ip : send waiting datagrams</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (arp is REQUEST <span class="keyword">and</span> arp.dst_ip is to us) &#123;</span><br><span class="line">        arp_reply = buildArpReply;</span><br><span class="line">        ethernet_frame = buildEthernetFrame(</span><br><span class="line">            TYPE_ARP, arp_reply.serialize());</span><br><span class="line">        send an ARP reply</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> &#123;&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>void NetworkInterface::tick(const size_t ms_since_last_tick)</p>
+<ul>
+<li>处理ARP table(即IP mac表)中的entry过期(TTL)</li>
+<li>处理等待ARP reply的ip</li>
+</ul>
+</li>
+</ul>
+<h2 id="over"><a href="#over" class="headerlink" title="over"></a>over</h2>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/" rel="prev" title="计算机网络-CS144-lab4">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab4
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4-%E8%A1%A5%E5%85%85/" rel="next" title="计算机网络-CS144-lab4-补充">
+      计算机网络-CS144-lab4-补充 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%B0%81%E8%A3%85%E5%B9%B6%E5%8F%91%E9%80%81TCP-segment"><span class="nav-number">2.</span> <span class="nav-text">如何封装并发送TCP segment</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP-in-UDP-in-IP"><span class="nav-number">2.1.</span> <span class="nav-text">TCP-in-UDP-in-IP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP-In-IP"><span class="nav-number">2.2.</span> <span class="nav-text">TCP-In-IP</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP-in-IP-in-Ethernet"><span class="nav-number">2.3.</span> <span class="nav-text">TCP-in-IP-in-Ethernet</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E8%A7%A3%E6%9E%90%E5%8D%8F%E8%AE%AE-Address-Resolution-Protocol"><span class="nav-number">3.</span> <span class="nav-text">地址解析协议 Address Resolution Protocol</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3%E5%8F%8A%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">接口及实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#over"><span class="nav-number">5.</span> <span class="nav-text">over</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'b0e3be42a321435207d2a2919900dd5e',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

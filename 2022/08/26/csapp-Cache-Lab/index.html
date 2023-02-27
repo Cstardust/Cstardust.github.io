@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="模拟LRU">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cache-Lab">
+<meta property="og:url" content="http://example.com/2022/08/26/csapp-Cache-Lab/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="模拟LRU">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/08/26/csapp-Cache-Lab/2022-08-26-12-11-31.png">
+<meta property="og:image" content="http://example.com/2022/08/26/csapp-Cache-Lab/2022-08-26-12-14-20.png">
+<meta property="og:image" content="http://example.com/2022/08/26/csapp-Cache-Lab/2022-08-28-00-14-22.png">
+<meta property="article:published_time" content="2022-08-26T04:05:52.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:26.598Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/08/26/csapp-Cache-Lab/2022-08-26-12-11-31.png">
+
+<link rel="canonical" href="http://example.com/2022/08/26/csapp-Cache-Lab/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Cache-Lab | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/08/26/csapp-Cache-Lab/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Cache-Lab
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-08-26 12:05:52" itemprop="dateCreated datePublished" datetime="2022-08-26T12:05:52+08:00">2022-08-26</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:26" itemprop="dateModified" datetime="2023-02-27T23:18:26+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>模拟LRU</p>
+<span id="more"></span>
+
+<h1 id="CacheSimulator"><a href="#CacheSimulator" class="headerlink" title="CacheSimulator"></a>CacheSimulator</h1><ul>
+<li>pass  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/Shared_ln/csapp/cachelab$ ./test-csim </span><br><span class="line">                        Your simulator     Reference simulator</span><br><span class="line">Points (s,E,b)    Hits  Misses  Evicts    Hits  Misses  Evicts</span><br><span class="line">    3 (1,1,1)       9       8       6       9       8       6  traces/yi2.trace</span><br><span class="line">    3 (4,2,4)       4       5       2       4       5       2  traces/yi.trace</span><br><span class="line">    3 (2,1,4)       2       3       1       2       3       1  traces/dave.trace</span><br><span class="line">    3 (2,1,3)     167      71      67     167      71      67  traces/trans.trace</span><br><span class="line">    3 (2,2,3)     201      37      29     201      37      29  traces/trans.trace</span><br><span class="line">    3 (2,4,3)     212      26      10     212      26      10  traces/trans.trace</span><br><span class="line">    3 (5,1,5)     231       7       0     231       7       0  traces/trans.trace</span><br><span class="line">    6 (5,1,5)  265189   21775   21743  265189   21775   21743  traces/long.trace</span><br><span class="line">    27</span><br><span class="line"></span><br><span class="line">TEST_CSIM_RESULTS=27</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h2><ul>
+<li>层次：所模拟的是SRAM作为DRAM的缓存的替换策略。<br>  <img src="/2022/08/26/csapp-Cache-Lab/2022-08-26-12-11-31.png"></li>
+<li><strong>Placement    policy</strong>: determines    where    b    goes</li>
+<li><strong>Replacement    policy</strong>:    determines    which    block    gets evicted (victim)<br>  <img src="/2022/08/26/csapp-Cache-Lab/2022-08-26-12-14-20.png"></li>
+</ul>
+<ul>
+<li><strong>只是一个cacheSimluator 并不是真正的cache</strong><ul>
+<li>A    cache    simulator    is    NOT    a    cache!    </li>
+<li>Memory    contents    NOT    stored</li>
+<li>Block    offsets    are    NOT    used    –    the    b    bits    in    your    address    don’t matter</li>
+<li>Simply    count    hits,    misses,    and    evic-ons    </li>
+<li>由于不需要处理数据，那么load store和modify就可简化为同一函数updateCache操作。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>读题时困惑许久<ul>
+<li>cacheSimulator中，如果我Load了一个数据，发现在cache中没有，他该从哪里加载进来呢？是我们假设他从下层加载进cache了吗？但实际我们并没有做这个操作？是这样么？<ul>
+<li>没错，就是这样。</li>
+</ul>
+</li>
+<li>本实验只是专注于实现一个组中的替换（驱逐）策略：LRU<ul>
+<li>至于读时如果不命中如何从下层加载到cache中，这些都不考虑，假设不命中时会自动缓存到cache中。</li>
+<li>至于写命中时直写还是写回、写不命中时写分配还是非写分配，这些都不做。只做LRU替换策略。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/qingergege/p/5914218.html"><strong>Linux C处理命令行参数</strong></a><ul>
+<li><strong>getopt</strong></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>C格式化读取文件</strong><ul>
+<li><strong>fscanf</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>(<span class="built_in">fscanf</span>(f,<span class="string">&quot; %c %lx,%d&quot;</span>,&amp;op,&amp;addr,&amp;sz)&gt;<span class="number">0</span>)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%c, %lx %d\n&quot;</span>,op,addr,sz);</span><br><span class="line">    <span class="keyword">switch</span>(op)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;L&#x27;</span>:       <span class="comment">//  load data</span></span><br><span class="line">            updateCache(addr);</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;M&#x27;</span>:       <span class="comment">//  modified = load and store    load hit then update cache(write-back) . load not hit and then load into cache and update(write-allocate) </span></span><br><span class="line">            updateCache(addr);   <span class="comment">//  load</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;S&#x27;</span>:       <span class="comment">//  store</span></span><br><span class="line">            updateCache(addr);</span><br><span class="line">            <span class="keyword">break</span>;             </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/Shared_ln/csapp/cachelab$ ./csim -s <span class="number">4</span> -E <span class="number">1</span> -b <span class="number">4</span> -t traces/yi.trace</span><br><span class="line">L, <span class="number">10</span> <span class="number">1</span></span><br><span class="line">M, <span class="number">20</span> <span class="number">1</span></span><br><span class="line">L, <span class="number">22</span> <span class="number">1</span></span><br><span class="line">S, <span class="number">18</span> <span class="number">1</span></span><br><span class="line">L, <span class="number">110</span> <span class="number">1</span></span><br><span class="line">L, <span class="number">210</span> <span class="number">1</span></span><br><span class="line">M, <span class="number">12</span> <span class="number">1</span></span><br><span class="line">hits:<span class="number">4</span> misses:<span class="number">5</span> evictions:<span class="number">3</span></span><br><span class="line"></span><br><span class="line">yi.trace</span><br><span class="line">L <span class="number">10</span>,<span class="number">1</span></span><br><span class="line">M <span class="number">20</span>,<span class="number">1</span></span><br><span class="line">L <span class="number">22</span>,<span class="number">1</span></span><br><span class="line">S <span class="number">18</span>,<span class="number">1</span></span><br><span class="line">L <span class="number">110</span>,<span class="number">1</span></span><br><span class="line">L <span class="number">210</span>,<span class="number">1</span></span><br><span class="line">M <span class="number">12</span>,<span class="number">1</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>用unsigned long作为地址 64bits 防止被截断</p>
+</li>
+<li><p>如何取address低x位被截断</p>
+<ul>
+<li>通过mask/只通过移位</li>
+<li>见datalab如何获取低x位。</li>
+</ul>
+</li>
+<li><p><strong>思路和lc的LRU缓存思路大致相同。</strong></p>
+<ul>
+<li>本实验大致步骤<ul>
+<li>如何从命令中拿到所需的参数 getopt</li>
+<li>如何从文件中读入内容      fscanf</li>
+<li>如何构造cache结构<ul>
+<li>本实验是实现了S组LRU。<ul>
+<li>通过数组将index映射到S组中的一组。</li>
+<li>每组通过timelist维护数据和访问时间</li>
+<li>每组LRU做到了O(1)时间的驱逐evict</li>
+<li>但是，没有做到O(1)的取数load，而是O(n)。通过遍历组中的所有节点(cacheLine)</li>
+<li>L：load。S：store。M：modify = L + S。由于不处理数据，可以简化为同一函数。</li>
+</ul>
+</li>
+<li>lc通过hash实现了O(1)的取数load，通过timelist实现O(1)的evict。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Part-B-略"><a href="#Part-B-略" class="headerlink" title="Part B(略)"></a>Part B(略)</h2><ul>
+<li><p>有些繁琐、感觉没啥意思。</p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/142942823">参考</a></p>
+</li>
+<li><p>32*32</p>
+<ul>
+<li>C = 1024 Bytes</li>
+<li>直接映射 E = 1</li>
+<li>B = 32Bytes                      b = 5</li>
+<li>S = C / (S*B) = 1024/32 = 32     s = 5</li>
+<li>观察A和B的地址可以发现，A和B中相同坐标的元素 会映射到cache中的同一个cache line</li>
+<li>一行cache line可以存储8个int。A的一行可以映射到4行不冲突的cacheline。A的8行可以映射到所有cacheline而不冲突。cache可以存储8行1*32的int行。</li>
+<li>A/B[0,0]会和A/B[8,0]冲突</li>
+<li>数组的行和cache的映射关系如下图<br><img src="/2022/08/26/csapp-Cache-Lab/2022-08-28-00-14-22.png"></li>
+<li>为什么划分为8*8？因为要求不超过12个临时变量。4*4没有利用好cacheline.16*16冒出cacheline(cachlien一行只能8个int)</li>
+<li>对角线元素相同，没必要交换，且A和B会映射到同一cacheline</li>
+<li>不一次读完一行：在读某一行时，初始会有一个读miss；写对角线元素时，会有一个写miss；且会将正在读的A的该行替换出cache。而A的该行还没读完，还需要接着读，因此需要再替换进cache。造成抖动</li>
+<li>一次读完一行：在读某一行时，初始会有一个读miss，且一次性全部读完，在写对角线元素时，会有一个写miss，会将读的A行替换出cache。但不会造成抖动，因为A的改行已经读完。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">transpose_submit</span><span class="params">(<span class="keyword">int</span> M, <span class="keyword">int</span> N, <span class="keyword">int</span> A[N][M], <span class="keyword">int</span> B[M][N])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="comment">//  不一次读</span></span><br><span class="line">    <span class="keyword">int</span> i, j, m, n;</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; N; i += <span class="number">8</span>)</span><br><span class="line">            <span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; M; j += <span class="number">8</span>)</span><br><span class="line">                    <span class="keyword">for</span> (m = i; m &lt; i + <span class="number">8</span>; ++m)</span><br><span class="line">                            <span class="keyword">for</span> (n = j; n &lt; j + <span class="number">8</span>; ++n)</span><br><span class="line">                            &#123;</span><br><span class="line">                                    B[n][m] = A[m][n];</span><br><span class="line">                            &#125;</span><br><span class="line"><span class="comment">//  一次读</span></span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;M;i+=<span class="number">8</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">int</span> j=<span class="number">0</span>;j&lt;N;j+=<span class="number">8</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">for</span>(<span class="keyword">int</span> k=i;k&lt;i+<span class="number">8</span>;++k)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">int</span> t0 = A[k][j];</span><br><span class="line">                <span class="keyword">int</span> t1 = A[k][j+<span class="number">1</span>];</span><br><span class="line">                <span class="keyword">int</span> t2 = A[k][j+<span class="number">2</span>];</span><br><span class="line">                <span class="keyword">int</span> t3 = A[k][j+<span class="number">3</span>];</span><br><span class="line">                <span class="keyword">int</span> t4 = A[k][j+<span class="number">4</span>];</span><br><span class="line">                <span class="keyword">int</span> t5 = A[k][j+<span class="number">5</span>];</span><br><span class="line">                <span class="keyword">int</span> t6 = A[k][j+<span class="number">6</span>];</span><br><span class="line">                <span class="keyword">int</span> t7 = A[k][j+<span class="number">7</span>];</span><br><span class="line">  </span><br><span class="line">                B[j][k] = t0;</span><br><span class="line">                B[j+<span class="number">1</span>][k] = t1;</span><br><span class="line">                B[j+<span class="number">2</span>][k] = t2;</span><br><span class="line">                B[j+<span class="number">3</span>][k] = t3;</span><br><span class="line">                B[j+<span class="number">4</span>][k] = t4;</span><br><span class="line">                B[j+<span class="number">5</span>][k] = t5;</span><br><span class="line">                B[j+<span class="number">6</span>][k] = t6;</span><br><span class="line">                B[j+<span class="number">7</span>][k] = t7;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 不一次读（a的小矩阵每行多一次读miss）</span></span><br><span class="line">shc@shc-virtual-machine:~/桌面/cachelab$ ./test-trans -M 32 -N 32</span><br><span class="line"></span><br><span class="line">Function 0 (2 total)</span><br><span class="line">Step 1: Validating and generating memory traces</span><br><span class="line">Step 2: Evaluating performance (s=5, E=1, b=5)</span><br><span class="line">func 0 (Transpose submission): hits:1710, misses:343, evictions:311</span><br><span class="line"></span><br><span class="line">Function 1 (2 total)</span><br><span class="line">Step 1: Validating and generating memory traces</span><br><span class="line">Step 2: Evaluating performance (s=5, E=1, b=5)</span><br><span class="line">func 1 (Simple row-wise scan transpose): hits:870, misses:1183, evictions:1151</span><br><span class="line"></span><br><span class="line">Summary <span class="keyword">for</span> official submission (func 0): correctness=1 misses=343</span><br><span class="line"></span><br><span class="line">TEST_TRANS_RESULTS=1:343</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 一次读</span></span><br><span class="line"></span><br><span class="line">shc@shc-virtual-machine:~/桌面/cachelab$ ./test-trans -M 32 -N 32</span><br><span class="line"></span><br><span class="line">Function 0 (2 total)</span><br><span class="line">Step 1: Validating and generating memory traces</span><br><span class="line">Step 2: Evaluating performance (s=5, E=1, b=5)</span><br><span class="line">func 0 (Transpose submission): hits:1766, misses:287, evictions:255</span><br><span class="line"></span><br><span class="line">Function 1 (2 total)</span><br><span class="line">Step 1: Validating and generating memory traces</span><br><span class="line">Step 2: Evaluating performance (s=5, E=1, b=5)</span><br><span class="line">func 1 (Simple row-wise scan transpose): hits:870, misses:1183, evictions:1151</span><br><span class="line"></span><br><span class="line">Summary <span class="keyword">for</span> official submission (func 0): correctness=1 misses=287</span><br><span class="line"></span><br><span class="line">TEST_TRANS_RESULTS=1:287</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/19/csapp-Shell-Lab/" rel="prev" title="Shell-Lab">
+      <i class="fa fa-chevron-left"></i> Shell-Lab
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/" rel="next" title="网络_socket流程">
+      网络_socket流程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#CacheSimulator"><span class="nav-number">1.</span> <span class="nav-text">CacheSimulator</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">1.1.</span> <span class="nav-text">注意事项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Part-B-%E7%95%A5"><span class="nav-number">1.2.</span> <span class="nav-text">Part B(略)</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '2c95a40e67756a358a0cc663adb60da0',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

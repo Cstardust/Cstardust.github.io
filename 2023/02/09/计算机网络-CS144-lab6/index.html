@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="build a Router based on Network Interface  在Network Interface的基础上实现一个Router 功能 : 根据 forwarding table (&lt;ip_prefix - interface(port)&gt;). 将来自ip的分组从正确的网卡接口转发出去. 匹配规则 : 最长前缀匹配 注意entry中需要记录next_hop_ip">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab6">
+<meta property="og:url" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="build a Router based on Network Interface  在Network Interface的基础上实现一个Router 功能 : 根据 forwarding table (&lt;ip_prefix - interface(port)&gt;). 将来自ip的分组从正确的网卡接口转发出去. 匹配规则 : 最长前缀匹配 注意entry中需要记录next_hop_ip">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-08-11-25.png">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-11-26.png">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-12-23.png">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-14-12.png">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-19-56.png">
+<meta property="og:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-15-20.png">
+<meta property="article:published_time" content="2023-02-08T23:59:51.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:41.171Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-08-11-25.png">
+
+<link rel="canonical" href="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab6 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab6
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-09 07:59:51" itemprop="dateCreated datePublished" datetime="2023-02-09T07:59:51+08:00">2023-02-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:41" itemprop="dateModified" datetime="2023-02-27T23:23:41+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>build a Router based on Network Interface</p>
+<ul>
+<li>在Network Interface的基础上实现一个Router<ul>
+<li>功能 : 根据 forwarding table (&lt;ip_prefix - interface(port)&gt;). 将来自ip的分组从正确的网卡接口转发出去.</li>
+<li>匹配规则 : 最长前缀匹配</li>
+<li>注意entry中需要记录next_hop_ip</li>
+</ul>
+</li>
+<li>我们的Router只实现了数据平面（转发），并没有实现控制平面（路由选择）<ul>
+<li>控制平面的路由选择算法有 LS , DV , RIP , OSPF. 详情见《自顶向下》</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li><p>本周在NetworkInterface之上实现一个IP Router. IP Router的任务是根据routing table转发. 对于收到的dgram,router有一系列规则</p>
+<ul>
+<li>转发到正确的interface</li>
+<li>获知下一跳的IP地址(为了使得Router将其传递给NetWork Interface , NetWork Interface根据ip获取下一跳的mac地址)</li>
+</ul>
+</li>
+<li><p>概述图<img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-08-11-25.png"></p>
+</li>
+</ul>
+<p>我们的任务是 实现一个router. 去解决上述两个事情. </p>
+<ul>
+<li>我们只实现了router的数据平面 , 并没有实现router的控制平面.</li>
+<li>也即我们只实现了根据router的forwarding table,并没有实现生成forwarding_table的routing algorithm路由选择算法<ul>
+<li>You will not need to implement the algorithms that make the routing table, e.g. RIP, OSPF,BGP, or an SDN controller—just the algorithm that follows the routing table.</li>
+</ul>
+</li>
+<li>IP router不必关系任何有关TCP,ARP,Ethernet协议字段的任何东西. 只关心IP协议字段即可.</li>
+</ul>
+<h2 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h2><ul>
+<li>Router class 应该负责<ul>
+<li>维护forwarding table</li>
+<li>Router负责处理收到的网络层的datagram. 对于每个datagram<ul>
+<li>正确的发到下一跳</li>
+<li>转发到正确的NetworkInterface</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>重要成员 forwarding_table的entry  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">RouterEntry</span>&#123;</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint32_t</span> route_prefix;                <span class="comment">//  ip</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span> prefix_length;                 <span class="comment">//  ip_perfix_len</span></span><br><span class="line">    <span class="keyword">const</span> <span class="built_in">std</span>::optional&lt;Address&gt; next_hop;       <span class="comment">//  下一跳的ip地址 </span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">size_t</span> interface_num;             <span class="comment">//  从哪个网卡转发出去 编号 </span></span><br><span class="line">    RouterEntry(<span class="keyword">const</span> <span class="keyword">uint32_t</span> ip , <span class="keyword">const</span> <span class="keyword">uint8_t</span> prefix , <span class="keyword">const</span> <span class="built_in">std</span>::optional&lt;Address&gt; ne , <span class="keyword">const</span> <span class="keyword">size_t</span> interface_idx):</span><br><span class="line">        route_prefix(ip),prefix_length(prefix),next_hop(ne),interface_num(interface_idx)</span><br><span class="line">    &#123;&#125;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="built_in">std</span>::<span class="built_in">vector</span>&lt;RouterEntry&gt; _forwarding_table&#123;&#125;;</span><br><span class="line"></span><br><span class="line">一来开始以为 既然我们的router只需要维护forwarding table并转发到正确的Interface. 因此forwarding table的entry并不需要记录next_hop_ip。只需要记录 &lt;ip_perfix , interface&gt;. 但由于之后forwarding_table要调用interface接口进行发送.为了使得interface可以获取到mac地址,需要传递给下一跳的ip地址, 故forwarding table的entry中还需要记录next_hop_ip</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li><strong>void add_route(const uint32_t route_prefix, const uint8_t prefix_length, const optional&lt; Address &gt; next_hop, const size_t interface_num);</strong><ul>
+<li>保存一条 {ip_perfix,network_interface}到forwarding_table中</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>void route_one_datagram(InternetDatagram &amp;dgram);</strong><ul>
+<li><strong>“match-action” rule</strong> : <ul>
+<li>依据我们在《自顶向下》中所学，router应当对收到的dgram执行 匹配加动作 规则。而传统路由器的动作就是根据目的地转发. 也即本lab中实现的 匹配加转发</li>
+<li><strong>匹配</strong> : 将dgram中的ip和forwarding_table中的ip进行 <strong>最长前缀匹配</strong></li>
+<li><strong>动作 : 转发</strong><ul>
+<li>如果router和dst ip<strong>在同一网络</strong>中(If the router is directly attached to the network in question) , 那么forwarding_table中的entry记录的next_hop_ip为empty, router传递给network_interface的next_hop_ip为dgram_dst_ip</li>
+<li>如果router和dst ip<strong>不在同一网络</strong>中(But if the router is connected to the network in question through some other router) , 那么entry中会记录路径上的下一跳ip地址(应该是个router ip)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>步骤如下 , 根据forwarding_table找到最长前缀匹配的entry<ul>
+<li>没找到 , drop the dgram</li>
+<li>找到 , dgram TTL –.<ul>
+<li>如果TTL已经 &lt;= 0 则 drop the dgram</li>
+<li>否则 , 将dgram转发给正确的interface , 由interface将其封装成frame发送出去.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>void Router::route()</strong></p>
+<ul>
+<li>(Linker) 从network interface取出dgrams , (Internet) 调用route_one_datagram(dgram) , (Linker) 进而转发到正确的network interface 发送出去</li>
+<li><strong>Linker -&gt; Internet -&gt; Linker</strong></li>
+</ul>
+</li>
+<li><p>网络协议巧妙设计 : 分层. router只关注网络层.</p>
+<ul>
+<li>Router不必关注frame中封装的TCP 还是ARP ,也不必关注link layer frame类型. </li>
+<li>Router只需要关注 网络层的Internet datagram , 然后通过NetworkInterface 来和 链路层link layer进行交互</li>
+<li>When it comes to questions like, “How are link-layer addresses resolved?” or “Does the link layer even have its own addressing scheme distinct from IP?” or “What’s the format of the link-layer frames?” or “What’s the meaning of the datagram’s payload?”, the router just doesn’t care.</li>
+</ul>
+</li>
+<li><p>代码略 简单</p>
+</li>
+<li><p>ques : 如果router drop dgram : 没有找到对应entry , 或者ttl = 0 . 是否需要发送icmp 报文给源主机 ?</p>
+<ul>
+<li>在真实生活中 , router需要发哦是那个icmp给源主机 . 但lab中这不是必需的.即便在真实生活中 , 不是所有router都需要发送icmp报文给源地址的. </li>
+</ul>
+</li>
+</ul>
+<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><ul>
+<li>测试原理. test code中的NetWork 模拟的就是下图交互情况. NetWork中的_router就是图中中间的路由器<br>  <img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-11-26.png"></li>
+</ul>
+<ul>
+<li><p>apleasure to cherry</p>
+<blockquote>
+<p><img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-12-23.png"></p>
+</blockquote>
+</li>
+<li><p>app to internet</p>
+<blockquote>
+<p><img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-14-12.png"></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cout</span> &lt;&lt; green &lt;&lt; <span class="string">&quot;\n\nSuccess! Testing applesauce sending to the Internet.&quot;</span> &lt;&lt; normal &lt;&lt; <span class="string">&quot;\n\n&quot;</span>;</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">auto</span> dgram_sent = network.host(<span class="string">&quot;applesauce&quot;</span>).send_to(&#123;<span class="string">&quot;1.2.3.4&quot;</span>&#125;);</span><br><span class="line">    dgram_sent.header().ttl--;</span><br><span class="line">    network.host(<span class="string">&quot;default_router&quot;</span>).expect(dgram_sent);</span><br><span class="line">    network.simulate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-19-56.png"></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cout</span> &lt;&lt; green &lt;&lt; <span class="string">&quot;\n\nSuccess! Testing sending to the HS network and Internet.&quot;</span> &lt;&lt; normal &lt;&lt; <span class="string">&quot;\n\n&quot;</span>;</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">auto</span> dgram_sent = network.host(<span class="string">&quot;applesauce&quot;</span>).send_to(&#123;<span class="string">&quot;143.195.131.17&quot;</span>&#125;);</span><br><span class="line">    dgram_sent.header().ttl--;</span><br><span class="line">    network.host(<span class="string">&quot;hs_router&quot;</span>).expect(dgram_sent);</span><br><span class="line">    network.simulate();</span><br><span class="line"></span><br><span class="line">    dgram_sent = network.host(<span class="string">&quot;cherrypie&quot;</span>).send_to(&#123;<span class="string">&quot;143.195.193.52&quot;</span>&#125;);</span><br><span class="line">    dgram_sent.header().ttl--;</span><br><span class="line">    network.host(<span class="string">&quot;hs_router&quot;</span>).expect(dgram_sent);</span><br><span class="line">    network.simulate();</span><br><span class="line"></span><br><span class="line">    dgram_sent = network.host(<span class="string">&quot;cherrypie&quot;</span>).send_to(&#123;<span class="string">&quot;143.195.223.255&quot;</span>&#125;);</span><br><span class="line">    dgram_sent.header().ttl--;</span><br><span class="line">    network.host(<span class="string">&quot;hs_router&quot;</span>).expect(dgram_sent);</span><br><span class="line">    network.simulate();</span><br><span class="line"></span><br><span class="line">    dgram_sent = network.host(<span class="string">&quot;cherrypie&quot;</span>).send_to(&#123;<span class="string">&quot;143.195.224.0&quot;</span>&#125;);</span><br><span class="line">    dgram_sent.header().ttl--;</span><br><span class="line">    network.host(<span class="string">&quot;default_router&quot;</span>).expect(dgram_sent);</span><br><span class="line">    network.simulate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></blockquote>
+</li>
+<li><p>同一LAN</p>
+<blockquote>
+<p><img src="/2023/02/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab6/2023-02-10-10-15-20.png"></p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> dgram_sent = network.host(<span class="string">&quot;dm42&quot;</span>).send_to(network.host(<span class="string">&quot;dm43&quot;</span>).address());</span><br><span class="line">dgram_sent.header().ttl--;</span><br><span class="line">network.host(<span class="string">&quot;dm43&quot;</span>).expect(dgram_sent);</span><br><span class="line">network.simulate();</span><br></pre></td></tr></table></figure></blockquote>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/02/07/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-a-day-in-life-of-web-request/" rel="prev" title="计算机网络-a_day_in_life_of_web_request">
+      <i class="fa fa-chevron-left"></i> 计算机网络-a_day_in_life_of_web_request
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/02/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab7/" rel="next" title="计算机网络-CS144-lab7">
+      计算机网络-CS144-lab7 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3"><span class="nav-number">2.</span> <span class="nav-text">接口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95"><span class="nav-number">3.</span> <span class="nav-text">测试</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '3ff2521a0edc82ef468f796d93d69dad',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="EventLoop 类图 及成员 : Channel , Poller , EventLoopmuduo事件通知机制 : eventfd">
+<meta property="og:type" content="article">
+<meta property="og:title" content="muduo-EventLoop">
+<meta property="og:url" content="http://example.com/2022/10/11/muduo-EventLoop/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="EventLoop 类图 及成员 : Channel , Poller , EventLoopmuduo事件通知机制 : eventfd">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/11/muduo-EventLoop/2022-10-17-20-03-57.png">
+<meta property="article:published_time" content="2022-10-11T12:40:27.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:19:05.045Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/11/muduo-EventLoop/2022-10-17-20-03-57.png">
+
+<link rel="canonical" href="http://example.com/2022/10/11/muduo-EventLoop/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>muduo-EventLoop | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/11/muduo-EventLoop/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          muduo-EventLoop
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-11 20:40:27" itemprop="dateCreated datePublished" datetime="2022-10-11T20:40:27+08:00">2022-10-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:19:05" itemprop="dateModified" datetime="2023-02-27T23:19:05+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>EventLoop 类图 及成员 : Channel , Poller , EventLoop<br>muduo事件通知机制 : eventfd</p>
+<span id="more"></span>
+
+<h1 id="EventLoop"><a href="#EventLoop" class="headerlink" title="EventLoop"></a>EventLoop</h1><ul>
+<li><p>工作流程大致如下<br><img src="/2022/10/11/muduo-EventLoop/2022-10-17-20-03-57.png"></p>
+</li>
+<li><p>EventLoop : </p>
+<ul>
+<li>Reactor(mainReactor和subReactor)的核心！！！</li>
+</ul>
+</li>
+<li><p>主要包含</p>
+<ul>
+<li>Channel </li>
+<li>Poller  – epoll的抽象     </li>
+</ul>
+</li>
+</ul>
+<h2 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h2><ul>
+<li><p>实际使用中可分为三种channel : acceptChannel(listengingfd) , connfdChannel,(connfd) wakeupChannel(wakeupFd)</p>
+</li>
+<li><p>Channel 封装</p>
+<ul>
+<li>管理的fd</li>
+<li>挂在epoll tree上的fd的事件 如fd的EPOLLIN、EPOLLOUT</li>
+<li>poller实际监听到的事件</li>
+<li>EventHandler </li>
+</ul>
+</li>
+<li><p><strong>重要成员如下</strong></p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">EventLoop *loop_; <span class="comment">//  EventLoop channel归属于哪个EventLoop 为了获取poller</span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> fd_;    <span class="comment">//  fd</span></span><br><span class="line"><span class="keyword">int</span> events_;      <span class="comment">//  fd感兴趣的事件的集合（注册在epoll tree上要被监听的事件的集合）</span></span><br><span class="line"><span class="keyword">int</span> revents_;     <span class="comment">//  poller 实际监听到的事件</span></span><br><span class="line">std::weak_ptr&lt;<span class="keyword">void</span>&gt; tie_;   <span class="comment">//  防止channel调用回调时 TcpConnection被销毁。</span></span><br><span class="line">ReadEventCallback readCallback_; <span class="comment">//  读回调</span></span><br><span class="line">EventCallback writeCallback_;    <span class="comment">//  写回调</span></span><br><span class="line">EventCallback closeCallback_;    <span class="comment">//  连接关闭回调</span></span><br><span class="line">EventCallback errorCallback_;    <span class="comment">//  error回调</span></span><br></pre></td></tr></table></figure></li>
+<li><p><strong>重要方法如下</strong></p>
+</li>
+<li><p><strong>update</strong>：将fd及evens_注册在epoll Tree上</p>
+<ul>
+<li>Channel enable/disable -&gt; update -&gt; EventLoop -&gt; Poller -&gt; epoll_ctl<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Channel::update</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    loop_-&gt;updateChannel(<span class="keyword">this</span>);</span><br><span class="line">    <span class="comment">//  Eventloop -&gt; Poller -&gt; epoll_ctl 更新fd注册在事件表上的event</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>handleEvent</strong>：根据revents，调用相应callback</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Channel::handleEvent</span><span class="params">(<span class="keyword">const</span> Timestamp&amp; receiveTime)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">            handlerEventWithGuard(receiveTime);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  根据poller通知的channel发生的具体事件，由channel负责调用具体的回调操作</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Channel::handlerEventWithGuard</span><span class="params">(<span class="keyword">const</span> Timestamp&amp; receiveTime)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 大致如下</span></span><br><span class="line">    <span class="comment">//  对端关闭</span></span><br><span class="line">    <span class="keyword">if</span>(!(revents_ &amp; EPOLLIN) &amp;&amp; (revents_ &amp; EPOLLHUP)) </span><br><span class="line">            closeCallback_();</span><br><span class="line">    <span class="comment">//  普通的读事件</span></span><br><span class="line">    <span class="keyword">if</span>(revents_ &amp; (EPOLLIN | EPOLLPRI))</span><br><span class="line">            readCallback();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>setXXXCalllback</strong></p>
+</li>
+<li><p><strong>enable/disable Reading/Writing</strong>…</p>
+<ul>
+<li>注册到poller上 / 从poller上移除</li>
+</ul>
+</li>
+</ul>
+<h2 id="Poller"><a href="#Poller" class="headerlink" title="Poller"></a>Poller</h2><ul>
+<li><p>Poller：封装 event-based核心的IO复用(epoll_开头的相关)函数 的模块。</p>
+</li>
+<li><p>epoll为例子</p>
+</li>
+<li><p><strong>重要成员</strong></p>
+<ul>
+<li><strong>epollfd_</strong> : epfd</li>
+<li><strong>events_</strong> : 存储发生事件的集合。传递给epoll</li>
+<li><strong>ownerLoop_</strong> : 所属eventLoop</li>
+<li><strong>channels&lt;fd,Channel*&gt;</strong> : 记录注册在poller上的fd以及channel。用于将监听的channel 和 记录的channel 进行检验。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>重要方法</strong></p>
+</li>
+<li><p><strong>poll</strong>：</p>
+<ul>
+<li>epoll_wait</li>
+<li>并将fillActiveChannels，将发生的事件传递给ownerLoop_</li>
+<li>适时扩容events_<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  核心代码如下</span></span><br><span class="line"><span class="function">Timestamp <span class="title">EpollPoller::poll</span><span class="params">(<span class="keyword">int</span> timeoutMs,ChannelList *activeChannels)</span> </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  epoll_wait  </span></span><br><span class="line">        <span class="comment">//  epoll_event[] 传入传出参数 用来存内核得到事件的集合，</span></span><br><span class="line">        <span class="comment">//  maxevents     epoll总共需要监听多少个events</span></span><br><span class="line">    <span class="keyword">int</span> numEvents = <span class="built_in">epoll_wait</span>(epollfd_ , events_.<span class="built_in">begin</span>().<span class="built_in">base</span>() , <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(events_.<span class="built_in">size</span>()) , timeoutMs);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">fillActiveChannels</span>(numEvents,activeChannels);</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> Timestamp::<span class="built_in">now</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>removeChannel/updateChannel : 将事件注册/更改/移除</p>
+</li>
+</ul>
+<h2 id="EventLoop-核心逻辑"><a href="#EventLoop-核心逻辑" class="headerlink" title="EventLoop 核心逻辑"></a>EventLoop 核心逻辑</h2><ul>
+<li><p><strong>EventLoop 是 Reactor的核心</strong>，是event-based模型的核心。</p>
+<ul>
+<li><strong>作用：循环 监听事件，获取活跃事件，并且根据发生events，来handleEvent</strong></li>
+<li>EventLoop 通过调用 Poller 和 Channel 并协作。</li>
+<li>Poller: 监听并获取发生事件 上传给EventLoop(activeChannelList)</li>
+<li>Channel: 封装fd以及相应event以及相应callback。EventLoop根据Poller上传的channel 来调用handleEvent 处理事件。</li>
+</ul>
+</li>
+<li><p><strong>EventLoop 最重要的函数！！: loop</strong> : 核心逻辑如下</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// loop -&gt; epoll_wait -&gt; handleEvent(IO线程监听到的event) -&gt; doPendingFunctor()(其他worker线程加入的event cb)</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::loop</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  保证是eventloop所属的thread使用该eventloop的loop方法</span></span><br><span class="line">    assertInLoopThread();</span><br><span class="line">    <span class="keyword">while</span>(!quit_)</span><br><span class="line">    &#123;</span><br><span class="line">        activeChannels_.clear();</span><br><span class="line">        <span class="comment">//  监听两类fd</span></span><br><span class="line">            <span class="comment">//  一种是 listenfd / connfd</span></span><br><span class="line">            <span class="comment">//  一种是 **wakeupfd**</span></span><br><span class="line">        pollReturnTime_ = poller_-&gt;poll(kPollerTimeMs,&amp;activeChannels_);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  对于mainReactor的IO loop , 负责监听listenfd , handler : 接收新来的连接 并将新来的连接派发给subReactor(其他thread的eventloop)</span></span><br><span class="line">        <span class="comment">//  对于subReactor的IO loop  , 负责监听connfd   , handler : 处理 已连接socket上发生的事件.可以在subreactor的ioloop中处理 也可将任务打包提交给线程池处理</span></span><br><span class="line">        <span class="keyword">for</span>(Channel *channel:activeChannels_)</span><br><span class="line">        &#123;</span><br><span class="line">            channel-&gt;handleEvent(pollReturnTime_);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  执行添加给本eventLoop的回调操作(可能是本thread或其他thread)</span></span><br><span class="line">        doPendingFunctors(); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h1 id="One-loop-per-thread"><a href="#One-loop-per-thread" class="headerlink" title="One loop per thread"></a>One loop per thread</h1><ul>
+<li>one loop per thread : 为了充分利用多核cpu.每一个核的cpu上跑一个Loop的Thread。</li>
+</ul>
+<h1 id="事件通知机制"><a href="#事件通知机制" class="headerlink" title="事件通知机制"></a>事件通知机制</h1><h2 id="eventfd"><a href="#eventfd" class="headerlink" title="eventfd"></a>eventfd</h2><ul>
+<li><p>eventfd : 可用于唤醒等待中的epoll_wait,select等. 以此来作为一种线程间的事件通知机制</p>
+<ul>
+<li>thread A处于epoll_wait. 且eventfd注册在上面.</li>
+<li>thread B写eventfd, 唤醒thread A的epoll_wait. 让thread A向下执行,处理事务.</li>
+</ul>
+</li>
+<li><p>函数如下</p>
+<ul>
+<li>int eventfd(unsigned int initval, int flags);</li>
+<li>eventfd()创建了一个 eventfd object , 其中拥有着一个64bit的整形计数器. 该计数器中的值为user传入的initval</li>
+<li>read ： 成功读取返回一个8byte的整数。read（2）如果提供的缓冲区的大小小于8个字节返回错误EINVAL</li>
+<li>write将缓冲区写入的8字节整形值加到内核计数器上。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;cassert&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/eventfd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">threadFunc</span><span class="params">(<span class="keyword">int</span> eventFd)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    sleep(<span class="number">5</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> buf = <span class="number">999</span>;</span><br><span class="line">    <span class="keyword">ssize_t</span> n = write(eventFd,&amp;buf,<span class="keyword">sizeof</span> buf);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(n!=<span class="keyword">sizeof</span> buf)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;write &quot;</span>&lt;&lt;n&lt;&lt;<span class="string">&quot; bytes instead of 8&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> eventFd = eventfd(<span class="number">0</span>,EFD_NONBLOCK | EFD_CLOEXEC);</span><br><span class="line">    <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;eventFd : &quot;</span>&lt;&lt;eventFd&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">int</span> epfd = epoll_create(<span class="number">1</span>);</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">events</span>[5];</span></span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">event</span>;</span></span><br><span class="line">        event.data.fd = eventFd;</span><br><span class="line">        event.events = EPOLLIN;</span><br><span class="line">        epoll_ctl(epfd,EPOLL_CTL_ADD,eventFd,&amp;event);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="built_in">std</span>::thread <span class="title">t</span><span class="params">(threadFunc,eventFd)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">int</span> numEvents = epoll_wait(epfd,events,<span class="number">5</span>,<span class="number">1000</span>);</span><br><span class="line">        <span class="keyword">if</span>(numEvents == <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;timeout&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        assert(numEvents == <span class="number">1</span>);</span><br><span class="line">        assert(events[<span class="number">0</span>].data.fd == eventFd);</span><br><span class="line">        <span class="keyword">uint64_t</span> buf = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">long</span> n = read(eventFd,&amp;buf,<span class="keyword">sizeof</span> buf);</span><br><span class="line">        <span class="keyword">if</span>(n!=<span class="keyword">sizeof</span> buf)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;read &quot;</span>&lt;&lt;n&lt;&lt;<span class="string">&quot; bytes instead of 8&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">            <span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;read &quot;</span>&lt;&lt;n&lt;&lt;<span class="string">&quot; bytes &quot;</span>&lt;&lt;buf&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    t.join();</span><br><span class="line">    close(eventFd);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;finished&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@DESKTOP-TVUERHD:~/Code/<span class="keyword">try</span>$ ./eventFd </span><br><span class="line">eventFd : <span class="number">3</span></span><br><span class="line">timeout</span><br><span class="line">timeout</span><br><span class="line">timeout</span><br><span class="line">timeout</span><br><span class="line">read <span class="number">8</span> bytes <span class="number">999</span></span><br><span class="line">finished</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="wakeupFd"><a href="#wakeupFd" class="headerlink" title="wakeupFd"></a>wakeupFd</h2><h3 id="eventfd封装"><a href="#eventfd封装" class="headerlink" title="eventfd封装"></a>eventfd封装</h3><ul>
+<li><p>int wakeupFd_;  主要作用：当mainLoop获取一个新用户的channel，通过轮询算法选择一个subLoop 通过wakeupFd唤醒subLoop处理channel</p>
+</li>
+<li><p>wakeup : EventLoop提供给外界唤醒其epoll_wait的</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  用来唤醒loop所在的(所属于的)线程(IO线程)。向wakeupFd_写一个数据。</span></span><br><span class="line"><span class="comment">//  wakeupChannel就发生读事件 当前loop线程就会被唤醒。</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::wakeup</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    LOG_DEBUG(<span class="string">&quot;wakeup&quot;</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> one = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">ssize_t</span> n = write(wakeupFd_,&amp;one,<span class="keyword">sizeof</span> one);</span><br><span class="line">    <span class="keyword">if</span>(n != <span class="keyword">sizeof</span> one)</span><br><span class="line">    &#123;</span><br><span class="line">        LOG_ERROR(<span class="string">&quot;EventLoop:wake() writes %lu bytes instead of 8\n&quot;</span>,n);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>Eventloop处理eventFd的读事件. 防止LT下busyloop. </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::handleWakeUpFd</span><span class="params">(<span class="keyword">const</span> Timestamp&amp; )</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    LOG_DEBUG(<span class="string">&quot;handle wakeupFd\n&quot;</span>);</span><br><span class="line">    <span class="keyword">uint64_t</span> one = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">ssize_t</span> n = read(wakeupFd_,&amp;one,<span class="keyword">sizeof</span> one);</span><br><span class="line">    <span class="keyword">if</span>(n!=<span class="keyword">sizeof</span> one)</span><br><span class="line">    &#123;</span><br><span class="line">        LOG_ERROR(<span class="string">&quot;EventLoop::handleRead() reads %ld bytes instead of 8\n&quot;</span>,n);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="分发连接"><a href="#分发连接" class="headerlink" title="分发连接"></a>分发连接</h3><ul>
+<li><p>问题:<strong>mainReactor如何分发连接</strong> ? 当mainReactor上的Acceptor建立新的连接时，如何将该连接(TCPConnection(connfd))的读写事件注册给subReactor的eventloop中的poller? 让subReactor负责该connfd的所有读写的监听以及回调.</p>
+<ul>
+<li>这也就是所谓的<strong>muduo的事件通知机制</strong>.</li>
+<li>通过<strong>eventfd(wakeupFd_).统一事件源</strong></li>
+</ul>
+</li>
+<li><p><strong>事件分发机制概述:每个eventloop都有一个eventfd,其注册在自己loop的epoll上. 外界在想唤醒eventloop,让他处理事件的时候,就向eventloop放入处理事件的callback,然后通过wakeup()向eventFd写8bytes,将eventloope从poll_wait唤醒，处理放入的callback</strong>.</p>
+</li>
+<li><p>那么回到问题.mainReactor如何分发连接 ?</p>
+<ul>
+<li>连接建立后,mainReactor上的acceptor调用TcpServer::newConnection,为connfd指定eventloop(subloop),(TCPConnection)设置读写回调. 然后调用subloop的runInLoop-&gt;queueInLoop-&gt;<strong>wakeup()</strong>, subloop从epoll_wait中离开，执行connectionEstablished.<ul>
+<li><strong>queueInLoop会将TcpConnection::connectionEstablished交给该eventloop. 该callback就是将connfd注册到该loop的poller</strong></li>
+</ul>
+</li>
+<li>到此，分发完成.</li>
+<li>之后该eventloop负责该connfd的所有读写事件.</li>
+</ul>
+</li>
+</ul>
+<h3 id="code"><a href="#code" class="headerlink" title="code"></a>code</h3><ul>
+<li>mainReactor(main thread)分发连接代码<ul>
+<li>mainReactor的Acceptor<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 有一个新的客户端的连接，eventloop 会调用acceptor的handleConnection handleConnection会执行这个回调操作</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpServer::newConnection</span><span class="params">(<span class="keyword">int</span> connfd, <span class="keyword">const</span> InetAddress &amp;peerAddr, <span class="keyword">const</span> InetAddress &amp;localAddr)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    LOG_DEBUG(<span class="string">&quot;TcpServer::newConnection [%s] - new connection [%s] from %s \n&quot;</span>,</span><br><span class="line">            name_.c_str(), connName.c_str(), peerAddr.toIpPort().c_str());</span><br><span class="line">    <span class="comment">//  mainReactor的Acceptor为connfd指定eventloop    </span></span><br><span class="line">    EventLoop *ioLoop = threadPool_-&gt;getNextLoop();</span><br><span class="line">    <span class="function">TcpConnection <span class="title">conn</span><span class="params">(ioLoop,connfd)</span></span></span><br><span class="line"><span class="function">    conn-&gt;<span class="title">setUserCallback</span><span class="params">(...)</span></span>;</span><br><span class="line">    <span class="comment">//  调用eventloop的runInLoop -&gt; queueInLoop 分发连接</span></span><br><span class="line">    ioLoop-&gt;runInLoop(<span class="built_in">std</span>::bind(&amp;TcpConnection::connectionEstablished, conn));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>mainReactor调用subReactor的eventloop的runInLoop <ul>
+<li>将connectionEstablished放入eventloop(pendingFunctor)</li>
+<li>wakeup唤醒eventloop<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  把cb放入队列 (wakeupfd唤醒loop所在线程 执行cb)</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::queueInLoop</span><span class="params">(<span class="keyword">const</span> Functor&amp; cb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    pendingFunctors_.emplace_back(cb);</span><br><span class="line">    <span class="keyword">if</span>(!isInLoopThread())          </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  main thread 通过loop对象wakeup方法 唤醒卡在epoll wait的eventloop</span></span><br><span class="line">        wakeup();                                          </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>subReactor的Eventloop被唤醒。在doPendingFunctor中通过TcpConnection::connectionEstablished真正实现分发连接. 将该connfd的读写事件注册到本channel所属TCPConnection的loop的poller上(每个loop都有一个poller channel只要知道自己是哪个loop就能找到对应的poller.)<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::connectionEstablished</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  注册! connfd 到 loop&#x27;s poller!</span></span><br><span class="line">    channel_-&gt;enableReading();           </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><ul>
+<li><p><strong>一言以bi之：</strong></p>
+<ul>
+<li><strong>mainReactor在建立新连接后，通过写eventFd唤醒subReactor. subReactor将connfd注册在其epoll上，之后负责监听处理connfd所有的读写事件.</strong></li>
+</ul>
+</li>
+<li><p>所谓<strong>统一事件源</strong>:</p>
+</li>
+<li><p>subReactor要处理的事件只有监听connfd的读写，并不负责建立新连接. 试想（我猜的）如果没有eventfd. 那么 mainReactor接收新连接后要实现分:就只能通过信号通知subReactor，亦或者是放入一个任务队列 ,subReactor定期从中拿取新连接. 都过于复杂或者性能低. </p>
+</li>
+<li><p>而有了eventFd,mainReactor可以向其中写来唤醒subReactor. 从subReactor的角度来看也是将事件 : 监听新connfd 转化成了一个 eventfd的读事件. 也是通过epoll监听. 和其他正常connfd的读写一样. </p>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E5%8F%AF%E9%9D%A0%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93-%E6%B5%81%E6%B0%B4%E7%BA%BF/" rel="prev" title="计算机网络-传输层-可靠数据传输-流水线">
+      <i class="fa fa-chevron-left"></i> 计算机网络-传输层-可靠数据传输-流水线
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/" rel="next" title="并发-互斥算法-Peterson算法">
+      并发-互斥算法-Peterson算法 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#EventLoop"><span class="nav-number">1.</span> <span class="nav-text">EventLoop</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Channel"><span class="nav-number">1.1.</span> <span class="nav-text">Channel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Poller"><span class="nav-number">1.2.</span> <span class="nav-text">Poller</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EventLoop-%E6%A0%B8%E5%BF%83%E9%80%BB%E8%BE%91"><span class="nav-number">1.3.</span> <span class="nav-text">EventLoop 核心逻辑</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#One-loop-per-thread"><span class="nav-number">2.</span> <span class="nav-text">One loop per thread</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E9%80%9A%E7%9F%A5%E6%9C%BA%E5%88%B6"><span class="nav-number">3.</span> <span class="nav-text">事件通知机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#eventfd"><span class="nav-number">3.1.</span> <span class="nav-text">eventfd</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#wakeupFd"><span class="nav-number">3.2.</span> <span class="nav-text">wakeupFd</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#eventfd%E5%B0%81%E8%A3%85"><span class="nav-number">3.2.1.</span> <span class="nav-text">eventfd封装</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E5%8F%91%E8%BF%9E%E6%8E%A5"><span class="nav-number">3.2.2.</span> <span class="nav-text">分发连接</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#code"><span class="nav-number">3.2.3.</span> <span class="nav-text">code</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">3.2.4.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '3b9a15612a4c2c188bbba02c29bb4c17',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

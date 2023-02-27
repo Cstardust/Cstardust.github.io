@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="一言以蔽之  lab2实现的tcp receiver  （0） 转换stream_idx ，abs_seq ，seq（属于内部功能)   （1） 利用 StreamReassembler对 接收到的segment进行重组 并压入bytestream （2） 填充receive_window的相关信息：ackno , window_size， 从而实现flow-control流量控制 （3） 根据">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab2">
+<meta property="og:url" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="一言以蔽之  lab2实现的tcp receiver  （0） 转换stream_idx ，abs_seq ，seq（属于内部功能)   （1） 利用 StreamReassembler对 接收到的segment进行重组 并压入bytestream （2） 填充receive_window的相关信息：ackno , window_size， 从而实现flow-control流量控制 （3） 根据">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-17-59.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-02-27-22-58-04.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-17-59.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-36-11.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-54-16.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-11-51-52.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-46-55.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-13-11-45.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-13-12-10.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-59-44.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-17-34.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-17-45.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-27-00.png">
+<meta property="og:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-22-14-58.png">
+<meta property="article:published_time" content="2023-01-01T07:09:22.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:43.967Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-17-59.png">
+
+<link rel="canonical" href="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab2 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-01 15:09:22" itemprop="dateCreated datePublished" datetime="2023-01-01T15:09:22+08:00">2023-01-01</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:43" itemprop="dateModified" datetime="2023-02-27T23:23:43+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>14k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>13 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-17-59.png"></p>
+<p>一言以蔽之</p>
+<ul>
+<li><p>lab2实现的tcp receiver</p>
+<ul>
+<li>（0） 转换stream_idx ，abs_seq ，seq（属于内部功能)  </li>
+<li>（1） 利用 StreamReassembler对 接收到的segment进行重组 并压入bytestream</li>
+<li>（2） 填充receive_window的相关信息：ackno , window_size， 从而实现flow-control流量控制</li>
+<li>（3） 根据 接收到的报文 对tcp receiver进行状态划分. listen syn_recv fin_recv</li>
+</ul>
+</li>
+<li><p>我们的receiver只实现了234</p>
+<ul>
+<li><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-02-27-22-58-04.png"></li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="背景-amp-Receiver功能-amp-分析"><a href="#背景-amp-Receiver功能-amp-分析" class="headerlink" title="背景 &amp; Receiver功能 &amp; 分析"></a>背景 &amp; Receiver功能 &amp; 分析</h2><p><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-17-59.png"></p>
+<ul>
+<li><p>lab0实现了ByteStream，lab1实现了StreamReassembler，lab2要求我们实现TCPReceiver</p>
+</li>
+<li><p>TCP是一个在不可靠数据报之上 可靠地传输 可控制的字节流。TCP连接有两方参与，每一方都同时扮演着sender和receiver的角色。这两方被称为TCP连接的端点endpoint或者对等方peers</p>
+</li>
+<li><p><strong>TCP receiver</strong></p>
+<ul>
+<li><strong>(1) 接收对端发来的segment</strong></li>
+<li><strong>(2) 使用我们之前实现的StreamReassembler将segment重组进ByteStream</strong></li>
+<li><strong>(3) 计算出receive_window的相关信息：ackno以及receive_window size</strong>. 随output segment被传输给对端<ul>
+<li><strong>receive_window</strong>：<ul>
+<li>含义：receiver感兴趣的、愿意接受的字节的下标范围，也是允许 tcp sender 发送的字节范围。</li>
+<li>作用：tcp receiver使用该receive window，可以进行流量控制，使得sender限制自己的发送量，直到receiver可以接收更多data。（Using the window, the receiver can control the flow of incoming data, making the sender limit how much it sends until the receiver is ready for more.）</li>
+<li><strong>ackno</strong> : 即tcp header中的acknowledgement number字段。<ul>
+<li>即 lab1中所实现的receive_window [first_unassembled,first_unacceptable)的左边界</li>
+<li>即 ackno = first_unassembled</li>
+<li>含义如下<ul>
+<li>receiver期望从另一方收到的下一个字节的序号，（接收该字节可以使得receiver重组更多的字节流）</li>
+<li><strong>累计确认</strong></li>
+<li>ack number：已经收到了[begin,ack-1]的所有bytes，期待收到的下一个byte是ack 。 即期待收到的下一个TCP报文段的body的起始字节的序号是ack</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>window_size</strong> : 即TCP Header中的window size字段 <ul>
+<li>即lab1中所实现的receiving_window的大小</li>
+<li>receive_window size + stream size = capacity</li>
+<li>receive_window size = first_unacceptable - first_unassembled</li>
+<li><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-16-36-11.png"></li>
+</ul>
+</li>
+<li><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-54-16.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>为什么要实现这些？</p>
+<ul>
+<li>这些信号对实现TCP的功能至关重要，为了TCP能够在不可靠的数据报网络之上提供流量控制、可靠的字节流。</li>
+<li>TCP中，<strong>ack</strong>意味着，接收方所期待的下一个字节，使其能够重组更多的bytestream。它告诉sender应该发送什么字节</li>
+<li><strong>Flow Control</strong>流量控制意味着 receiver感兴趣的、愿意接受的字节的下标范围。这告知了sender其被允许发送多少字节。</li>
+</ul>
+</li>
+</ul>
+<h2 id="index-关系"><a href="#index-关系" class="headerlink" title="index 关系"></a>index 关系</h2><p><strong>seqno , absolute seqno , stream idx</strong></p>
+<ul>
+<li><p>A 64-bit index is big enough that we can treat it as never overflowing.</p>
+<ul>
+<li>Transmitting at 100 gigabits/sec, it would take almost 50 years to reach 2^64 bytes. By contrast, it takes only a third of a second to reach 2^32 bytes</li>
+</ul>
+</li>
+<li><p><strong>seqno</strong></p>
+<ul>
+<li>32bits , wrapping<ul>
+<li>tcp 的 stream 可以任意长</li>
+</ul>
+</li>
+<li>start from isn(Initial Sequence Number)<ul>
+<li>TCP sequence numbers start at a random value.</li>
+<li>To improve security and avoid getting confused by old segments belonging to earlier connections between the same endpoints, TCP tries to make sure sequence numbers can’t be guessed and are unlikely to repeat. So the sequence numbers for a stream don’t start at zero.</li>
+</ul>
+</li>
+<li>Include SYN/FIN<ul>
+<li>The logical beginning and ending each occupy one sequence number</li>
+<li>SYN报文 代表 beginning of the stream , 占据ISN seq，</li>
+<li>FIN报文 代表 end of the stream , 占据最后一个seq</li>
+<li>SYN和FIN之间的每个byte都占据一个seq</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>absolute seq</strong> : </p>
+<ul>
+<li>不考虑(isn)initial seq num，即seq - isn。(即start at 0)</li>
+<li>64bit , non-wrapping。</li>
+<li>包含SYN/FIN。</li>
+</ul>
+</li>
+<li><p><strong>stream idx</strong> : </p>
+<ul>
+<li>StreamReassembler中，stream中每个字节的idx。</li>
+<li>start at 0</li>
+<li>64bit , non-wrapping。</li>
+<li>不包含SYN/FIN</li>
+</ul>
+</li>
+<li><p><strong>seqno , absolute seqno , stream idx之间的关系 关键图</strong><br><strong><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-11-51-52.png"></strong><br><strong><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-46-55.png"></strong></p>
+</li>
+<li><p>转换：stream_idx &lt;-&gt; abs_seq &lt;-&gt; seq</p>
+</li>
+<li><p>易知stream_idx和abs_seq之间的转换</p>
+<ul>
+<li>assert(absolute seq &gt; 0) : stream_idx = absolute seq - 1 </li>
+</ul>
+</li>
+<li><p>abs_seq和seq之间的转换见下。</p>
+</li>
+</ul>
+<h3 id="WrappingInt32-seq-lt-gt-abs-seq"><a href="#WrappingInt32-seq-lt-gt-abs-seq" class="headerlink" title="WrappingInt32 seq &lt;-&gt; abs_seq"></a>WrappingInt32 seq &lt;-&gt; abs_seq</h3><ul>
+<li><p>WrappingInt32 </p>
+<ul>
+<li>实现absolute sequence number和sequence nunmber的转换</li>
+</ul>
+</li>
+<li><p>absolute sequence number -&gt; sequence number</p>
+<ul>
+<li>WrappingInt32 wrap(uint64_t abs_seq, WrappingInt32 isn)</li>
+<li>abs_seq : seq = (abs_seq + isn) % 2^32<ul>
+<li><code>[63,32][31,0]</code>,舍去<code>[63,32]</code>，转化成seq只需要其低32bit加上isn即可。</li>
+<li>因为seq的域是<code>[0,2^32-1]</code>，abs_seq每增加<code>2^32</code>，其对应的seq就回到起点的isn</li>
+<li><code>对于任意isn，abs_seq : 0 / 2^32 / k * 2^32 + x  ---&gt;  seq : isn + x</code></li>
+<li><code>如 abs_seq = 2^32 + 3 ---&gt; seq = isn + 3 = 1 ，当isn = 2^32-2时，seq = 1</code><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">WrappingInt32 <span class="title">wrap</span><span class="params">(<span class="keyword">uint64_t</span> abs_seq, WrappingInt32 isn)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> isn + <span class="keyword">static_cast</span>&lt;<span class="keyword">uint32_t</span>&gt;(abs_seq);  </span><br><span class="line">    <span class="comment">//  该加法（底层就是uint32位加法)会自动对2^32取模  </span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>sequence number -&gt; absolute sequence number</p>
+<ul>
+<li>uint64_t unwrap(WrappingInt32 seq, WrappingInt32 isn, uint64_t checkpoint)<ul>
+<li>Given a sequence number (n), the Initial Sequence Number (isn), and an absolute checkpoint sequence number, compute the absolute sequence number that corresponds to n that is closest to the checkpoint</li>
+<li>closet : 没有向上取最接近还是向下取最接近之分，无论上下，只要求最接近即可。</li>
+</ul>
+</li>
+<li>易知对于任意seq，其在<code>[0,2^64-1]</code>的每个2^32大小的域上，都有一个abs_seq_num，wrap函数的目标就是返回其中最接近checkpoint的abs_seq_num</li>
+<li>思路：<ul>
+<li><ol>
+<li>先求出abs no 在域<code>[0,2^32-1]</code>上的值为abs_base，易知目标abs_seq_num = abs_base + k * 2^32。</li>
+</ol>
+<ul>
+<li><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-13-11-45.png"></li>
+</ul>
+</li>
+<li><ol start="2">
+<li>求出最接近的abs_seq_num ? </li>
+</ol>
+<ul>
+<li>找到abs_base和checkpoint的距离offset：令checkpoint在[0,2^32-1|域上对应的值 和 [0,2^32-1]域上的abs_base求差。|checkpoint(low 32bit) - abs_base|。</li>
+<li>a. 先假设checkpoint lowbit &gt; abs_base。<ul>
+<li>然后讨论abs_seq的两种情况：<ul>
+<li>落在checkpoint左侧，abs_seq1 = check_point - offset ；落在checkpoint右侧，abs_seq2 = check_point + 2^32 - offset。如下图1</li>
+<li>等价为 offset的两种情况。<ul>
+<li>offset &lt; 2^31 , then abs_seq1; offset &gt;= 2^31 , then abs_seq2。</li>
+</ul>
+</li>
+<li>（对于左右abs_seq和check_point距离相等时，我选择了右侧的check_point，因为我觉着从定义来讲，我们传入的check_point是接收窗口最左端，也即_first_unassembled，也即ackno，_first_unassembled左侧的字节都已经读完了进入bytestream，我们期待的，以及理论上应该接接收的是位于滑动窗口最左端往右的字节，故选择右侧而非左侧。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>b. 同理，当checkpoint lowbit &lt; abs_base，情况如下图2。<ul>
+<li>offset &lt;= 2^31 , then abs_seq1 ; offset &gt; 2^31 , them abs_seq2。</li>
+</ul>
+</li>
+<li><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-13-12-10.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>seq -&gt; abs_seq举例<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. Unwrap the first byte after ISN</span></span><br><span class="line">seq = <span class="number">1</span> , isn = <span class="number">0</span> , check_point = <span class="number">0</span> -&gt; closet abs_seq = <span class="number">1</span> = seq - isn（逻辑）</span><br><span class="line">test_should_be(unwrap(WrappingInt32(<span class="number">1</span>), WrappingInt32(<span class="number">0</span>), <span class="number">0</span>), <span class="number">1ul</span>);</span><br><span class="line"><span class="comment">// 2. Unwrap the last byte before the third wrap</span></span><br><span class="line">seq = <span class="number">2</span>^<span class="number">32</span> - <span class="number">2</span> , isn = <span class="number">0</span> , check_point = <span class="number">3</span> * <span class="number">2</span>^<span class="number">32</span> -&gt; closet abs_seq = <span class="number">3</span> * <span class="number">2</span>^<span class="number">32</span> - <span class="number">2</span> = check_point - <span class="number">2</span></span><br><span class="line">test_should_be(unwrap(WrappingInt32(UINT32_MAX - <span class="number">1</span>), WrappingInt32(<span class="number">0</span>), <span class="number">3</span> * (<span class="number">1ul</span> &lt;&lt; <span class="number">32</span>)), <span class="number">3</span> * (<span class="number">1ul</span> &lt;&lt; <span class="number">32</span>) - <span class="number">2</span>);</span><br><span class="line"><span class="comment">// 3. Non-zero ISN</span></span><br><span class="line">seq = <span class="number">2</span>^<span class="number">32</span> - <span class="number">1</span> , isn = <span class="number">10</span> , check_point = <span class="number">2</span> * <span class="number">2</span>^<span class="number">32</span> -&gt; closet abs_seq = <span class="number">3</span> * <span class="number">2</span>^<span class="number">32</span> - <span class="number">1</span> - <span class="number">10</span></span><br><span class="line">test_should_be(unwrap(WrappingInt32(UINT32_MAX), WrappingInt32(<span class="number">10</span>), <span class="number">3</span> * (<span class="number">1ul</span> &lt;&lt; <span class="number">32</span>)), <span class="number">3</span> * (<span class="number">1ul</span> &lt;&lt; <span class="number">32</span>) - <span class="number">11</span>);</span><br><span class="line"><span class="comment">// 4. Unwrap a non-zero ISN</span></span><br><span class="line">seq = <span class="number">16</span> , isn = <span class="number">16</span> , check_point = <span class="number">0</span> -&gt; closet <span class="built_in">abs</span> seq = seq - isn = <span class="number">0</span></span><br><span class="line">test_should_be(unwrap(WrappingInt32(<span class="number">16</span>), WrappingInt32(<span class="number">16</span>), <span class="number">0</span>), <span class="number">0ul</span>);</span><br></pre></td></tr></table></figure>
+<ul>
+<li><strong>corner case : 对于下溢情况，选择非下溢的一侧</strong> <ul>
+<li>seq = 2^32 - 1 , isn = 0 , check_point = 0 -&gt; closet seq = 2 ^ 32 - 1<ul>
+<li>按照closet的逻辑，closet seq 有两个选择</li>
+<li>位于check_point左侧，即 abs_seq = checkpoint(0) - 1 = 18446744073709551615 </li>
+<li>位于check_point右侧，即 abs_seq = checkpoint(0) + 2^32 - 1 = 2^32 - 1</li>
+<li>若仅仅按照closet，则应当选择check_point左侧的abs_seq(18446744073709551615)，但实际上，应当选择check_point右侧的abs_seq</li>
+<li>原因如下：unwrap的意义<ul>
+<li>目的是将字节流中的seq，依据checkpoint，转化成正确的对应的abs_seq。</li>
+<li>易知按照100 GB/sec的传输速度，要发送五十多年，才能发送到2^64bytes，可以看作abs_seq是不可能到达2^64级别的byte。</li>
+<li>故本case中check_point(0)左侧的下溢情况应当为非法情况。应选择 abs_seq = 2^32 - 1</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>故：<ul>
+<li>当abs_seq位于check_point左侧 且 发生 下溢(到2^64bytes) 时，选择check_point右侧的abs_seq。</li>
+<li>当abs_seq位于check_point右侧 且 发生 上溢（重新到0）时，正常计算、上溢取模即可。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// corner case : 4. Big unwrap</span></span><br><span class="line">test_should_be(unwrap(WrappingInt32(UINT32_MAX), WrappingInt32(<span class="number">0</span>), <span class="number">0</span>), <span class="keyword">static_cast</span>&lt;<span class="keyword">uint64_t</span>&gt;(UINT32_MAX));</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>实现  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">uint64_t</span> <span class="title">unwrap</span><span class="params">(WrappingInt32 seq, WrappingInt32 isn, <span class="keyword">uint64_t</span> checkpoint)</span> </span>&#123;</span><br><span class="line"><span class="comment">//  seqno -&gt; absolute seq no</span></span><br><span class="line">    <span class="keyword">uint32_t</span> base_abs = seq - isn;</span><br><span class="line">    <span class="keyword">if</span>( base_abs &gt;= <span class="keyword">static_cast</span>&lt;<span class="keyword">uint32_t</span>&gt;(checkpoint))</span><br><span class="line">      &#123;</span><br><span class="line">          <span class="keyword">uint32_t</span> offset = base_abs - <span class="keyword">static_cast</span>&lt;<span class="keyword">uint32_t</span>&gt;(checkpoint);</span><br><span class="line">          <span class="keyword">if</span>(offset &lt;= (<span class="number">1ul</span>&lt;&lt;<span class="number">31</span>))</span><br><span class="line">          &#123;</span><br><span class="line">              <span class="keyword">return</span> checkpoint + offset;</span><br><span class="line">          &#125;</span><br><span class="line">          <span class="keyword">else</span></span><br><span class="line">          &#123;</span><br><span class="line">              <span class="comment">//  corner case : 当下溢时 选择右侧 而不是左侧溢出到2^64</span></span><br><span class="line">              <span class="keyword">if</span>(checkpoint &lt; (WrappingInt32::_MOD - offset))</span><br><span class="line">                  <span class="keyword">return</span> checkpoint + offset;</span><br><span class="line">              <span class="keyword">return</span> checkpoint - (WrappingInt32::_MOD - offset);</span><br><span class="line">          &#125;</span><br><span class="line">      &#125; </span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">      &#123;</span><br><span class="line">          <span class="keyword">uint32_t</span> offset = <span class="keyword">static_cast</span>&lt;<span class="keyword">uint32_t</span>&gt;(checkpoint) - base_abs;</span><br><span class="line">          <span class="keyword">if</span>(offset &gt; (<span class="number">1ul</span>&lt;&lt;<span class="number">31</span>))</span><br><span class="line">          &#123;</span><br><span class="line">              <span class="keyword">return</span> checkpoint + (WrappingInt32::_MOD - offset);</span><br><span class="line">          &#125;</span><br><span class="line">          <span class="keyword">else</span></span><br><span class="line">          &#123;</span><br><span class="line">              <span class="keyword">if</span>(checkpoint &lt; offset)</span><br><span class="line">                  <span class="keyword">return</span> checkpoint + (WrappingInt32::_MOD - offset);</span><br><span class="line">              <span class="keyword">return</span> checkpoint - offset;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="TCP-Receiver实现"><a href="#TCP-Receiver实现" class="headerlink" title="TCP Receiver实现"></a>TCP Receiver实现</h2><h3 id="报文信息-amp-阶段"><a href="#报文信息-amp-阶段" class="headerlink" title="报文信息 &amp; 阶段"></a>报文信息 &amp; 阶段</h3><ul>
+<li>关于报文<br><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-18-59-44.png"><ul>
+<li>蓝色：receiver需要读取、关注的<ul>
+<li>seq , syn flag , fin flag , playload</li>
+</ul>
+</li>
+<li>红色：receiver需要填充的<ul>
+<li>ackno , window_size</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>复习一下三次握手四次挥手的图<blockquote>
+<p><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-17-34.png"><br><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-17-45.png"></p>
+</blockquote>
+</li>
+</ul>
+<ul>
+<li>将receiver划分为如下阶段。<br><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-19-27-00.png"><ul>
+<li>LISTENING : 还没接收到初始化ISN的SYN报文.(the begining of the stream)</li>
+<li>SYN_RECV : 已经接收SYN报文 &amp;&amp; 还没接收FIN报文</li>
+<li>FIN_RECV : 已经接收到FIN报文且已经传入给bytestream。（即bytestream已经关闭）<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">listening</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> !_isn.has_value(); &#125;</span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">syn_recv</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> _isn.has_value() &amp;&amp; !_reassembler.stream_out().input_ended(); &#125;</span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">fin_recv</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> _reassembler.stream_out().input_ended(); &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>再看一眼receive_window图<br><img src="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/2023-01-03-22-14-58.png"></li>
+</ul>
+<h3 id="接口实现"><a href="#接口实现" class="headerlink" title="接口实现"></a>接口实现</h3><h4 id="ackno"><a href="#ackno" class="headerlink" title="ackno"></a>ackno</h4><ul>
+<li><strong>std::optional<WrappingInt32> ackno() const;</WrappingInt32></strong><ul>
+<li><strong>注意：实现的ackno 是 累计确认 ackno</strong></li>
+<li>如分析中所述，seqno = receive window left edge = reciver第一个没被写入bytestream的字节。</li>
+<li>注意以seqno的形式获取，而非stream_idx：stream_idx –&gt; abs_seq –&gt; seq</li>
+<li>注意receiver在不同阶段，所获取的abs_seq不同，自然得出seq不同。<ul>
+<li>LISTENING : 还没接收到第一个SYN报文，也即还没建立连接，即还没初始化isn。返回空即可。</li>
+<li>SYN_RECV : abs_seq = stream_idx + 1。因为SYN报文会占据abs_seq的起始索引.</li>
+<li>FIN_RECV : abs_seq = stream_idx + 2。因为SYN、FIN报文均会占据abs_seq索引位置。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">optional&lt;WrappingInt32&gt; <span class="title">TCPReceiver::ackno</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">    <span class="comment">//  还没初始化isn，也即还没建立连接，还没接收到第一个SYN报文 </span></span><br><span class="line">    <span class="keyword">if</span>(_state == LISTENING)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">std</span>::nullopt;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  +1 是为了第一个初始化syn报文 规定其占据一个字节的位置</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(_state == SYN_RECV)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> wrap(_reassembler.first_unassembled() + <span class="number">1</span>,_isn.value());</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  +2 : syn + fin</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(_state == FIN_RECV)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> wrap(_reassembler.first_unassembled() + <span class="number">2</span>,_isn.value());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="segment-received"><a href="#segment-received" class="headerlink" title="segment_received"></a>segment_received</h4><ul>
+<li><strong>void TCPReceiver::segment_received(const TCPSegment &amp;seg)</strong><ul>
+<li>每次接收到对端发送的segment时，都会调用该segment_received</li>
+<li>主要工作<ul>
+<li>接收第一个具有syn flag的报文时 , 初始化isn = seq.</li>
+<li>对于data,push_substring(data).</li>
+<li>接收fin报文(end-of-stream marker)，代表该fin是该stream的最后一个字节.</li>
+</ul>
+</li>
+<li>注意<ul>
+<li>同一个报文中可能同时有syn flag和fin flag.</li>
+<li>state什么时候变成fin_recv , 是segment_received刚收到fin flag ,state就改变吗 ?<ul>
+<li>不是，此时可能fin flag只是位于receive_window中 ;当fin -&gt; eof被加入到reassembler中的bytestream时(bytestream.end_input())，state才变成fin_recv</li>
+</ul>
+</li>
+<li>对于第一个建立连接,初始化isn的syn报文，其也有可能携带应用层报文数据，即（这和我之前学的三次握手不一样啊。我记着第一次握手的syn报文是连接初始化isn，没有携带应用层数据。  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">test.execute(ExpectState&#123;TCPReceiverStateSummary::LISTEN&#125;);</span><br><span class="line">test.execute(SegmentArrives&#123;&#125;.with_syn().with_seqno(isn).with_data(<span class="string">&quot;Hello, CS144!&quot;</span>).with_result(SegmentArrives::Result::OK));</span><br></pre></td></tr></table></figure></li>
+<li>对于invalid segment seq: ignore<ul>
+<li>如segment的seq == isn<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">TCPReceiverTestHarness test&#123;<span class="number">4</span>&#125;;</span><br><span class="line">test.execute(SegmentArrives&#123;&#125;.with_syn().with_seqno(isn).with_result(SegmentArrives::Result::OK));</span><br><span class="line">test.execute(SegmentArrives&#123;&#125;.**with_seqno(isn)**.with_data(<span class="string">&quot;a&quot;</span>).with_result(SegmentArrives::Result::OK));  <span class="comment">//  WRONG INDEX isn ! </span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>核心逻辑  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPReceiver::segment_received</span><span class="params">(<span class="keyword">const</span> TCPSegment &amp;seg)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//  0.  corner case such as invalid idx</span></span><br><span class="line">    <span class="keyword">if</span>(corner(seg))</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    <span class="comment">//  1.  首次确立isn</span></span><br><span class="line">    <span class="keyword">if</span>(_state == LISTENING &amp;&amp; seg.header().syn)</span><br><span class="line">    &#123;</span><br><span class="line">        _isn = seg.header().seqno;</span><br><span class="line">        update_state();     </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  2.  如果还没初始化isn，且该报文不是syn报文</span></span><br><span class="line">    <span class="keyword">if</span>(_state == LISTENING)</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    <span class="comment">//  3.  seq -&gt; abs_seq -&gt; stream_idx</span></span><br><span class="line">    <span class="keyword">size_t</span> abs_seq = unwrap(seg.header().seqno,_isn.value(),_reassembler.first_unassembled());   </span><br><span class="line">    <span class="keyword">size_t</span> stream_idx = abs_seq_to_stream_idx(abs_seq);</span><br><span class="line">    <span class="comment">//  4.  push_substring(segment)</span></span><br><span class="line">    _reassembler.push_substring(<span class="built_in">string</span>(seg.payload().str()),stream_idx,seg.header().fin);   </span><br><span class="line"></span><br><span class="line">    update_state();         </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="window-size"><a href="#window-size" class="headerlink" title="window_size"></a>window_size</h4><ul>
+<li>window_size() : [_first_unassembled , first_unacceptable())<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">window_size</span><span class="params">()</span> <span class="keyword">const</span></span>&#123;</span><br><span class="line">  <span class="comment">// _first_unassembled = _output.bytes_written(); </span></span><br><span class="line">  <span class="comment">//  first_unacceptable() =  _capacity + _output.bytes_read()</span></span><br><span class="line">  <span class="comment">// return first_unacceptable() - _first_unassembled;</span></span><br><span class="line">  <span class="keyword">return</span> _capacity + _output.bytes_read() - _output.bytes_written();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
+<li>值得后续 注意 &amp; 疑问 <ul>
+<li>可以看到 对于 receiver 只有第一个syn报文 的syn 可以被receiver识别到，后来的报文，即使syn为true，receiver也识别不到</li>
+<li>可以看到，本lab中并没有要求做出ESTABLISHED状态，也并没有FIN_WAIT状态。留待观察，日后应该会实现。</li>
+<li><strong>流量控制 – 拥塞控制区别</strong><ul>
+<li>已知流量控制 是 flow-controled ，是通过receiver的 receive_window 的ackno以及 window_size实现的。</li>
+<li>那么拥塞控制呢？？？<ul>
+<li>并没有实现拥塞控制. 见lab3 以及 计网-拥塞控制 blog</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="case"><a href="#case" class="headerlink" title="case"></a>case</h3><ul>
+<li>添加示例case1<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">  ===============my test3==============</span><br><span class="line">  capacity <span class="number">4000</span></span><br><span class="line">  <span class="number">1000</span> <span class="number">0</span> <span class="number">0</span> shc</span><br><span class="line">  shc</span><br><span class="line">        <span class="comment">/* segment with SYN + data + FIN */</span></span><br><span class="line">        &#123;</span><br><span class="line">            TCPReceiver receiver(<span class="number">4000</span>);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">uint32_t</span> isn = <span class="number">1000</span>;</span><br><span class="line">            <span class="comment">//  now LISTEN</span></span><br><span class="line">            Assert(<span class="keyword">not</span> receiver.ackno().has_value());</span><br><span class="line">                TCPSegment seg;</span><br><span class="line">                seg.payload() = <span class="built_in">std</span>::<span class="built_in">string</span>(<span class="string">&quot;shc&quot;</span>);</span><br><span class="line">                seg.header().ack = <span class="literal">false</span>;</span><br><span class="line">                seg.header().fin = <span class="literal">true</span>;</span><br><span class="line">                seg.header().syn = <span class="literal">true</span>;</span><br><span class="line">                seg.header().rst = <span class="literal">false</span>;</span><br><span class="line">                seg.header().ackno = WrappingInt32(<span class="number">0</span>);</span><br><span class="line">                seg.header().seqno = WrappingInt32(isn);</span><br><span class="line">                seg.header().win = <span class="number">0</span>;</span><br><span class="line">                receiver.segment_received(seg);</span><br><span class="line">            <span class="comment">//  already has received syn</span></span><br><span class="line">            Assert(receiver.ackno().has_value());</span><br><span class="line">            <span class="comment">//  now FIN_RECV</span></span><br><span class="line">            Assert(receiver.stream_out().input_ended());</span><br><span class="line">            Assert(receiver.ackno().value() == WrappingInt32(<span class="number">0</span> + <span class="number">3</span> + <span class="number">1</span> + <span class="number">1</span> + isn));  <span class="comment">//  syn(0) + &quot;shc&quot;[123] + fin(4) -&gt; 5 + isn = 1005;</span></span><br><span class="line">            Assert(receiver.unassembled_bytes() == <span class="number">0</span>);</span><br><span class="line">            <span class="built_in">cout</span>&lt;&lt;receiver.stream_out().read(receiver.stream_out().buffer_size())&lt;&lt;<span class="built_in">endl</span>;    <span class="comment">//  shc</span></span><br><span class="line">            <span class="comment">//  stream empty &amp;&amp; closed</span></span><br><span class="line">            Assert(receiver.stream_out().eof());</span><br><span class="line">                <span class="comment">//////// bytestream   //////////   ////// recv_window //////</span></span><br><span class="line">                <span class="comment">//////syn shc         //////////   ////// fin empty       //////</span></span><br><span class="line"><span class="comment">// abs_seq      //////0   123         //////////   ////// 4  5          //////</span></span><br><span class="line"><span class="comment">// seq = abs_seq + isn</span></span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure></li>
+<li>添加示例case0 : 普通通信<ul>
+<li>syn报文 , data报文 , fin报文<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line">======================my test <span class="number">02</span>==============</span><br><span class="line">capacity <span class="number">200</span></span><br><span class="line"><span class="number">5</span> <span class="number">0</span> <span class="number">0</span> abcdefg</span><br><span class="line"><span class="number">14</span> <span class="number">9</span> <span class="number">8</span> abc</span><br><span class="line"><span class="number">13</span> <span class="number">8</span> <span class="number">7</span> a</span><br><span class="line">abcdefgaabc</span><br><span class="line"><span class="number">17</span> <span class="number">12</span> <span class="number">11</span></span><br><span class="line">          &#123;</span><br><span class="line">            <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;======================my test 02==============&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">            <span class="function">TCPReceiver <span class="title">receiver</span><span class="params">(<span class="number">200</span>)</span></span>;</span><br><span class="line">            <span class="comment">//  window size</span></span><br><span class="line">            Assert(receiver.window_size() == <span class="number">200</span>);</span><br><span class="line"></span><br><span class="line">            <span class="comment">//  tcp segment abcdefg , syn isn = 5</span></span><br><span class="line">            &#123;</span><br><span class="line">                TCPSegment seg;</span><br><span class="line">                seg.payload() = <span class="built_in">std</span>::<span class="built_in">string</span>(<span class="string">&quot;abcdefg&quot;</span>);</span><br><span class="line">                seg.header().ack = <span class="literal">false</span>;</span><br><span class="line">                seg.header().fin = <span class="literal">false</span>;</span><br><span class="line">                seg.header().syn = <span class="literal">true</span>;</span><br><span class="line">                seg.header().rst = <span class="literal">false</span>;</span><br><span class="line">                seg.header().ackno = WrappingInt32(<span class="number">0</span>);</span><br><span class="line">                seg.header().seqno = WrappingInt32(<span class="number">5</span>);</span><br><span class="line">                seg.header().win = <span class="number">0</span>;</span><br><span class="line">                receiver.segment_received(<span class="built_in">std</span>::move(seg));</span><br><span class="line">                Assert(receiver.ackno().has_value() == <span class="literal">true</span>);</span><br><span class="line">                Assert(receiver.stream_out().bytes_written() == <span class="number">7</span>);</span><br><span class="line">                Assert(receiver.ackno() == WrappingInt32(<span class="number">13</span>));</span><br><span class="line"></span><br><span class="line">                <span class="comment">//////// bytestream //////////   ////// recv_window //////</span></span><br><span class="line">                <span class="comment">//////// abcdefg    //////////   ////// empty       ////// </span></span><br><span class="line"><span class="comment">// abs_seq      ////////01234567    //////////   ////// 8           //////</span></span><br><span class="line"><span class="comment">// seq = abs_seq + 5</span></span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  abc , seqno = 14</span></span><br><span class="line">                TCPSegment seg;</span><br><span class="line">                seg.payload() = <span class="built_in">std</span>::<span class="built_in">string</span>(<span class="string">&quot;abc&quot;</span>);</span><br><span class="line">                seg.header().ack = <span class="literal">false</span>;</span><br><span class="line">                seg.header().fin = <span class="literal">false</span>;</span><br><span class="line">                seg.header().syn = <span class="literal">false</span>;</span><br><span class="line">                seg.header().rst = <span class="literal">false</span>;</span><br><span class="line">                seg.header().ackno = WrappingInt32(<span class="number">0</span>);</span><br><span class="line">                seg.header().seqno = WrappingInt32(<span class="number">14</span>);</span><br><span class="line">                seg.header().win = <span class="number">0</span>;</span><br><span class="line">                receiver.segment_received(<span class="built_in">std</span>::move(seg));</span><br><span class="line">                Assert(receiver.stream_out().bytes_written() == <span class="number">7</span>);</span><br><span class="line">                Assert(receiver.unassembled_bytes() == <span class="number">3</span>);</span><br><span class="line"></span><br><span class="line">                <span class="comment">//////// bytestream //////////   ////// recv_window //////</span></span><br><span class="line">                <span class="comment">//////// abcdefg    //////////   ////// abc       //////</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  a , seqno = 13</span></span><br><span class="line">                TCPSegment seg;</span><br><span class="line">                seg.payload() = <span class="built_in">std</span>::<span class="built_in">string</span>(<span class="string">&quot;a&quot;</span>);</span><br><span class="line">                seg.header().ack = <span class="literal">false</span>;</span><br><span class="line">                seg.header().fin = <span class="literal">false</span>;</span><br><span class="line">                seg.header().syn = <span class="literal">false</span>;</span><br><span class="line">                seg.header().rst = <span class="literal">false</span>;</span><br><span class="line">                seg.header().ackno = WrappingInt32(<span class="number">0</span>);</span><br><span class="line">                seg.header().seqno = WrappingInt32(<span class="number">13</span>);</span><br><span class="line">                seg.header().win = <span class="number">0</span>;</span><br><span class="line">                receiver.segment_received(<span class="built_in">std</span>::move(seg));</span><br><span class="line">                Assert(receiver.stream_out().bytes_written() == <span class="number">11</span>);    <span class="comment">//  abcdefgaabc</span></span><br><span class="line">                Assert(receiver.unassembled_bytes() == <span class="number">0</span>);</span><br><span class="line">                Assert(receiver.ackno() == WrappingInt32(<span class="number">17</span>));          <span class="comment">//  syn(0) + abcdefgaabc[1,11] -&gt; 12 +  isn(5) </span></span><br><span class="line">                ByteStream stream = receiver.stream_out();</span><br><span class="line">                <span class="built_in">cout</span>&lt;&lt;stream.read(stream.buffer_size())&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">                <span class="comment">//////// bytestream  //////////   ////// recv_window //////</span></span><br><span class="line">                <span class="comment">//////// abcdefgaabc //////////   ////// empty       //////</span></span><br><span class="line"><span class="comment">// abs_seq      //////0 1234567891011//////////   ////// 12          //////</span></span><br><span class="line"><span class="comment">// seq = abs_seq + 5</span></span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  &quot;&quot; , fin , seqno = 17</span></span><br><span class="line">                TCPSegment seg;</span><br><span class="line">                seg.payload() = <span class="built_in">std</span>::<span class="built_in">string</span>(<span class="string">&quot;&quot;</span>);</span><br><span class="line">                seg.header().ack = <span class="literal">false</span>;</span><br><span class="line">                seg.header().fin = <span class="literal">true</span>;</span><br><span class="line">                seg.header().syn = <span class="literal">false</span>;</span><br><span class="line">                seg.header().rst = <span class="literal">false</span>;</span><br><span class="line">                seg.header().ackno = WrappingInt32(<span class="number">0</span>);</span><br><span class="line">                seg.header().seqno = WrappingInt32(<span class="number">17</span>);</span><br><span class="line">                seg.header().win = <span class="number">0</span>;</span><br><span class="line">                receiver.segment_received(<span class="built_in">std</span>::move(seg));</span><br><span class="line">                Assert(receiver.stream_out().bytes_written() == <span class="number">11</span>);    <span class="comment">//  abcdefgaabc</span></span><br><span class="line">                Assert(receiver.unassembled_bytes() == <span class="number">0</span>);</span><br><span class="line">                Assert(receiver.ackno().value() == WrappingInt32(<span class="number">18</span>));          <span class="comment">//  syn(0) + abcdefgaabc[1,11] + fin[12] -&gt; 13 + isn(5) </span></span><br><span class="line">                <span class="comment">//////// bytestream  //////////   ////// recv_window //////</span></span><br><span class="line">                <span class="comment">//////// abcdefgaabc //////////   ////// fin empty       //////</span></span><br><span class="line"><span class="comment">// abs_seq      //////0 1234567891011//////////   ////// 12  13          //////</span></span><br><span class="line"><span class="comment">// seq = abs_seq + 5</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/" rel="prev" title="计算机网络-CS144-lab1">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab1
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/" rel="next" title="计算机网络-CS144-lab3">
+      计算机网络-CS144-lab3 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF-amp-Receiver%E5%8A%9F%E8%83%BD-amp-%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">背景 &amp; Receiver功能 &amp; 分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#index-%E5%85%B3%E7%B3%BB"><span class="nav-number">2.</span> <span class="nav-text">index 关系</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#WrappingInt32-seq-lt-gt-abs-seq"><span class="nav-number">2.1.</span> <span class="nav-text">WrappingInt32 seq &lt;-&gt; abs_seq</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-Receiver%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">TCP Receiver实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8A%A5%E6%96%87%E4%BF%A1%E6%81%AF-amp-%E9%98%B6%E6%AE%B5"><span class="nav-number">3.1.</span> <span class="nav-text">报文信息 &amp; 阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.2.</span> <span class="nav-text">接口实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#ackno"><span class="nav-number">3.2.1.</span> <span class="nav-text">ackno</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#segment-received"><span class="nav-number">3.2.2.</span> <span class="nav-text">segment_received</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#window-size"><span class="nav-number">3.2.3.</span> <span class="nav-text">window_size</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98"><span class="nav-number">3.3.</span> <span class="nav-text">问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#case"><span class="nav-number">3.4.</span> <span class="nav-text">case</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '54f9bcc07773d2c047da442162729847',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

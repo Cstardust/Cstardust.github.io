@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="关于queueInLoop调用时机">
+<meta property="og:type" content="article">
+<meta property="og:title" content="muduo-关于EventLoop的runInLoop与queueInLoop">
+<meta property="og:url" content="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="关于queueInLoop调用时机">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/2022-10-12-22-16-32.png">
+<meta property="og:image" content="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/2022-10-12-22-16-11.png">
+<meta property="article:published_time" content="2022-10-12T13:06:32.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:19:23.245Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/2022-10-12-22-16-32.png">
+
+<link rel="canonical" href="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>muduo-关于EventLoop的runInLoop与queueInLoop | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          muduo-关于EventLoop的runInLoop与queueInLoop
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-12 21:06:32" itemprop="dateCreated datePublished" datetime="2022-10-12T21:06:32+08:00">2022-10-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:19:23" itemprop="dateModified" datetime="2023-02-27T23:19:23+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>关于queueInLoop调用时机</p>
+<span id="more"></span>
+
+<h2 id="疑问"><a href="#疑问" class="headerlink" title="疑问"></a>疑问</h2><ul>
+<li><p>在看muduo源码时，始终有这个困惑：runInLoop和queueInLoop真的有必要分开吗？</p>
+</li>
+<li><p>首先 eventloop的loop中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>(<span class="number">1</span>)</span><br><span class="line">&#123;</span><br><span class="line">    poller wait</span><br><span class="line">    handleEvents</span><br><span class="line">    doPendingFunctors</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>如下所示</p>
+</li>
+<li><p><strong>runInLoop</strong></p>
+<ul>
+<li>loop 所属 thread 内执行 runInLoop : <ul>
+<li>必然是在handleEvents中，调用了runInLoop，此时处于LoopThread内，于是在io thread内直接执行cb。</li>
+</ul>
+</li>
+<li>其他 thread 执行runInLoop : <ul>
+<li>进入queueInLoop，把cb加入到pendingFunctor中。为了让io loop尽快执行我们的cb，于是我们wakeupFd。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>queueInLoop</strong></p>
+<ul>
+<li>loop 所属 thread 执行queueInLoop<ul>
+<li>handleEvent中调用queueInLoop<ul>
+<li>加入pendingFunctor，但无需wakeup。因为IO thread已经从Poller中离开，handleEvents之后就会执行cb。</li>
+</ul>
+</li>
+<li>doPendingFunctors<ul>
+<li>加入pendingFunctor，且需要wakeup。因为这个cb直到下次poller wait之后 才会被处理。(通过callingPendingFactors_判断是否需要wakeup)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>其他thread 执行queueInLoop : cb放入队列，为了让io loop尽快执行我们的cb，于是我们wakeupFd。（这样下次IO thread运行到poller wait就会直接返回，如果不这样的话cb会被延迟处理）</li>
+</ul>
+</li>
+<li><p>code</p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  让loop对象执行回调函数cb</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::runInLoop</span><span class="params">(<span class="keyword">const</span> Functor&amp; cb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  如果用户在当前(EventLoop所属线程)IO线程调用这个函数，回调会同步进行</span></span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">isInLoopThread</span>())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">cb</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  如果不在 那么放入队列</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line"></span><br><span class="line">        <span class="built_in">queueInLoop</span>(cb);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  把cb放入队列 以待下次从poller wait中出来后执行cb</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">EventLoop::queueInLoop</span><span class="params">(<span class="keyword">const</span> Functor&amp; cb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  给loop添加新回调</span></span><br><span class="line">    <span class="comment">//  这个cb 会在loop的IO thread的epollwait之后 被调用</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mtx_)</span></span>;</span><br><span class="line">        pendingFunctors_.<span class="built_in">emplace_back</span>(cb);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  只有当前queueInLoop()函数是被 loop所属的IO thread handleEvents 中被调用，才无须wakeup()</span></span><br><span class="line">    <span class="keyword">if</span>(!<span class="built_in">isInLoopThread</span>() || !callingPendingFactors_)       </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">wakeup</span>();                                         </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>可见 也没什么区别，貌似全部都用runInLoop也未尝不可。</p>
+</li>
+<li><p><strong>但是，在muduo中，起码在我所看到的源码中，只在writeCompleteCallback和highWaterCallback的调用时，使用了queueInLoop</strong></p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">loop_-&gt;<span class="built_in">queueInLoop</span>(</span><br><span class="line">std::<span class="built_in">bind</span>(highWaterMarkCallback_,<span class="built_in">shared_from_this</span>(),oldlen + remaning)</span><br><span class="line">);   </span><br></pre></td></tr></table></figure></li>
+<li><p>为什么要在这里使用？</p>
+</li>
+</ul>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><ul>
+<li><p>首先介绍highWaterMarkCallback和writeCompleteCallback使用姿势。这两个是由user设置的。user设置给TcpServer，TcpConnection从TcpServer中取用这两个函数</p>
+<ul>
+<li>考虑一个代理服务器有C和S两个链接，S向C发送数据，经由代理服务器转发，现在S的数据发送的很快，但是C的接受速率却较慢，如果本代理服务器不加以限制，那S到来的数据迟早会撑爆这C连接的发送缓冲区，</li>
+<li>解决的办法就是当C的发送缓冲中堆积数据达到了某个标志的时候，调用highWaterMarkCallback去让S的连接停止接受数据，等到C发送缓冲的数据被发送完了，调用writeCompleteCallback再开始接受S连接的数据。这样就确保了数据不会丢失，缓冲不会被撑爆。</li>
+</ul>
+</li>
+<li><p>那么为什么这两个回调要<strong>queueInLoop</strong>先放入队列再执行呢？原因如下</p>
+</li>
+<li><p>比如如果用户如果想在writeCompleteCallback中发送data,</p>
+</li>
+<li><p><strong>如果是queueInLoop</strong>的话，那么</p>
+<ul>
+<li>queueInLoop加入cb到队列，会等下次从poll返回之后执行doPend的时候才执行。下一轮cb中send的才会调用，而后又会触发下一轮调用的cb。不会造成busy loop，也不会seg。</li>
+</ul>
+</li>
+<li><p><strong>如果是runInLoop</strong>的话，会发生什么？</p>
+<ul>
+<li><strong>会不断调用send 和 callback 导致 seg。</strong></li>
+<li>原因如下：<ul>
+<li>在<strong>IO线程中调用runInLoop,这个cb会立刻执行</strong></li>
+<li>writeCompleteCallback_会在TcpConnection::send() 发送干净数据之后，会调用writeCompleteCallback。而writeCompleteCallback中又一次调用TcpConnection::send()，将msg发送干净之后，又会触发callBack…</li>
+<li>这样<strong>不断相互触发，导致seg。</strong></li>
+<li>错误使用write call back代码<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">onWriteComplete</span><span class="params">(<span class="keyword">const</span> TcpConnectionPtr &amp;conn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  as soon as send finished</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;be careful about stackoverflow\n&quot;</span>);</span><br><span class="line">    <span class="function">string <span class="title">msg</span><span class="params">(<span class="string">&quot;hope not stackoverflow!&quot;</span>)</span></span>;</span><br><span class="line">    conn-&gt;<span class="built_in">send</span>(msg);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/2022-10-12-22-16-32.png"><br>client<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/2022-10-12-22-16-11.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/" rel="prev" title="并发-互斥算法-Peterson算法">
+      <i class="fa fa-chevron-left"></i> 并发-互斥算法-Peterson算法
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/13/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9102-%E4%BA%92%E6%96%A5-%E9%94%81/" rel="next" title="操作系统-并发-互斥">
+      操作系统-并发-互斥 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%96%91%E9%97%AE"><span class="nav-number">1.</span> <span class="nav-text">疑问</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3"><span class="nav-number">2.</span> <span class="nav-text">解决</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '3d207b49910710515c5cc458d00f51f8',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

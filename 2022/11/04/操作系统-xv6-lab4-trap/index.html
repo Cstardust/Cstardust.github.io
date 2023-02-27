@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="part 2 : 利用栈桢，打印函数调用. part 3 : 为xv6增加sys_sigalarm和sys_sigreturn系统调用 sys_sigalarm : 注册callback以及超时时间 tick Interrupt : tick超时,返回user到callback sys_sigreturn : user callback 结束. 通过该syscall 返回之前被tick超时打断的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab4-trap">
+<meta property="og:url" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="part 2 : 利用栈桢，打印函数调用. part 3 : 为xv6增加sys_sigalarm和sys_sigreturn系统调用 sys_sigalarm : 注册callback以及超时时间 tick Interrupt : tick超时,返回user到callback sys_sigreturn : user callback 结束. 通过该syscall 返回之前被tick超时打断的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-08-51-54.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-08-50-53.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-09-01-20.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-10-04-44.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-16-31-01.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-16-31-47.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-48-29.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-47-01.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-35-18.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-20-25.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-15-19-27.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2023-02-26-20-26-21.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2023-02-26-20-25-10.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-55-53.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-56-06.png">
+<meta property="og:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-56-37.png">
+<meta property="article:published_time" content="2022-11-04T00:00:49.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:41.398Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-08-51-54.png">
+
+<link rel="canonical" href="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab4-trap | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab4-trap
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-04 08:00:49" itemprop="dateCreated datePublished" datetime="2022-11-04T08:00:49+08:00">2022-11-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:41" itemprop="dateModified" datetime="2023-02-27T23:22:41+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.4k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>part 2 : 利用栈桢，打印函数调用.</li>
+<li>part 3 : 为xv6增加sys_sigalarm和sys_sigreturn系统调用<ul>
+<li>sys_sigalarm : 注册callback以及超时时间</li>
+<li>tick Interrupt : tick超时,返回user到callback</li>
+<li>sys_sigreturn : user callback 结束. 通过该syscall 返回之前被tick超时打断的pc</li>
+<li>实现重点是 在tick超时时 将 trapframe 进行备份,再返回user执行callback. 当user callback结束sys_sigreturn时,再将之前的trapframe替换出来. <ul>
+<li>最主要原因是trapframe里面保存了epc（user进入kernel前的指令地址）,kernel返回user时一般pc返回到epc+4</li>
+<li>所以要通过备份trapframe，来保证callback结束后可以返回到user正确的pc</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="PART1"><a href="#PART1" class="headerlink" title="PART1"></a>PART1</h1><p>Read the code in call.asm for the functions g, f, and main</p>
+<ul>
+<li>Q1 : Which registers contain arguments to functions? For example, which register holds 13 in main’s call to printf?<ul>
+<li>a0 , a1 , a2 , a3, a4, a5 , a6 , a7</li>
+<li>a2 holds 13</li>
+</ul>
+</li>
+<li>Q2 : Where is the call to function f in the assembly code for main? Where is the call to g? (Hint: the compiler may inline functions.)<ul>
+<li>编译器将 f中对g的调用进行了内联</li>
+<li>编译器将 main对f的调用进行了内敛。</li>
+</ul>
+</li>
+<li>Q3 :At what address is the function printf located?<ul>
+<li>0x630</li>
+</ul>
+</li>
+<li>Q4 :What value is in the register ra just after the jalr to printf in main?       <ul>
+<li>│$5 = (void (*)()) 0x38 ,jalr 指令的下一条汇编指令的地址</li>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-08-51-54.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>Q5 :<ul>
+<li>Run the following code.</li>
+<li>unsigned int i = 0x00646c72; printf(“H%x Wo%s”, 57616, &amp;i);</li>
+<li>What is the output ? <ul>
+<li>HE110 World</li>
+</ul>
+</li>
+<li>The output depends on that fact that the RISC-V is little-endian. If the RISC-V were instead big-endian what would you set i to in order to yield the same output ? Would you need to change 57616 to a different value?<ul>
+<li>i -&gt; 0x726c6400 </li>
+<li>57616不需要,因为57616的十六进制就是0xe110</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Q6<ul>
+<li>printf(“x=%d y=%d”, 3);</li>
+<li>what is going to be printed after ‘y=’?<ul>
+<li>a2寄存器里原先是啥就输出啥 <blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-08-50-53.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>关于xv6的函数栈帧<ul>
+<li>s0 : 当前栈帧的底部指针</li>
+<li>sp : 栈顶指针<ul>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-09-01-20.png"></p>
+</blockquote>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta"># sp : 栈顶指针</span></span><br><span class="line"># s0 : 栈帧底指针</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">g</span><span class="params">(<span class="keyword">int</span> x)</span> </span>&#123;</span><br><span class="line"><span class="number">0</span>:	<span class="number">1141</span>                	addi	sp,sp,<span class="number">-16</span>   #  栈顶指针sp 下移<span class="number">16</span>字节</span><br><span class="line"><span class="number">2</span>:	e422                	sd	s0,<span class="number">8</span>(sp)       #  存栈底指针s0/fp到sp+<span class="number">8</span>的位置</span><br><span class="line"><span class="number">4</span>:	<span class="number">0800</span>                	addi	s0,sp,<span class="number">16</span>    #  将sp+<span class="number">16</span>即原sp的值作为新的栈帧</span><br><span class="line"><span class="keyword">return</span> x+<span class="number">3</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="number">6</span>:	<span class="number">250</span>d                	addiw	a0,a0,<span class="number">3</span>     <span class="meta">#  x = x + 3</span></span><br><span class="line"><span class="number">8</span>:	<span class="number">6422</span>                	ld	s0,<span class="number">8</span>(sp)       #  从sp+<span class="number">8</span>恢复原栈帧到s0</span><br><span class="line">a:	<span class="number">0141</span>                	addi	sp,sp,<span class="number">16</span>    #  回收栈顶指针</span><br><span class="line">c:	<span class="number">8082</span>                	ret</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="PART2"><a href="#PART2" class="headerlink" title="PART2"></a>PART2</h1><p>Xv6 allocates one page for each stack in the xv6 kernel at PAGE-aligned address. You can compute the top and bottom address of the stack page by using PGROUNDDOWN(fp) and PGROUNDUP(fp) (see kernel/riscv.h. These number are helpful for backtrace to terminate its loop.</p>
+<ul>
+<li><p><strong>stack frame结构</strong></p>
+<ul>
+<li>s0 : 当前栈帧的底部指针。又称为frame pointer (fp)</li>
+<li>sp : 栈的顶部指针<br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-10-04-44.png"></li>
+</ul>
+</li>
+<li><p>code</p>
+<ul>
+<li>逻辑：<ul>
+<li><ol>
+<li>通过reg s0 获取当前 frame 的 frame pointer</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>打印调用该过程的 函数地址return address *(frame pointer - 8)</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>找到上一级frame: prev frame pointer = frame pointer - 16<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">backtrace</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  framepointer</span></span><br><span class="line">  uint64 fp = r_fp();</span><br><span class="line">  <span class="comment">//  cur_fp 当前遍历到的栈帧地址</span></span><br><span class="line">  <span class="keyword">for</span>(uint64 cur_fp = fp;cur_fp &gt;= PGROUNDDOWN(fp) ; )</span><br><span class="line">  &#123;</span><br><span class="line">    uint64 func = *((uint64*)(cur_fp - <span class="number">8</span>)); <span class="comment">//  调用本级函数的 上一级函数的调用本层函数的 代码地址</span></span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%p\n&quot;</span>,func);</span><br><span class="line">    cur_fp = *((uint64*)(cur_fp<span class="number">-16</span>));       <span class="comment">//  fp - 16 </span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>bug注意</p>
+<ul>
+<li>不是要打印每个函数stack frame的地址，因为栈帧是用来存放函数调用过程中的变量的。打印栈帧的地址只是打印了存放那些变量的内存的地址。</li>
+<li>而我们要获知的是 函数调用的过程，也即，我们要按照调用过程打印出函数代码的地址，而不是其调用过程中栈帧的地址。</li>
+<li>也即，打印return address 而非 prev frame fp</li>
+</ul>
+</li>
+</ul>
+<h1 id="PART3"><a href="#PART3" class="headerlink" title="PART3"></a>PART3</h1><ul>
+<li><p>In this exercise you’ll add a feature to xv6 that periodically alerts a process as it uses CPU time. This might be useful for compute-bound processes that want to limit how much CPU time they chew up, or for processes that want to compute but also want to take some periodic action. More generally, you’ll be implementing a primitive form of user-level interrupt/fault handlers; you could use something similar to handle page faults in the application, for example. Your solution is correct if it passes alarmtest and usertests.</p>
+<ul>
+<li>在本练习中，您将向 xv6 添加一个功能，该功能会在进程使用 CPU 时间时定期发出警报。这对于想要限制其占用的 CPU 时间的计算绑定进程，或者对于想要计算但又希望采取一些定期操作的进程可能很有用。更一般地说，您将实现用户级中断/错误处理程序的原始形式;例如，您可以使用类似的方式来处理应用程序中的页面错误。如果解决方案通过了警报测试和用户测试，则它是正确的。</li>
+</ul>
+</li>
+<li><p>You should add a new sigalarm(interval, handler) system call. If an application calls sigalarm(n, fn), then after every n “ ticks “ of CPU time that the program consumes, the kernel should cause application function fn to be called. When fn returns, the application should resume where it left off. A tick is a fairly arbitrary unit of time in xv6, determined by how often a hardware timer generates interrupts. If an application calls sigalarm(0, 0), the kernel should stop generating periodic alarm calls.</p>
+<ul>
+<li>您应该添加新的 sigalarm（间隔、处理程序）系统调用。如果一个应用程序调用sigalarm（n，fn），那么在程序消耗每n个“滴答”的CPU时间之后，内核应该导致应用程序函数fn被调用。当 fn 返回时，应用程序应从中断的位置继续。在 xv6 中，滴答是一个相当任意的时间单位，由硬件计时器生成中断的频率决定。如果应用程序调用 sigalarm（0， 0），内核应停止生成周期性警报调用。</li>
+</ul>
+</li>
+<li><p>You’ll find a file user/alarmtest.c in your xv6 repository. Add it to the Makefile. It won’t compile correctly until you’ve added sigalarm and sigreturn system calls (see below).</p>
+<ul>
+<li>您可以在 xv6 存储库中找到一个文件 user/alarmtest.c。将其添加到生成文件。在添加 sigalarm 和 sigreturn 系统调用之前，它不会正确编译（见下文）。</li>
+</ul>
+</li>
+<li><p>alarmtest calls sigalarm(2, periodic) in test0 to ask the kernel to force a call to periodic() every 2 ticks , and then spins for a while. You can see the assembly code for alarmtest in user/alarmtest.asm, which may be handy for debugging. Your solution is correct when alarmtest produces output like this and usertests also runs correctly:</p>
+<ul>
+<li>alarmtest 在 test0 中调用 sigAlarm （2， periodic） 来要求内核每 2 个即时报价强制调用 periodic（），然后旋转一段时间。您可以在user/alarmtest.asm中看到alarmtest的汇编代码，这对于调试可能很方便。当 alarmtest 产生如下输出并且用户测试也正常运行时，您的解决方案是正确的：</li>
+</ul>
+</li>
+</ul>
+<h3 id="bug"><a href="#bug" class="headerlink" title="bug"></a>bug</h3><ul>
+<li><p><strong>bug1</strong></p>
+<ul>
+<li>企图在alarm到时的时候，在kernel里面调用之前user注册到proc中的alarm_handler</li>
+<li>结果访问了不可访问呢的区域，panic kerneltrap.</li>
+<li>原因：user注册到proc结构体当中的callback:alarm_handler，其注册的函数地址是user pagetable维护的虚拟地址(在本例中是0x0)，而非kernel pagetable维护的虚拟地址。callback是在user process的text段而非kernel process的地址空间里。因此crash。</li>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-16-31-01.png"><br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-04-16-31-47.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>bug2</strong></p>
+<ul>
+<li>code<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">错误做法<span class="function">code</span></span><br><span class="line"><span class="function"><span class="title">if</span><span class="params">(p-&gt;ticks_passed &gt;= p-&gt;ticks_interval)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="comment">//  替换trapframe</span></span><br><span class="line">  p-&gt;back_trapframe = p-&gt;trapframe;</span><br><span class="line">  p-&gt;trapframe = kalloc();              即便kalloc了。trampoline使用的也不是这里新kalloc的trapframe。不过kernel的C code 倒是会使用这个新kalloc的trapframe。因此，这妥妥的bug。crash。panic。</span><br><span class="line">  assert(p-&gt;trapframe!=<span class="number">0</span>,<span class="string">&quot;kalloc trapframe&quot;</span>);</span><br><span class="line">  *(p-&gt;trapframe) = *(p-&gt;back_trapframe);</span><br><span class="line">  p-&gt;trapframe-&gt;epc = (uint64) p-&gt;alarm_handler;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">正确<span class="function">code</span></span><br><span class="line"><span class="function"><span class="title">if</span><span class="params">(p-&gt;ticks_passed &gt;= p-&gt;ticks_interval &amp;&amp; p-&gt;is_in_cb!=<span class="number">1</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  p-&gt;ticks_passed = <span class="number">0</span>;</span><br><span class="line">  <span class="comment">//  备份trapframe</span></span><br><span class="line">  *(p-&gt;back_trapframe) = *(p-&gt;trapframe);</span><br><span class="line">  <span class="comment">//  handler使用当前trapframe</span></span><br><span class="line">  p-&gt;trapframe-&gt;epc = (uint64) p-&gt;alarm_handler;</span><br><span class="line">  p-&gt;is_in_cb = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>擅自改变使用的trapframe地址。我一开始是每次需要使用alarm_handler的时候，就把原先的trapframe存起来，kalloc一个trapframe给alarm_handler使用，（通过改变proc中的trapframe指针指向）。这样做且不说效率，正确性上来讲就是错误的。<strong>原因见下</strong>。</li>
+<li>看网上博客都说不这么做是因为效率原因，tmd，臭不要脸，人云亦云。</li>
+<li><strong>前言</strong>：首先易知 <strong>trapframe这个结构体，在trampoline的uservec和userret汇编，以及kernel 的 C code中均被使用</strong>到。<ul>
+<li><strong>在trampoline中，是通过user pagetable维护的虚拟地址0x3ffffffe000引用的</strong>.</li>
+<li><strong>在kernel的C code中，是通过p-&gt;trapframe引用的，其地址使用的自然是kernel pagetable维护的物理地址。如 (struct trapframe <em>) 0x87f62000</em></strong>.</li>
+<li>我们易知对于同一个user process ，kernel 的 C code 使用的user的trapframe自然也要和trampoline使用的user的trapframe保持一致，（因为是使用的应当同一个process的trapframe）也即该<strong>p-&gt;trapframe应当和trampoline通过0x3ffffffe000使用的是physical memory中的t同一个p-&gt;trapframe！否则就会crash！！</strong></li>
+</ul>
+</li>
+<li><strong>接下来见错误原因</strong>：user pagetable维护的的trapframe地址是固定在0x3ffffffe000的。我们不能错误的使用一个新kalloc的trapframe。错误的认为他会被trampoline使用。<ul>
+<li><strong>首先</strong>，这个新在kernel kalloc的trapframe，只在kernel的pagetable建立了从虚拟地址到物理地址的映射，user 的pagetable甚至都不知道kernel已经已经新给他kalloc了一个trapframe。除非你在给他的userpagetable映射一下，不过挺困难+麻烦的。</li>
+<li><strong>其次</strong>，如后文所述，我们的trampoline的uservec和userret使用的始终是0x3ffffffe00处的trapframe。如果换一个新地址的trapframe，还要再改kernel传递给trampoline的参数。</li>
+<li><strong>最后</strong>，如果我们没改userpagetable也没修改trampoline，那么，就会出现trampoline使用一个trapframe，同时kernel的C code使用另一个trapframe的现象。</li>
+</ul>
+</li>
+<li>user pagetable维护的trapframe 0x3ffffffe000地址是什么时候需要被使用，被那里使用？<ul>
+<li>答：在trampoline的uservec和userret被使用了。无论是uservec还是userret，trampoline始终使用的是user pagetable维护的0x3ffffffe000地址处的trapframe。</li>
+<li><strong>uservec</strong> : 将user trapframe的地址从$sscratch(之前由kernel保存地址到这里的)加载到$a0中来使用<ul>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-48-29.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>userret</strong> : 使用$a0中保存的user trapframe地址，返回user之前，将$a0保存在$sscratch中。<ul>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-47-01.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-35-18.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-14-20-25.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>为什么user trapframe的地址0x3ffffffe000？trampoline中userret时$a0是如何获得该地址的?</strong><ul>
+<li>为什么trapframe的地址0x3ffffffe000：<ul>
+<li>是process刚一被kernel创建并分配的时候，就指定了这一块空间是trapframe，并建立在user pagetable建立了映射。</li>
+<li><blockquote>
+<p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-15-19-27.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>userret 中 $a0如何获得该地址<ul>
+<li>kernel usertrapret<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> TRAPFRAME (TRAMPOLINE - PGSIZE)</span></span><br><span class="line"><span class="comment">// tell trampoline.S the user page table to switch to.</span></span><br><span class="line">uint64 satp = MAKE_SATP(p-&gt;pagetable);</span><br><span class="line"><span class="comment">// jump to trampoline.S at the top of memory, which </span></span><br><span class="line"><span class="comment">// switches to the user page table, restores user registers,</span></span><br><span class="line"><span class="comment">// and switches to user mode with sret.</span></span><br><span class="line">uint64 fn = TRAMPOLINE + (userret - trampoline);</span><br><span class="line"><span class="comment">//  pass user trapframe address and user page table satp</span></span><br><span class="line">((<span class="keyword">void</span> (*)(uint64,uint64))fn)(TRAPFRAME, satp);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="关键问题"><a href="#关键问题" class="headerlink" title="关键问题"></a>关键问题</h3><ul>
+<li><strong>关于为什么在调用alarm_handler时 需要新用一个trapframe ， 将原先的trapframe备份起来。</strong><ul>
+<li>因为如果没有将原先的trapframe保存起来的话，我们的handler继续使用原先的trapframe，那么当我们的handler结束后，调用syscall sigreturn结束alarm_handler，那么该user的pc该返回哪里？如果我们就这样不做任何改动，那么pc就是返回到alarm_handler的最后一条指令的下一条地址。可是显然，那是个错误的地址，。我们应当返回的是当时被ticks interrupt 进而执行alarm_handler 时 被打断的指令，继续执行那个指令。</li>
+<li>因此，我们需要在执行alarm_handler执行之前保存其上下文trapframe（epc）备份起来（为了之后恢复）<ul>
+<li>*(p-&gt;back_trapframe) = *(p-&gt;trapframe);</li>
+</ul>
+</li>
+<li>然后将当前trapframe提供给alarm_handler去执行。<ul>
+<li>p-&gt;trapframe-&gt;epc = (uint64) p-&gt;alarm_handler;</li>
+</ul>
+</li>
+<li>最后在alarm_handler执行结束后调用sigreturn的时候，在sys_return中恢复上下文。<ul>
+<li>sigreturn : *(p-&gt;trapframe) = *(p-&gt;back_trapframe);</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="核心流程"><a href="#核心流程" class="headerlink" title="核心流程"></a>核心流程</h3><p><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2023-02-26-20-26-21.png"><br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2023-02-26-20-25-10.png"></p>
+<ul>
+<li><strong>sigalarm</strong><br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-55-53.png"></li>
+<li><strong>alarm_handler触发</strong><br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-56-06.png"></li>
+<li><strong>sigreturn 返回</strong><br><img src="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/2022-11-06-16-56-37.png"></li>
+</ul>
+<h3 id="疑问"><a href="#疑问" class="headerlink" title="疑问"></a>疑问</h3><ul>
+<li>还有一个问题待解决：<ul>
+<li>handler执行需要用到原先的执行流的除了$epc的其他上下文吗？是有用还是有害？<ul>
+<li>需要。有用。trapframe里的几乎都需要感觉。</li>
+</ul>
+</li>
+<li>那么handler执行之后，改变的寄存器啥的，究竟是破坏了原先的pc流的trapframe，还是对原先的pc流有用？<ul>
+<li>我第一想法是感觉handler改变的寄存器应该是对原先的pc流有用。</li>
+<li>不过从代码上看，我们在sigreturn时，直接将原先的pc流的trapframe覆盖了当前handler执行完的trapframe，似乎是handler的上下文对原先的pc流不再有意义？<ul>
+<li>问题：那如果有一个变量在handler时，由于频繁的++–，一直存在reg中，但是这个变量在pc流中handler之后又会被使用。如果不管handler执行后的reg的话，这个变量的改变值不会丢失吗？<ul>
+<li>（我认为）会丢失，不过该syscall的设计者应当限制user的使用方式。从测试程序中可以看到，handler会强制和内存读写，而不会优化成对寄存器读写。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">62</span></span><br><span class="line"><span class="number">63</span> <span class="keyword">void</span> __attribute__ ((noinline)) foo(<span class="keyword">int</span> i, <span class="keyword">int</span> *j) &#123;</span><br><span class="line"><span class="number">64</span>   <span class="keyword">if</span>((i % <span class="number">2500000</span>) == <span class="number">0</span>) &#123;</span><br><span class="line"><span class="number">65</span>     write(<span class="number">2</span>, <span class="string">&quot;.&quot;</span>, <span class="number">1</span>);</span><br><span class="line"><span class="number">66</span>   &#125;</span><br><span class="line"><span class="number">67</span>   *j += <span class="number">1</span>;</span><br><span class="line"><span class="number">68</span> &#125;</span><br><span class="line"><span class="number">69</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/30/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8/" rel="prev" title="操作系统xv6-系统调用">
+      <i class="fa fa-chevron-left"></i> 操作系统xv6-系统调用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/" rel="next" title="操作系统-xv6-lab3-pagetable">
+      操作系统-xv6-lab3-pagetable <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#PART1"><span class="nav-number">1.</span> <span class="nav-text">PART1</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#PART2"><span class="nav-number">2.</span> <span class="nav-text">PART2</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#PART3"><span class="nav-number">3.</span> <span class="nav-text">PART3</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#bug"><span class="nav-number">3.0.1.</span> <span class="nav-text">bug</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E9%97%AE%E9%A2%98"><span class="nav-number">3.0.2.</span> <span class="nav-text">关键问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E6%B5%81%E7%A8%8B"><span class="nav-number">3.0.3.</span> <span class="nav-text">核心流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%96%91%E9%97%AE"><span class="nav-number">3.0.4.</span> <span class="nav-text">疑问</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '358eb767187ac6de4f94a5bbe6f9a62a',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

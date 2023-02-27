@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="虚拟内存  对主存的抽象，支持处理器通过虚拟寻址的方式来引用主存三个功能  缓存磁盘上的虚拟地址空间的内容 简化内存管理、链接、加载等 简化内存保护（通过PTE加保护位）  内存映射  将虚拟内存片和disk上的文件片关联起来，来初始化虚拟内存片  mmap 动态内存分配  显示分配器、隐式分配器。  malloc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="csapp-9-虚拟内存">
+<meta property="og:url" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="虚拟内存  对主存的抽象，支持处理器通过虚拟寻址的方式来引用主存三个功能  缓存磁盘上的虚拟地址空间的内容 简化内存管理、链接、加载等 简化内存保护（通过PTE加保护位）  内存映射  将虚拟内存片和disk上的文件片关联起来，来初始化虚拟内存片  mmap 动态内存分配  显示分配器、隐式分配器。  malloc">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-15-47-37.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-15-57-35.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-18-00-34.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-20-50-52.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-21-58-51.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-37-30.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-50-13.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-50-27.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-52-37.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-23-08-37.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-13-44-28.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-14-00-18.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-14-18-17.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-14-46.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-21-19.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-49-34.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-29-27.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-34-19.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-56-52.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-12-52.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-25-56.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-47-20.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-47-28.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-19-32-55.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-20-02-12.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-16-48-10.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-34-53.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-43-48.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-50-33.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-55-51.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-11-00-22.png">
+<meta property="og:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-11-14-33.png">
+<meta property="article:published_time" content="2022-07-25T14:49:34.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:20.324Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-15-47-37.png">
+
+<link rel="canonical" href="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>csapp-9-虚拟内存 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          csapp-9-虚拟内存
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-07-25 22:49:34" itemprop="dateCreated datePublished" datetime="2022-07-25T22:49:34+08:00">2022-07-25</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:20" itemprop="dateModified" datetime="2023-02-27T23:18:20+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>虚拟内存<br>  对主存的抽象，支持处理器通过虚拟寻址的方式来引用主存<br>三个功能</p>
+<ol>
+<li>缓存磁盘上的虚拟地址空间的内容</li>
+<li>简化内存管理、链接、加载等</li>
+<li>简化内存保护（通过PTE加保护位）</li>
+</ol>
+<p>内存映射<br>  将虚拟内存片和disk上的文件片关联起来，来初始化虚拟内存片<br>  mmap</p>
+<p>动态内存分配  显示分配器、隐式分配器。<br>  malloc</p>
+<span id="more"></span>
+
+<h1 id="Virtual-Memory-Concepts"><a href="#Virtual-Memory-Concepts" class="headerlink" title="Virtual Memory Concepts"></a>Virtual Memory Concepts</h1><h2 id="Why-VM"><a href="#Why-VM" class="headerlink" title="Why VM?"></a>Why VM?</h2><ul>
+<li>Uses    main    memory    efficiently    <ul>
+<li>Use    DRAM    as    a    cache    for    parts    of    a    virtual    address    space    </li>
+<li>DRAM主存作为虚拟地址空间的一部分的缓存？虚拟地址空间还有一部分是啥？就是磁盘本身上的地址？</li>
+</ul>
+</li>
+<li>Simplifies    memory    management    <ul>
+<li>Each    process    gets    the    same    uniform    linear    address    space    </li>
+</ul>
+</li>
+<li>Isolates    address    spaces    <ul>
+<li>One    process    can’t    interfere    with    another’s    memory</li>
+<li>User program cannot    access    privileged    kernel    information    and    code</li>
+</ul>
+</li>
+</ul>
+<h2 id="Address-Space"><a href="#Address-Space" class="headerlink" title="Address Space"></a>Address Space</h2><h3 id="Physical-Addressing-物理寻址"><a href="#Physical-Addressing-物理寻址" class="headerlink" title="Physical Addressing 物理寻址"></a>Physical Addressing 物理寻址</h3><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-15-47-37.png"></p>
+<ul>
+<li><strong>Physical Address (PA) 物理地址</strong>：计算机的主存被组织成一个由M个连续的字节大小的单元组成的数组，每字节都有唯一的物理地址。</li>
+<li><strong>Physical Addressing 物理寻址</strong>：<ul>
+<li>CPU访问内存的一种方式</li>
+<li>示例：读取物理地址4处开始的4字节字。<ul>
+<li>CPU执行加载指令，生成一个有效物理地址，通过内存总线，把它传递给主存；</li>
+<li>主存取出从物理地址处开始的4字节，并将它返回给CPU，CPU会将它存放在一个Reg中。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>早期的PC、嵌入式微控制器等使用Physical Addressing</li>
+</ul>
+<h3 id="Virtual-Addressing-虚拟寻址"><a href="#Virtual-Addressing-虚拟寻址" class="headerlink" title="Virtual    Addressing 虚拟寻址"></a>Virtual    Addressing 虚拟寻址</h3><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-15-57-35.png"></p>
+<ul>
+<li><strong>Virtual Address (VA) 虚拟地址</strong></li>
+<li><strong>Virtual Addressing 虚拟寻址</strong><ul>
+<li>CPU通过生成一个虚拟地址（VA）来访问主存，然后进行地址翻译：生成的这个虚拟地址先通过<strong>MMU（Memory Management Unit）</strong>转换成物理地址</li>
+<li><strong>MMU：利用存放在dram中的page table来动态翻译虚拟地址，该表的内容由os管理。</strong></li>
+<li><strong>MMU是硬件实现的，而非os的一部分</strong></li>
+<li><strong>MMU本身不保存page table，而是通过到dram中去查询</strong></li>
+</ul>
+</li>
+</ul>
+<h3 id="Address-Space-1"><a href="#Address-Space-1" class="headerlink" title="Address Space"></a>Address Space</h3><ul>
+<li><p><strong>Linear address space 线性地址空间</strong></p>
+<ul>
+<li>空间中的地址为连续的非负整数 {0,1,2,3…}</li>
+</ul>
+</li>
+<li><p><strong>Virtual address space 虚拟地址空间</strong></p>
+<ul>
+<li>在一个带虚拟内存的系统中，CPU从一个由N=2^n个地址的地址空间中生成虚拟地址，这个地址空间称为虚拟地址空间Virtual address space</li>
+<li>现代系统通常支持32位、64位虚拟地址空间</li>
+<li>{0,1,2,3…,N-1}</li>
+</ul>
+</li>
+<li><p><strong>Physical address space 物理地址空间</strong></p>
+<ul>
+<li>对应于系统中物理内存的M个字节，M不一定是2的幂</li>
+<li>{0,1,2,…,M-1}</li>
+</ul>
+</li>
+<li><p>地址空间的概念，区分了数据对象（字节）和他们的属性（地址）。</p>
+</li>
+<li><p><strong>虚拟内存基本思想</strong>：允许每个数据对象（字节）有多个独立的地址，其中每个地址都选自一个不同的地址空间。</p>
+</li>
+<li><p>主存中的每字节都有一个选自虚拟地址空间的虚拟地址和一个选自物理地址空间的物理地址。</p>
+</li>
+</ul>
+<h2 id="VM-as-a-Tool-for-Caching"><a href="#VM-as-a-Tool-for-Caching" class="headerlink" title="VM as a Tool    for    Caching"></a>VM as a Tool    for    Caching</h2><p>众所周知 计算机系统中 上层是下层的缓存<br>那么 主存是如何作为 磁盘的缓存的呢？<br>要通过VM系统这个机制 来使得 主存作为磁盘的缓存<br>下面介绍VM系统<br>VM系统<br>虚拟内存 是 给磁盘上的一块字节序列组织起来 给他们每人一个地址 ，这个地址就是虚拟地址，所有虚拟地址在一起就叫虚拟地址空间，DRAM主存可从虚拟内存空间VM SPACE 里 取出东西 缓存到主存DRAM中</p>
+<ul>
+<li><p><strong>virtual memory is an    array of N contiguous bytes stored on    disk</strong> — 虚拟内存被组织为一个由<strong>存放在磁盘</strong>上的N个连续的字节大小的单元组成的数组</p>
+<ul>
+<li>虚拟内存中的（也即磁盘的这块空间）每个字节都有一个<strong>唯一的虚拟地址</strong>，作为数组的<strong>索引</strong></li>
+</ul>
+</li>
+<li><p><strong>The    contents of    the    array    on    disk    are    cached    in    physical memory    (DRAM    cache)</strong>  —  磁盘上数组的内容<strong>被缓存在主存</strong>中    </p>
+<ul>
+<li><p>These cache    blocks    are    called    pages    (size is P = 2^p bytes)  </p>
+</li>
+<li><p>磁盘上的数据被分割成块，作为磁盘和主存之间的传输单元（如第6章所述）。<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-18-00-34.png"></p>
+</li>
+<li><p>**虚拟页 Virtual Page (VP)**：VM系统将虚拟内存分割为虚拟页的大小固定的块。每个虚拟页大小为 P = 2^p 字节。也即，将磁盘的一块空间，分为一个个虚拟页，(每个字节,每个虚拟页有相应的虚拟地址。)</p>
+</li>
+<li><p><strong>物理页 Physical Page (PP) / 页帧 page frame</strong>：物理内存被分割为物理页，大小也为P字节。</p>
+</li>
+</ul>
+</li>
+<li><p>虚拟页面被分为三个不相交的子集</p>
+<ul>
+<li><strong>未分配的</strong>：VM系统还未分配（或者创建）的页。未分配的块没有任何数据和他们关联，因此也就不占用任何磁盘空间</li>
+<li><strong>缓存的</strong>：当前已经缓存在物理内存（主存）中的已分配页</li>
+<li><strong>未缓存的</strong>：未缓存在物理内存（主存）中的已分配页</li>
+</ul>
+</li>
+</ul>
+<h3 id="DRAM-Cache-Organization-DRAM作为缓存的组织结构"><a href="#DRAM-Cache-Organization-DRAM作为缓存的组织结构" class="headerlink" title="DRAM Cache Organization DRAM作为缓存的组织结构"></a>DRAM Cache Organization DRAM作为缓存的组织结构</h3><ul>
+<li><p>DRAM作为缓存的不命中比SRAM缓存不命中的代价昂贵很多</p>
+<ul>
+<li>DRAM    is    about    10x    slower    than    SRAM</li>
+<li>Disk    is    about    10,000x    slower    than    DRAM    </li>
+</ul>
+</li>
+<li><p>因此</p>
+<ul>
+<li>虚拟页往往很大:    typically 4    KB,sometimes 2 MB</li>
+<li>全相联<ul>
+<li>Any    VP    can    be    placed    in    any    PP</li>
+<li>Requires a “large”    mapping    function    –    different from cache memories    </li>
+<li>复杂精密的替换算法</li>
+<li>Write-back    rather    than    write-through</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Enabling-Data-Structure-Page-Table-页表"><a href="#Enabling-Data-Structure-Page-Table-页表" class="headerlink" title="Enabling Data Structure: Page Table 页表"></a>Enabling Data Structure: Page Table 页表</h3><ul>
+<li><p>VM系统需要判断 一个虚拟页VP是否缓存在DRAM中的某个地方</p>
+<ul>
+<li>如果是（命中），系统则必须要确定这个虚拟页VP存放在那个物理页PP中</li>
+<li>如果不是（未命中），系统必须判断这个虚拟页VP存放在磁盘的哪个位置，在物理内存中选择一个牺牲页，然后将虚拟页VP从磁盘复制到DRAM中，替换这个牺牲页。</li>
+</ul>
+</li>
+<li><p>os软件 + MMU中的地址翻译硬件 + 存放在物理内存中叫做<strong>页表</strong>的数据结构 实现该功能</p>
+</li>
+<li><p><strong>Page table 页表</strong></p>
+<ul>
+<li>Array of Page Table Entry（页表条目）</li>
+<li><strong>maps virtual    pages to physical pages</strong>.    </li>
+<li>virtual address space 虚拟地址空间 中的每个 VP虚拟页 在 Page Table页表 中一个固定偏移量处都有一个PTE。</li>
+<li><strong>PTE的valid bit = 0</strong><ul>
+<li>NULL 表示这个虚拟页还未被分配</li>
+<li>不是NULL ，则指向该虚拟页在磁盘的起始位置</li>
+</ul>
+</li>
+<li><strong>PTE的valid bit = 1</strong><ul>
+<li>地址为DRAM中相应的物理页的起始位置</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-20-50-52.png"></p>
+<ul>
+<li>valid bit = 1 : VP1、VP2、VP4、VP7被缓存在DRAM中</li>
+<li>valid bit = 0 : <ul>
+<li>非null : 已经被分配，但还没被缓存。VP3、VP6</li>
+<li>null : 没被分配。VP0、VP5</li>
+</ul>
+</li>
+<li>PTE数量 = 虚拟地址空间大小 / 虚拟页大小 （因为一个VP相应的要有一个PTE）</li>
+</ul>
+</li>
+</ul>
+<h3 id="Page-Hit-页命中"><a href="#Page-Hit-页命中" class="headerlink" title="Page Hit 页命中"></a>Page Hit 页命中</h3><ul>
+<li><p>示例：CPU要读取包含在VP2中的虚拟内存的一个字（已知VP2被缓存在DRAM中）</p>
+<ul>
+<li>VM页命中。对VP2中一个字的引用就会命中<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-21-58-51.png"></li>
+</ul>
+</li>
+<li><p><strong>虚拟地址VA —–MMU地址翻译硬件—-&gt; 定位PTE</strong> –在内存中读取PTE–&gt; </p>
+<ul>
+<li>—-&gt; valid bit = 1 —-&gt; VP2已经缓存在DRAM中  —&gt;</li>
+<li>—-&gt; 使用PTE中的DRAM（物理内存）地址（该地址指向PP1中缓存页的起始位置（在DRAM中的地址）） —–&gt; 构造出这个字在DRAM中的物理地址</li>
+</ul>
+</li>
+<li><p>MMU如何工作具体看下面</p>
+</li>
+</ul>
+<h3 id="Page-Fault-缺页"><a href="#Page-Fault-缺页" class="headerlink" title="Page Fault 缺页"></a>Page Fault 缺页</h3><ul>
+<li><strong>缺页 page fault</strong>：VM系统中，DRAM缓存不命中称为缺页<ul>
+<li>reference    to    VM    word    that    is    not    in    physical    memory    (DRAM    cache    miss)</li>
+</ul>
+</li>
+<li>示例：CPU引用VP3中的一个字（已知VP3并未缓存在DRAM中）<ul>
+<li>VP3不命中（缺页），对VP3中的字的引用也就不命中，触发Page Fault</li>
+</ul>
+</li>
+<li>虚拟地址VA —MMU的地址翻译硬件—-&gt; 定位PTE —在主存中读取PTE—&gt;<ul>
+<li>valid bit = 0 —-&gt; VP3没被缓存  &amp;&amp; !=null —-&gt; 指向虚拟页VP3在磁盘的起始位置</li>
+<li>—&gt; <strong>触发缺页异常 cause Page Fault</strong><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-37-30.png"></li>
+<li>—&gt; <strong>kernel call Page Fault handler</strong><ul>
+<li><strong>在DRAM中选择一个PP存放的的VP作为牺牲页</strong><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-50-13.png"></li>
+<li><strong>kernel 将VP3从磁盘copy到DRAM，并更新PTE3，随后返回。</strong><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-50-27.png"></li>
+</ul>
+</li>
+<li>Page Fault Handler return to I_cur ， 造成Page Fault的指令<strong>重新执行</strong>，此时<strong>Page Hit</strong>，该指令将正常的从内存读取字，而不会再产生Page Fault。<ul>
+<li>该指令将VA重新发送给硬件，但是VP3已经缓存在DRAM中，故Page Hit。<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-22-52-37.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>VM系统使用了和SRAM缓存不同的术语</p>
+<ul>
+<li>VM中 <strong>块</strong> 被称为 <strong>页</strong></li>
+<li>VM中 磁盘和内存之间传送页的行为称为<strong>交换（swapping）</strong>或者<strong>页面调度（paging）</strong></li>
+<li>页从磁盘<strong>换入</strong>（或者<strong>页面调入</strong>）DRAM和从DRAM<strong>换出</strong>（或者<strong>页面调出</strong>）磁盘</li>
+<li><strong>demand paging 按需页面调度</strong>：waiting until the miss to copy the page from disk to DRAM </li>
+</ul>
+</li>
+<li><p>MMU如何工作具体看下面</p>
+</li>
+</ul>
+<h3 id="Allocating-Pages-分配页面"><a href="#Allocating-Pages-分配页面" class="headerlink" title="Allocating Pages 分配页面"></a>Allocating Pages 分配页面</h3><ul>
+<li>当os分配了一个新的虚拟内存页，对页表有何影响？<ul>
+<li>只影响了PTE和disk，并不改变DRAM的PP    </li>
+<li>如下调用malloc的结果，<ul>
+<li>Allocating    a    new    page    (VP    5)    of    virtual    memory.</li>
+<li>在磁盘上创建空间</li>
+<li>更新PTE5，指向这个新创建的页面。</li>
+<li><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-15-23-08-37.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Locality-局部性-makes-VM-work"><a href="#Locality-局部性-makes-VM-work" class="headerlink" title="Locality 局部性 makes VM work"></a>Locality 局部性 makes VM work</h3><ul>
+<li>Virtual    memory    seems    terribly    inefficient,    but    it    works    because    of    locality</li>
+<li>尽管整个运行过程中程序引用的不同页面总数可能超出DRAM总的大小，但是Locality保证了任意时刻，程序趋向于在一个较小的活动页面（active page）几何上工作，这个集合称为<strong>工作集（working set）</strong>或者<strong>常驻集合（resident set）</strong><ul>
+<li>Programs    with    bigger    temporal    locality    will    have    smaller    working    sets</li>
+</ul>
+</li>
+<li>If    (working    set    size    &lt;    main    memory    size)<ul>
+<li>Good    performance    for    one    process    aier    compulsory    misses</li>
+<li>在初始开销，也就是将工作集页面调度到内存中之后，接下来对这个working set的引用将集中命中，而不会产生额外磁盘IO</li>
+</ul>
+</li>
+<li>If    (    SUM(working    set    sizes)    &gt;    main    memory    size    )<ul>
+<li><strong>Thrashing 抖动:</strong> Performance    meltdown where    pages    are    swapped    (copied)    in    and    out    continuously</li>
+</ul>
+</li>
+</ul>
+<h2 id="VM-as-a-Tool-for-Memory-Management-虚拟内存作为内存管理的工具"><a href="#VM-as-a-Tool-for-Memory-Management-虚拟内存作为内存管理的工具" class="headerlink" title="VM    as a Tool    for    Memory    Management    虚拟内存作为内存管理的工具"></a>VM    as a Tool    for    Memory    Management    虚拟内存作为内存管理的工具</h2><h3 id="Page-Table-–-Virtual-Address-Space"><a href="#Page-Table-–-Virtual-Address-Space" class="headerlink" title="Page Table – Virtual Address Space"></a>Page Table – Virtual Address Space</h3><ul>
+<li>如何为每个进程维护一个虚拟地址空间？<ul>
+<li>os为每个进程提供了一个独立的页表page table，<strong>页表page table维护了虚拟地址空间virtual address space</strong>。</li>
+<li>每个进程的虚拟地址空间实际上就是kernel的page table。（虚拟地址 -翻译-&gt; 相应PTE –&gt; 相应DRAM / 触发page fault ）</li>
+<li>如下图 progess i的page table将i的虚拟地址空间里的VP1（逻辑上的，不存在的一个VP）映射到DRAM中的PP2，VP2-&gt;PP7 ; progess j 的page table 将 VP1 -&gt; PP7 , VP2-&gt;PP10。<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-13-44-28.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="Advantages"><a href="#Advantages" class="headerlink" title="Advantages"></a>Advantages</h3><ul>
+<li><strong>简化链接</strong></li>
+<li><strong>简化加载</strong><br>程序员可以认为每个进程有一个非常相似的虚拟地址空间<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-14-00-18.png"></li>
+<li><strong>简化共享</strong> <ul>
+<li>如何让多个进程<strong>共享</strong>代码、数据？<ul>
+<li>让不同进程的page table的PTE指向同一个PP（共享库的实现方式）</li>
+<li><strong>每个进程都必须调用相同的kernel代码</strong>，每个C程序都会调用C标准库，通过上述方式，可以使得多个进程共享这部分代码的副本，<strong>而不是在每个进程中都包括单独的kernel和C库的副本，</strong></li>
+</ul>
+</li>
+<li>mmap</li>
+</ul>
+</li>
+<li><strong>简化内存分配</strong><ul>
+<li>K个连续的虚拟内存页面，可以映射到DRAM中任意位置的k个物理页面。（可以随机分散在DRAM中）</li>
+</ul>
+</li>
+</ul>
+<h3 id="虚拟内存-虚拟地址空间"><a href="#虚拟内存-虚拟地址空间" class="headerlink" title="虚拟内存 != 虚拟地址空间"></a>虚拟内存 != 虚拟地址空间</h3><ul>
+<li><strong>虚拟地址空间 和 虚拟内存不是一回事！ 反正我这么认为</strong></li>
+<li><strong>虚拟地址空间：cpu(通过地址总线32位能力)寻址虚拟出来的一个范围</strong>。</li>
+<li><strong>而虚拟内存：实实在在的硬盘的空间。所以，虚拟内存分割成的的虚拟页也都是实实在在的磁盘空间。</strong>，而虚拟地址空间划分的虚拟页，是想象出来的，逻辑上的，(实际上不存在这个VP表，而是一个页表，)这个虚拟页要去指向一个DRAM中的PP，DRAM中的PP，保存的是从磁盘缓存来的实际虚拟内存的VP页。</li>
+<li>cpu认为他有4G内存空间是因为CPU的地址总线有32位，最大的寻址能力就为4G</li>
+<li>而DRAM实际上没这么大，所以它想出办法，将硬盘的一部分拿过来，当作主存，骗cpu；并给这块骗人的地方，起名字叫 虚拟内存。（如何用虚拟内存骗人的？DRAM是虚拟内存的缓存，如果DRAM中有cpu要引用的页，那么直接从DRAM里拿，如果没有，那么根据替换算法，选择DRAM中的牺牲页，将要引用的磁盘里的虚拟页替换进来。</li>
+</ul>
+<h2 id="VM-as-a-tool-for-memory-protection-虚拟内存作为内存保护的工具"><a href="#VM-as-a-tool-for-memory-protection-虚拟内存作为内存保护的工具" class="headerlink" title="VM as    a    tool for    memory    protection 虚拟内存作为内存保护的工具"></a>VM as    a    tool for    memory    protection 虚拟内存作为内存保护的工具</h2><ul>
+<li><p>os需要有手段来控制对内存系统的访问，如</p>
+<ul>
+<li>不允许用户进程修改rodata段</li>
+<li><strong>不允许它读或修改任何kernel中的代码和数据结构</strong></li>
+<li>不允许它读或者写其他progess的私有内存</li>
+<li>不允许他修改任何与其他进程共享的虚拟页面（指向同一PP的VP），除非所有的共享者都显式地允许他这么做。</li>
+</ul>
+</li>
+<li><p>CPU每生成一个VP,MMU都会读一个PTE，因此在PTE上加permission bits<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-14-18-17.png"></p>
+</li>
+<li><p><strong>segmentation fault</strong></p>
+<ul>
+<li>如果有指令违反了这些条件，就会触发异常：<strong>一般保护故障</strong></li>
+<li>Linux shell一般报告为 段错误(segmentation fault)</li>
+</ul>
+</li>
+</ul>
+<h2 id="VM-Effect-Summary"><a href="#VM-Effect-Summary" class="headerlink" title="VM Effect Summary"></a>VM Effect Summary</h2><h3 id="Programmer’s-view-of-virtual-memory"><a href="#Programmer’s-view-of-virtual-memory" class="headerlink" title="Programmer’s    view    of    virtual    memory"></a>Programmer’s    view    of    virtual    memory</h3><ul>
+<li>Each    process    has    its    own    private    linear    address    space</li>
+<li>Cannot    be    corrupted    by    other    processes</li>
+</ul>
+<h3 id="System-view-of-virtual-memory"><a href="#System-view-of-virtual-memory" class="headerlink" title="System    view    of    virtual    memory"></a>System    view    of    virtual    memory</h3><ul>
+<li>Uses    memory    efficiently    by    caching    virtual    memory    pages    （from disk to DRAM）<ul>
+<li> Efficient    only    because    of    locality</li>
+</ul>
+</li>
+<li>Simplifies    memory    management    and    programming</li>
+<li> Simplifies    protection    by    providing    a    convenient    interpositioning    point<br>to    check    permissions</li>
+</ul>
+<h2 id="VM地址翻译-Address-translation"><a href="#VM地址翻译-Address-translation" class="headerlink" title="VM地址翻译 Address    translation"></a>VM地址翻译 Address    translation</h2><ul>
+<li>MMU地址翻译大体分为两步<ul>
+<li>将VA翻译为PA（涉及TLB）</li>
+<li>将PA送至缓存</li>
+</ul>
+</li>
+</ul>
+<h3 id="概念-amp-公式"><a href="#概念-amp-公式" class="headerlink" title="概念 &amp; 公式"></a>概念 &amp; 公式</h3><ul>
+<li><strong>Virtual    Address    Space     VAS 虚拟地址空间</strong> <ul>
+<li>V    =    {0,    1,    …,    N–1}    </li>
+</ul>
+</li>
+<li><strong>Physical Address    Space    PAS 物理地址空间</strong><ul>
+<li>P    =    {0,    1,    …,    M–1}</li>
+</ul>
+</li>
+<li><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-14-46.png"></li>
+<li><strong>地址翻译</strong>：一个N元素的VAS中的元素 和一个 M元素的PAS中元素之间的映射 </li>
+<li><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-21-19.png"><ul>
+<li>For    virtual    address    a:    <ul>
+<li>MAP(a)        =        a’        if    data    at    virtual    address    a    is    at    physical    address    a’ in    P    </li>
+<li>MAP(a)        =    ∅ if    data    at    virtual    address    a    is    not    in    physical    memory    <ul>
+<li>Either    invalid    or    stored    on    disk    </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="MMU工作-amp-Page-Table细节"><a href="#MMU工作-amp-Page-Table细节" class="headerlink" title="MMU工作 &amp; Page Table细节"></a>MMU工作 &amp; Page Table细节</h3><ul>
+<li><p>Virtual address 如何定位到 PTE &amp;&amp; Page Table里的PTE如何对应到相应物理地址？</p>
+<ul>
+<li>通过MMU。</li>
+</ul>
+</li>
+<li><p>MMU是个硬件，其中没有page table，page table是存储在dram中的！</p>
+</li>
+<li><p><strong>MMU功能</strong>：</p>
+<ul>
+<li><strong>根据VA计算PTEA ：PTEA = register + VPN</strong>，CPU —VA—&gt; MMU —PTEA—&gt; DRAM</li>
+<li><strong>根据PTE计算PA ：PA = PPN + PPO</strong>，MMU &lt;–PTE– DRAM , MMU –PA–&gt; DRAM</li>
+<li><strong>TLB ：PTE缓存，根据VA快速获取PTE</strong>。<ul>
+<li>根据VA(VPN)查看是否缓存了VA对应的PTE，如果是，那么直接返回缓存的PTE，不必到dram中的pagetbale查询。不是，则去查询pagetable</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-16-49-34.png"></p>
+<ul>
+<li><strong>n位的virtual address</strong>：<ul>
+<li><strong>p位VPO</strong> 虚拟页面偏移（virtual page offset）+ 一个 <strong>n-p位的VPN</strong> 虚拟页号（virtual page number）<ul>
+<li><strong>VPN</strong>就是讲缓存的时候讲的<strong>tag标记</strong></li>
+<li><strong>VPO</strong>就是讲缓存的时候讲的<strong>offset块偏移</strong></li>
+<li>没有组索引，是因为因为代价很大，采用了全相联。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>m位的physical address</strong><ul>
+<li><strong>PPN</strong>（physical page number）物理页号 + <strong>PPO</strong>（physical page offset）物理页偏移量 </li>
+</ul>
+</li>
+<li><strong>MMU —-VPN和PTBR—-&gt;计算出PTEA —&gt; 确定PTE —-&gt; 取出PPN —–&gt; +VA里的VPO —-&gt; 得到相应物理地址</strong>（因为VP和PP都是P字节的，所以PPO=VPO）</li>
+</ul>
+</li>
+</ul>
+<p>PTEA : VPN虚拟页号 + PTBR页表基地址</p>
+<h3 id="Page-Hit-页命中-1"><a href="#Page-Hit-页命中-1" class="headerlink" title="Page Hit 页命中"></a>Page Hit 页命中</h3><ul>
+<li>完全由硬件处理<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-29-27.png"></li>
+<li><ol>
+<li>cpu生成virtual address，并把它传送给MMU</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>MMU生成PTE Address，并向高速缓存SRAM/主存DRAM请求得到它</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>高速缓存/主存向MMU返回PTE</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>MMU构造physical address，并将其传送给高速缓存SRAM/主存DRAM</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>高速缓存SRAM/主存DRAM讲所请求的data返回给cpu<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">- 1. cpu ---VA---&gt; MMU</span><br><span class="line">- 2. MMU ---PTEA---&gt; SRAM/DRAM</span><br><span class="line">- 3. MMU &lt;---PTE--- SRAM/DRAM</span><br><span class="line">- 4. MMU ---PA----&gt; SRAM/DRAM</span><br><span class="line">- 5. CPU &lt;---data---  SRAM/DRAM</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+<h3 id="Page-Fault-缺页-1"><a href="#Page-Fault-缺页-1" class="headerlink" title="Page Fault 缺页"></a>Page Fault 缺页</h3><ul>
+<li><p>由硬件和os kernel协作完成<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-34-19.png"></p>
+</li>
+<li><ol>
+<li>cpu —VA—&gt; MMU</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>MMU —PTEA—&gt; SRAM/DRAM</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>MMU &lt;—PTE— SRAM/DRAM</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>PTE的有效位为0，因此MMU触发了一次page fault exception，传递cpu中的控制到kernel中的page fault handler</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>page fault handler选出了dram中的牺牲页，如果该victim has been modified，则把它换出到磁盘disk</li>
+</ol>
+</li>
+<li><ol start="6">
+<li>page fault handler 调入新的页面到DRAM（将DRAM中的VP拷贝到DRAM中的PP），并更新page table中的PTE</li>
+</ol>
+</li>
+<li><ol start="7">
+<li>return to I_cur，再次执行导致page fault的指令。cpu将VA重新发送给MMU，因为VP已经被缓存在DRAM中，故命中。重复Page Hit行为</li>
+</ol>
+</li>
+<li><p>VA的VPN，VPO；PA的PPN，PPO计算</p>
+<ul>
+<li>2^VPO = size of P / 2^PPO = sizeof P</li>
+<li><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-16-17-56-52.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="高速缓存-VM"><a href="#高速缓存-VM" class="headerlink" title="高速缓存 + VM"></a>高速缓存 + VM</h3><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-12-52.png"></p>
+<h3 id="翻译后备缓冲器-TLB（为了更快得到PTE，进而更快得到PA）"><a href="#翻译后备缓冲器-TLB（为了更快得到PTE，进而更快得到PA）" class="headerlink" title="翻译后备缓冲器 TLB（为了更快得到PTE，进而更快得到PA）"></a>翻译后备缓冲器 TLB（为了更快得到PTE，进而更快得到PA）</h3><ul>
+<li><p><strong>Translation Lookaside Buffer TLB</strong>：MMU中包括的一个关于PTE的小缓存</p>
+<ul>
+<li>CPU生成VA之后要查询PTE<ul>
+<li>从DRAM中查询：几十—几百时钟周期</li>
+<li>从SRAM中查询：几个时钟周期</li>
+</ul>
+</li>
+<li>优化：增加这个TLB</li>
+</ul>
+</li>
+<li><p>MMU中的通过VA中的VPN来寻找缓存在TLB中的相应PTE</p>
+<ul>
+<li>划分成t位<strong>组索引TLBI</strong>，和剩余的位作为<strong>行标记TLBT</strong>（如果TLB有T=2^t个组，那么TLB索引(TLBI)则由VPN的低t位组成）<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-25-56.png"></li>
+</ul>
+</li>
+</ul>
+<h4 id="TLB-HIT-TLB命中"><a href="#TLB-HIT-TLB命中" class="headerlink" title="TLB HIT   TLB命中"></a><strong>TLB HIT   TLB命中</strong></h4><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-47-20.png"></p>
+<ul>
+<li>因为所有地址翻译步骤均由硬件完成，因此快。(减少了一次访存SRAM/DRAM)</li>
+<li><ol>
+<li>CPU —产生VA—&gt; MMU</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>MMU —- VPN —-&gt; TLB     </li>
+</ol>
+</li>
+<li><ol start="3">
+<li>TLB —- PTE —-&gt; MMU</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>MMU —- PA —-&gt; SRAM/DRAM (MMU根据PTE翻译出PA)</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>SRAM/DRAM — data —&gt; CPU </li>
+</ol>
+</li>
+</ul>
+<h4 id="TLB-MISS-TLB不命中"><a href="#TLB-MISS-TLB不命中" class="headerlink" title="TLB MISS  TLB不命中"></a><strong>TLB MISS  TLB不命中</strong></h4><p><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-09-47-28.png"></p>
+<ul>
+<li><ol>
+<li>CPU —产生VA—&gt; MMU</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>MMU —- VPN —-&gt; TLB</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>MMU —- PTEA —-&gt; SRAM/DRAM    (MMU根据VA翻译出PTEA)</li>
+</ol>
+<ul>
+<li>TLB没命中，MMU就会利用VA中的VPN和PTBR寄存器中的page table基地址，计算出PTE的地址（PTEA）</li>
+</ul>
+</li>
+<li><ol start="4">
+<li>SRAM/DRAM —- PTE —-&gt; TLB &amp;&amp; MMU</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>MMU —- PA —–&gt; SRAM/DRAM     (MMU根据PTE翻译出PA)</li>
+</ol>
+</li>
+<li><ol start="6">
+<li>SRAM/DRAM —- data —&gt; CPU</li>
+</ol>
+</li>
+</ul>
+<h3 id="Multi-Level-Page-Tables-多级页表"><a href="#Multi-Level-Page-Tables-多级页表" class="headerlink" title="Multi-Level    Page    Tables     多级页表"></a>Multi-Level    Page    Tables     多级页表</h3><ul>
+<li>Suppose:<ul>
+<li> 4KB    (212)    page    size,    48-bit    address    space,    8-byte    PTE</li>
+<li>Problem:    <ul>
+<li> Would    need    a    512    GB    page    table 常驻内存!</li>
+<li> 2^48    *    2^-12     *    2^3    =    2^39    bytes</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Solution：<strong>Multi-level Page Tables 多级页表</strong></li>
+</ul>
+<h4 id="2-level-page-table-二级页表"><a href="#2-level-page-table-二级页表" class="headerlink" title="2-level    page    table 二级页表"></a>2-level    page    table 二级页表</h4><ul>
+<li><p>例子：32bit，4bytes per table，VM4GB<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-19-32-55.png"></p>
+</li>
+<li><p><strong>一级页表 level 1 page table</strong></p>
+<ul>
+<li>每个PTE指向一个level2的page table页表</li>
+<li>常驻内存 （memory resident）</li>
+<li>例子中每个level1的PTE最终map到一个4MB的虚拟内存VM</li>
+</ul>
+</li>
+<li><p><strong>二级页表 level 2 page table</strong></p>
+<ul>
+<li>每个PTE指向一个4KB的VP虚拟内存页面</li>
+<li>在需要时创建、页面调入或调出</li>
+<li>例子中每个level2 page table最终map到一个4MB的虚拟内存VM</li>
+</ul>
+</li>
+<li><p><strong>如何节约内存？</strong></p>
+<ul>
+<li>如果一级页表中的一个PTE为空，那么相应的二级页表则不会存在。<ul>
+<li>这是一种巨大的潜在节约，因为对于一个典型的程序，4GB的虚拟地址空间的大部分都是未分配的</li>
+</ul>
+</li>
+<li>只有一级页表才需要总是在主存中（memory resident）；虚拟内存系统可以在需要时创建、页面调入或调出二级页表。减少主存压力<ul>
+<li>只有最常用的二级页表才需要缓存在主存中。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="K-level-Page-Table-k级页表"><a href="#K-level-Page-Table-k级页表" class="headerlink" title="K-level Page Table k级页表"></a>K-level Page Table k级页表</h4><ul>
+<li><p>k级页表层次结构的地址翻译</p>
+</li>
+<li><p><strong>page table register 中存储的是page table的PA物理地址</strong>。因为第一个page table是在dram中的。使用物理地址，我们可以直接找到在dram中找到page table。如果是虚拟地址的话，则会出现递归查询。（因为那样就要先把VA翻译成PA，而这个过程就是我们正在执行的过程。出现递归查询了。）<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-17-20-02-12.png"></p>
+</li>
+<li><p>第k级页表中的每个PTE </p>
+<ul>
+<li>要么包含某个物理页面的PPN，<strong>这个PPN是一个DRAM的页面基地址（physical page 的 base addr），这个页面，cached了一个虚拟内存里的VM的内容。</strong></li>
+<li>要么包含一个磁盘块地址</li>
+<li>NULL？</li>
+</ul>
+</li>
+<li><p>为了构造物理地址PA = PPN+PPO</p>
+<ul>
+<li>MMU必须访问k个PTE来确定PPN</li>
+<li>PPO = VPO</li>
+</ul>
+</li>
+<li><p>访问k个PTE，看起来很慢，实际上通过TLB将不同层次的table缓存起来，并不比单级页表慢很多。</p>
+</li>
+</ul>
+<h3 id="Address-translation-例子"><a href="#Address-translation-例子" class="headerlink" title="Address translation 例子"></a>Address translation 例子</h3><ul>
+<li><p>CPU —&gt; VA —VPN(TLBT,TLBI)—&gt; TLB</p>
+<ul>
+<li>TLB命中<ul>
+<li>获取PTE —-&gt; PNN —(+VPO)–&gt; PA(CT,CI,CO) —-&gt; 防蚊SRAM<ul>
+<li>SRAM Hit ,return data to cpu</li>
+<li>SRAM Miss , 根据PA访问DRAM , return data to cpu</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>TLB不命中<ul>
+<li>访问SRAM/DRAM的Page Table中的PTE<ul>
+<li>PTE valid bit = 1，取出PPN <ul>
+<li>—(+VPO)–&gt; 组成PA(CT,CI,CO) —-&gt; 访问SRAM<ul>
+<li>SRAM Hit ,return data to cpu</li>
+<li>SRAM Miss , 根据PA访问DRAM , return data to cpu</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>PTE valid bit = 0，缺页 Page Fault<ul>
+<li>kernal调入合适的页面（复制磁盘的VP到DRAM得PP，更新PTE）</li>
+<li>重新运行造成page fault的指令<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-16-48-10.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>例子<br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-34-53.png"><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-43-48.png"><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-50-33.png"><br><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-10-55-51.png"></p>
+</li>
+<li><p>cpu执行一条读地址0x03d4处的字节的加载指令时</p>
+<ul>
+<li><strong>VA</strong><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-11-00-22.png"></li>
+<li>MMU —VPN 0x0f(TLBT=0x03,TLBI=0x03)—&gt; TLB HIT,PPN = 0x0D</li>
+<li>PA = PPN 0x0D + VPO 0x14 = 0x354 </li>
+<li><strong>PA</strong><img src="/2022/07/25/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98/2022-08-18-11-14-33.png"></li>
+<li>访问SRAM，CI=0x05,CT=0x0d,CO=0x0. SRAM HIT。return 0x36 to CPU</li>
+</ul>
+</li>
+</ul>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/07/20/%E5%B7%A5%E5%85%B7-Json/" rel="prev" title="JSON简介">
+      <i class="fa fa-chevron-left"></i> JSON简介
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/07/27/csapp-8-%E5%BC%82%E5%B8%B8%E6%8E%A7%E5%88%B6%E6%B5%812/" rel="next" title="csapp-8-异常控制流2">
+      csapp-8-异常控制流2 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Virtual-Memory-Concepts"><span class="nav-number">1.</span> <span class="nav-text">Virtual Memory Concepts</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Why-VM"><span class="nav-number">1.1.</span> <span class="nav-text">Why VM?</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Address-Space"><span class="nav-number">1.2.</span> <span class="nav-text">Address Space</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Physical-Addressing-%E7%89%A9%E7%90%86%E5%AF%BB%E5%9D%80"><span class="nav-number">1.2.1.</span> <span class="nav-text">Physical Addressing 物理寻址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Virtual-Addressing-%E8%99%9A%E6%8B%9F%E5%AF%BB%E5%9D%80"><span class="nav-number">1.2.2.</span> <span class="nav-text">Virtual    Addressing 虚拟寻址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Address-Space-1"><span class="nav-number">1.2.3.</span> <span class="nav-text">Address Space</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#VM-as-a-Tool-for-Caching"><span class="nav-number">1.3.</span> <span class="nav-text">VM as a Tool    for    Caching</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DRAM-Cache-Organization-DRAM%E4%BD%9C%E4%B8%BA%E7%BC%93%E5%AD%98%E7%9A%84%E7%BB%84%E7%BB%87%E7%BB%93%E6%9E%84"><span class="nav-number">1.3.1.</span> <span class="nav-text">DRAM Cache Organization DRAM作为缓存的组织结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Enabling-Data-Structure-Page-Table-%E9%A1%B5%E8%A1%A8"><span class="nav-number">1.3.2.</span> <span class="nav-text">Enabling Data Structure: Page Table 页表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Page-Hit-%E9%A1%B5%E5%91%BD%E4%B8%AD"><span class="nav-number">1.3.3.</span> <span class="nav-text">Page Hit 页命中</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Page-Fault-%E7%BC%BA%E9%A1%B5"><span class="nav-number">1.3.4.</span> <span class="nav-text">Page Fault 缺页</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Allocating-Pages-%E5%88%86%E9%85%8D%E9%A1%B5%E9%9D%A2"><span class="nav-number">1.3.5.</span> <span class="nav-text">Allocating Pages 分配页面</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Locality-%E5%B1%80%E9%83%A8%E6%80%A7-makes-VM-work"><span class="nav-number">1.3.6.</span> <span class="nav-text">Locality 局部性 makes VM work</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#VM-as-a-Tool-for-Memory-Management-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E4%BD%9C%E4%B8%BA%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E7%9A%84%E5%B7%A5%E5%85%B7"><span class="nav-number">1.4.</span> <span class="nav-text">VM    as a Tool    for    Memory    Management    虚拟内存作为内存管理的工具</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Page-Table-%E2%80%93-Virtual-Address-Space"><span class="nav-number">1.4.1.</span> <span class="nav-text">Page Table – Virtual Address Space</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Advantages"><span class="nav-number">1.4.2.</span> <span class="nav-text">Advantages</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98-%E8%99%9A%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="nav-number">1.4.3.</span> <span class="nav-text">虚拟内存 !&#x3D; 虚拟地址空间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#VM-as-a-tool-for-memory-protection-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E4%BD%9C%E4%B8%BA%E5%86%85%E5%AD%98%E4%BF%9D%E6%8A%A4%E7%9A%84%E5%B7%A5%E5%85%B7"><span class="nav-number">1.5.</span> <span class="nav-text">VM as    a    tool for    memory    protection 虚拟内存作为内存保护的工具</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#VM-Effect-Summary"><span class="nav-number">1.6.</span> <span class="nav-text">VM Effect Summary</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Programmer%E2%80%99s-view-of-virtual-memory"><span class="nav-number">1.6.1.</span> <span class="nav-text">Programmer’s    view    of    virtual    memory</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#System-view-of-virtual-memory"><span class="nav-number">1.6.2.</span> <span class="nav-text">System    view    of    virtual    memory</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#VM%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91-Address-translation"><span class="nav-number">1.7.</span> <span class="nav-text">VM地址翻译 Address    translation</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5-amp-%E5%85%AC%E5%BC%8F"><span class="nav-number">1.7.1.</span> <span class="nav-text">概念 &amp; 公式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MMU%E5%B7%A5%E4%BD%9C-amp-Page-Table%E7%BB%86%E8%8A%82"><span class="nav-number">1.7.2.</span> <span class="nav-text">MMU工作 &amp; Page Table细节</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Page-Hit-%E9%A1%B5%E5%91%BD%E4%B8%AD-1"><span class="nav-number">1.7.3.</span> <span class="nav-text">Page Hit 页命中</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Page-Fault-%E7%BC%BA%E9%A1%B5-1"><span class="nav-number">1.7.4.</span> <span class="nav-text">Page Fault 缺页</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AB%98%E9%80%9F%E7%BC%93%E5%AD%98-VM"><span class="nav-number">1.7.5.</span> <span class="nav-text">高速缓存 + VM</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BF%BB%E8%AF%91%E5%90%8E%E5%A4%87%E7%BC%93%E5%86%B2%E5%99%A8-TLB%EF%BC%88%E4%B8%BA%E4%BA%86%E6%9B%B4%E5%BF%AB%E5%BE%97%E5%88%B0PTE%EF%BC%8C%E8%BF%9B%E8%80%8C%E6%9B%B4%E5%BF%AB%E5%BE%97%E5%88%B0PA%EF%BC%89"><span class="nav-number">1.7.6.</span> <span class="nav-text">翻译后备缓冲器 TLB（为了更快得到PTE，进而更快得到PA）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#TLB-HIT-TLB%E5%91%BD%E4%B8%AD"><span class="nav-number">1.7.6.1.</span> <span class="nav-text">TLB HIT   TLB命中</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TLB-MISS-TLB%E4%B8%8D%E5%91%BD%E4%B8%AD"><span class="nav-number">1.7.6.2.</span> <span class="nav-text">TLB MISS  TLB不命中</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Multi-Level-Page-Tables-%E5%A4%9A%E7%BA%A7%E9%A1%B5%E8%A1%A8"><span class="nav-number">1.7.7.</span> <span class="nav-text">Multi-Level    Page    Tables     多级页表</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-level-page-table-%E4%BA%8C%E7%BA%A7%E9%A1%B5%E8%A1%A8"><span class="nav-number">1.7.7.1.</span> <span class="nav-text">2-level    page    table 二级页表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#K-level-Page-Table-k%E7%BA%A7%E9%A1%B5%E8%A1%A8"><span class="nav-number">1.7.7.2.</span> <span class="nav-text">K-level Page Table k级页表</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Address-translation-%E4%BE%8B%E5%AD%90"><span class="nav-number">1.7.8.</span> <span class="nav-text">Address translation 例子</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'de172f8453527d01a70600f83efae796',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

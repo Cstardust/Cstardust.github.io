@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TCP概述报文格式、发送方接收方状态机模型、流量控制、拥塞控制、三次握手四次挥手">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-传输层-TCP">
+<meta property="og:url" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="TCP概述报文格式、发送方接收方状态机模型、流量控制、拥塞控制、三次握手四次挥手">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-14-18-32.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-14-37-22.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-15-06-18.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-15-32-13.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-16-09-33.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-16-31-50.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-09-13-55.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-56-20.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-52-34.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-53-15.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-39-08.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-42-49.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-42-39.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-39-21.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-44-43.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-10-46.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-03-04.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-05-59.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-09-24.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-32-22.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-43-07.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-19-26-23.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-19-55-50.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-13-57-17.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-04-20.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-16-38.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-18-15.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-18-12.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-20-38.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-21-07.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-22-06-12.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-42-08.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-47-16.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-50-51.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-52-42.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-53-01.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-18-03.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-30-37.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-33-52.png">
+<meta property="og:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-15-12-49-23.png">
+<meta property="article:published_time" content="2022-10-15T02:31:42.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:58.048Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-14-18-32.png">
+
+<link rel="canonical" href="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-传输层-TCP | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-传输层-TCP
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-15 10:31:42" itemprop="dateCreated datePublished" datetime="2022-10-15T10:31:42+08:00">2022-10-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:58" itemprop="dateModified" datetime="2023-02-27T23:23:58+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%BD%91/" itemprop="url" rel="index"><span itemprop="name">计网</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>TCP概述<br>报文格式、发送方接收方状态机模型、流量控制、拥塞控制、三次握手四次挥手</p>
+<span id="more"></span>
+
+<h1 id="TCP"><a href="#TCP" class="headerlink" title="TCP"></a>TCP</h1><ul>
+<li><p><strong>什么是TCP连接</strong>：</p>
+<ul>
+<li>用于保证可靠性和流量控制维护的某些状态信息，这些信息的组合，包括<strong>Socket、序列号和窗口大小</strong>称为连接。</li>
+</ul>
+</li>
+<li><p>TCP 四元组可以唯一的确定一个连接，四元组包括如下：</p>
+<ul>
+<li>源地址</li>
+<li>源端口</li>
+<li>目的地址</li>
+<li>目的端口</li>
+</ul>
+</li>
+</ul>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><ul>
+<li><strong>点对点</strong>：<ul>
+<li>一个发送方，一个接收方</li>
+<li>多播对于TCP来说是不可能的。（一个发送方传送给多个接收方）</li>
+</ul>
+</li>
+<li><strong>可靠的、按顺序的字节流</strong>： <ul>
+<li>没有报文边界</li>
+</ul>
+</li>
+<li><strong>管道化（流水线）</strong>： <ul>
+<li>TCP拥塞控制和流量控制设置窗口大小</li>
+</ul>
+</li>
+<li><strong>发送和接收缓存</strong><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-14-18-32.png"></p>
+</blockquote>
+<ul>
+<li>MSS(MAX Segment Size)：放入TCP报文段的最大应用层报文段大小。（应用层报文段的最大大小）</li>
+<li>MTU(Maximum Transmission Unit) = IP Header + TCP Header + MSS(应用层报文段)<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-14-37-22.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>全双工数据</strong>：<ul>
+<li>在同一连接中数据流双向流动</li>
+</ul>
+</li>
+<li><strong>面向连接</strong>：<ul>
+<li><strong>三次握手</strong>：在数据交换之前，通过握手（交换控制报文） 初始化发送方、接收方的状态变量</li>
+<li>TCP连接是一条<strong>逻辑连接</strong>，其共同状态仅<strong>保存在</strong>两个通信<strong>端系统</strong>的TCP程序中。<ul>
+<li>TCP连接的组成包括：一台主机上的缓存、变量和与进程连接的socket，另一台主机上的另一组缓存、变量和与进程连接的socket</li>
+</ul>
+</li>
+<li><strong>中间的</strong>网络元素如 路由器、交换机、中继器，没有为该连接分配任何缓存和变量。也即，<strong>不会维持TCP连接状态。</strong><ul>
+<li>中间路由器对TCP连接完全视而不见，它们看到的是数据报，而不是连接。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>有流量控制：</strong><ul>
+<li>发送方不会淹没接收方</li>
+</ul>
+</li>
+</ul>
+<h2 id="报文结构"><a href="#报文结构" class="headerlink" title="报文结构"></a>报文结构</h2><p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-15-06-18.png"></p>
+<ul>
+<li><p>源port、目的port：</p>
+<ul>
+<li>多路复用/分解来自或送到上层的数据</li>
+</ul>
+</li>
+<li><p>检验和check sum</p>
+</li>
+<li><p>序号sequence number (32bit) and 确认号acknowledgement number  (32bit)</p>
+<ul>
+<li><strong>用于实现可靠数据传输服务</strong></li>
+</ul>
+</li>
+<li><p>首部长度header length </p>
+<ul>
+<li>TCP Header 长度</li>
+</ul>
+</li>
+<li><p>标志</p>
+<ul>
+<li>RSF位的组合代表了是第几次握手</li>
+<li>…</li>
+</ul>
+</li>
+<li><p>接收窗口receive window </p>
+<ul>
+<li>用于<strong>流量控制</strong>，指示接收方愿意接受的字节数量</li>
+</ul>
+</li>
+<li><p>选项options </p>
+</li>
+</ul>
+<h3 id="序号、确认号"><a href="#序号、确认号" class="headerlink" title="序号、确认号"></a>序号、确认号</h3><ul>
+<li><strong>好图</strong><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-15-32-13.png"></li>
+<li><strong>序号：</strong><ul>
+<li>报文段<strong>首字节</strong>的在<strong>字节流</strong>的编号</li>
+<li>即 <strong>一个报文段的序号</strong> 是该TCP报文段的数据部分的首字节的字节流编号</li>
+</ul>
+</li>
+<li><strong>确认号</strong>:<ul>
+<li>期望从另一方收到的<strong>下一个字节</strong>的序号</li>
+<li><strong>累计确认</strong>（与SR协议不同，SR协议是非累计确认）</li>
+<li>ack number：已经收到了[begin,ack-1]的所有bytes，期待收到的下一个byte是ack 。 即期待收到的下一个TCP报文段的body的起始字节的序号是ack</li>
+</ul>
+</li>
+<li>TCP没有规定 接收方如何处理乱序的报文段<ul>
+<li>丢弃</li>
+<li>缓存。（实际中使用的）</li>
+</ul>
+</li>
+<li>对于一条TCP连接，双方<strong>随机选择初始序号</strong><ul>
+<li>? </li>
+</ul>
+</li>
+<li>telnet例子<br>  <img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-16-09-33.png"><ul>
+<li><strong>捎带</strong>：B到A的数据的ack确认被 捎带(装载) 在一个B到A的数据包文段中。</li>
+<li>顺带一句：初始序号随机 防止老连接的包造成影响。不过对方是如何知道自己的初始序号的？</li>
+</ul>
+</li>
+</ul>
+<h2 id="往返延时（RTT）和-TCP超时"><a href="#往返延时（RTT）和-TCP超时" class="headerlink" title="往返延时（RTT）和 TCP超时"></a>往返延时（RTT）和 TCP超时</h2><ul>
+<li>怎样设置TCP超时？<ul>
+<li>比RTT要长  <ul>
+<li> 但RTT是变化的</li>
+</ul>
+</li>
+<li>太短：太早超时<ul>
+<li> 不必要的重传</li>
+</ul>
+</li>
+<li>太长：对报文段丢失<ul>
+<li> 反应太慢，消极</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="往返时间RTT预估"><a href="#往返时间RTT预估" class="headerlink" title="往返时间RTT预估"></a>往返时间RTT预估</h3><ul>
+<li>怎样估计RTT？<ul>
+<li>SampleRTT：测量从报文段发出到收到确认的时间 <ul>
+<li>如果有重传，忽略此次测量</li>
+</ul>
+</li>
+<li>SampleRTT会变化，因此估计的RTT应该比较平滑 <ul>
+<li>对几个最近的测量值求平均，而不是仅用当前的SampleRTT</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>EstimatedRTT = (1 - α) * EstimatedRTT + α * SampleRTT</strong> <ul>
+<li>表示 当前最近一段时间的往返平均值</li>
+<li>指数加权移动平均：越近的样本权重越大<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-16-31-50.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="RTT变化-预估"><a href="#RTT变化-预估" class="headerlink" title="RTT变化 预估"></a>RTT变化 预估</h3><ul>
+<li>DevRTT = (1-β) * DevRTT + β * |SampleRTT - EstimatedRTT| <ul>
+<li>表示 当前采样值SampleRTT 离 估算平均值EstimatedRTT 的偏差程度 的一个平均值</li>
+<li>同样采用指数移动加权平均。</li>
+</ul>
+</li>
+</ul>
+<h3 id="设置和管理-重传超时间隔"><a href="#设置和管理-重传超时间隔" class="headerlink" title="设置和管理 重传超时间隔"></a>设置和管理 重传超时间隔</h3><ul>
+<li>TimeoutInterval = EstimatedRTT + 4*DevRTT</li>
+</ul>
+<h2 id="TCP-如何rdt-可靠数据传输"><a href="#TCP-如何rdt-可靠数据传输" class="headerlink" title="TCP: 如何rdt?(可靠数据传输)"></a>TCP: 如何rdt?(可靠数据传输)</h2><ul>
+<li>TCP在IP不可靠服务的基础上建立了rdt<ul>
+<li>pipeline的报文段<ul>
+<li>GBN + SR</li>
+</ul>
+</li>
+<li><strong>累计确认：像GBN</strong></li>
+<li><strong>单个定时器</strong>：发送方只设置一个定时器（GBN）,且该定时器只和最老的段关联.<strong>像GBN</strong></li>
+<li>TCP没有规定 接收方如何处理乱序的报文段</li>
+<li>通过以下事件触发<strong>重传</strong><ul>
+<li><strong>超时</strong>：当超时的时候 只**重放一个段(SR)**，且是最老的段。</li>
+<li><strong>冗余ACK</strong>：触发快速重传机制<ul>
+<li>例如收到ACK50之后，又收到3个ACK50</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP发送方（简化）"><a href="#TCP发送方（简化）" class="headerlink" title="TCP发送方（简化）"></a>TCP发送方（简化）</h3><ul>
+<li>接下来考虑简化的TCP发送方<ul>
+<li>忽略重复的确认</li>
+<li>忽略流量控制和拥塞控制</li>
+</ul>
+</li>
+</ul>
+<h4 id="状态机"><a href="#状态机" class="headerlink" title="状态机"></a>状态机</h4><ul>
+<li><p><strong>发送窗口</strong> : [base,next-1]</p>
+<ul>
+<li>发送窗口 size = next - base</li>
+<li>next : 即将发送的报文段，也即紧挨着发送窗口的下一个报文段</li>
+<li>next-1 : 最新的 已经发送 未确认的报文段</li>
+<li>base : 最老的 已发送 未确认的报文段</li>
+<li>base - 1 : 最新的被确认的分组</li>
+</ul>
+</li>
+<li><p>ack number：</p>
+<ul>
+<li>接收方接收到的<strong>顺序</strong>到来的最后一个字节 + 1（期待）。</li>
+<li>发送给发送方，ack告诉发送方[begin,ack-1]已经被确认。</li>
+<li>发送方的base移动到ack，因此<strong>接收到的ack是发送窗口的base</strong></li>
+</ul>
+</li>
+<li><p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-09-13-55.png"></p>
+</li>
+</ul>
+<h4 id="文字版-Action-and-Event"><a href="#文字版-Action-and-Event" class="headerlink" title="文字版 Action and Event"></a>文字版 Action and Event</h4><ul>
+<li><p><strong>data received from application : 从应用层接收数据</strong></p>
+<ul>
+<li>用nextseq创建报文段</li>
+<li>序号nextseq为报文段首字节的字节流编号</li>
+<li>如果还没有运行定时器，启动定时器<ul>
+<li><strong>定时器与最老未确认的报文段关联（即 定时器与base分组关联）</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>timeout : 定时器超时</strong>：</p>
+<ul>
+<li>重传后沿最老的报文段（即 <strong>重传base</strong>）<ul>
+<li><strong>只重传一个base分组</strong>（类似SR）</li>
+</ul>
+</li>
+<li>重启timer</li>
+</ul>
+</li>
+<li><p><strong>ACK received , with ACK field and value y收到确认</strong>：</p>
+<ul>
+<li>如果收到的是对尚未确认的报文段的确认（接收到的ACK &gt; 发送窗口的base）<ul>
+<li>发送窗口的后沿向右侧移动，更新已被确认的报文序号。即 <strong>base 右移到ack的位置</strong></li>
+<li><strong>base &lt; next</strong> : 如果当前还有已经发送但没被确认的报文段，重启timer。</li>
+<li><strong>base = next</strong> : 如果当前没有已经发送但没被确认的报文段，无需启动timer。<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-56-20.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>如下就要启动对报文段7的timer<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-52-34.png"><br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-53-15.png"></p>
+</li>
+</ul>
+<h4 id="code"><a href="#code" class="headerlink" title="code"></a>code</h4><ul>
+<li>三件event 和 相应 action<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">NextSeqNum = InitialSeqNum</span><br><span class="line">SendBase = InitialSeqNum</span><br><span class="line">loop (forever) &#123;</span><br><span class="line">  <span class="keyword">switch</span>(event) </span><br><span class="line">  event: data received from application above </span><br><span class="line">    create TCP segment with sequence number NextSeqNum </span><br><span class="line">    <span class="keyword">if</span> (timer currently <span class="keyword">not</span> running) </span><br><span class="line">      start timer pass segment to IP </span><br><span class="line">    NextSeqNum = NextSeqNum + length(data) </span><br><span class="line">  </span><br><span class="line">  event: timer timeout </span><br><span class="line">    retransmit <span class="keyword">not</span>-yet-acknowledged segment with smallest sequence number </span><br><span class="line">    start timer </span><br><span class="line">  </span><br><span class="line">  event: ACK received, with ACK field value of y </span><br><span class="line">    <span class="keyword">if</span> (y &gt; SendBase) &#123; </span><br><span class="line">      SendBase = y</span><br><span class="line">      <span class="keyword">if</span> (there are currently <span class="keyword">not</span>-yet-acknowledged segments) </span><br><span class="line">        start timer </span><br><span class="line">    &#125; </span><br><span class="line">&#125; <span class="comment">/* end of loop forever */</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h4 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h4><ul>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-39-08.png"></p>
+</blockquote>
+<ul>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-42-49.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-42-39.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-39-21.png"></p>
+</blockquote>
+<ul>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-10-44-43.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP接收方"><a href="#TCP接收方" class="headerlink" title="TCP接收方"></a>TCP接收方</h3><ul>
+<li>RCF对于接收方返回ACK的建议。</li>
+<li><blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-10-46.png"></p>
+</blockquote>
+<ul>
+<li><blockquote>
+<p>(1)(2)<img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-03-04.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>(3)<img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-05-59.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>(4)<img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-18-11-09-24.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="补充-TCP发送方-之-快速重传机制"><a href="#补充-TCP发送方-之-快速重传机制" class="headerlink" title="补充 : TCP发送方 之 快速重传机制"></a>补充 : TCP发送方 之 快速重传机制</h3><ul>
+<li>超时周期往往太长： <ul>
+<li>在重传丢失报文段之前的延时太长</li>
+</ul>
+</li>
+<li>通过<strong>重复的ACK</strong>来<strong>检测报文段丢失</strong> <ul>
+<li>发送方通常连续发送大量报文段 </li>
+<li>如果报文段丢失，通常会引起多个重复的ACK</li>
+</ul>
+</li>
+<li>如果发送方收到同一数据的3个冗余ACK，重传最小序号的段： <ul>
+<li><strong>快速重传</strong>：在定时器过时之前重发报文段 </li>
+<li>它假设跟在被确认的数据后面的数据丢失了 </li>
+<li>第一个ACK是正常的； </li>
+<li>收到第二个该段的ACK，表示接收方收到一个该段后的乱序段； </li>
+<li>收到第3，4个该段的ack，表示接收方收到该段之后的2个，3个乱序段，可能性非常大段丢失了</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>例子</p>
+<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-32-22.png"><br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-43-07.png"></p>
+</blockquote>
+</li>
+<li><p>补充上文中的发送方简化版状态机</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">event: ACK received, <span class="function">with ACK field value of y </span></span><br><span class="line"><span class="function"><span class="title">if</span> <span class="params">(y &gt; SendBase)</span> </span>&#123; </span><br><span class="line">  SendBase = y</span><br><span class="line">  <span class="keyword">if</span> (there are currently <span class="keyword">not</span>-yet-acknowledged segments)</span><br><span class="line">    start timer </span><br><span class="line">  <span class="keyword">else</span> </span><br><span class="line">    stop timer</span><br><span class="line">&#125; </span><br><span class="line"><span class="keyword">else</span> &#123;       </span><br><span class="line">  <span class="comment">//  ACK = sendBase </span></span><br><span class="line">  increment count of dup ACKs received <span class="keyword">for</span> y</span><br><span class="line">  <span class="comment">//  ACK重传</span></span><br><span class="line">  <span class="keyword">if</span> (count of dup ACKs received <span class="keyword">for</span> y = <span class="number">3</span>) &#123;</span><br><span class="line">    resend segment with sequence number y</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="流量控制"><a href="#流量控制" class="headerlink" title="流量控制"></a>流量控制</h2><h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><ul>
+<li><strong>流量控制</strong>：<strong>接收方控制发送方</strong>，不让发送方发送的太多、太快以至于让接收方的缓冲区溢出。<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-19-26-23.png"></li>
+<li><strong>TCP接收方 通过填写TCP段头部的receiving window field来告知 TCP发送方 自己的空闲buffer大小</strong>。<ul>
+<li><strong>进而控制TCP发送方的发送速度</strong> </li>
+</ul>
+</li>
+</ul>
+<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><ul>
+<li><p>TCP接收方 通过填写TCP段头部的receiving window field来告知 TCP发送方 自己接收Buffer的空闲大小.</p>
+<ul>
+<li>RcvBuffer大小通过socket选项设置 (典型默认大小为4096 字节)。 </li>
+<li>很多操作系统自动调整RcvBuffer。</li>
+</ul>
+</li>
+<li><p>TCP发送方知道接收方的receiving window之后，通过限制未确认(“inflight”)字节的个数≤接收方发送过来的rwnd值，来保证接收方不被淹没。（意图控制发送方新发送的（新要送入接收方Buffer的）data size &lt; free buffer space）</p>
+</li>
+<li><p>接收buffer , recvWindow(free空间) 以及 , data to read by app<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-19-55-50.png"></p>
+</li>
+</ul>
+<h2 id="连接管理-（即-TCP三次握手-四次挥手）"><a href="#连接管理-（即-TCP三次握手-四次挥手）" class="headerlink" title="连接管理 （即 TCP三次握手 四次挥手）"></a>连接管理 （即 TCP三次握手 四次挥手）</h2><ul>
+<li><strong>连接关闭的两军问题</strong></li>
+</ul>
+<h3 id="TCP连接建立"><a href="#TCP连接建立" class="headerlink" title="TCP连接建立"></a>TCP连接建立</h3><ul>
+<li>TCP连接的建立会显著地增加人们感受到的时延。</li>
+<li>连接建立的本质<ul>
+<li>知道要和对方通信</li>
+<li>双方准备通信资源 如 缓冲区</li>
+<li>控制变量置位 如连接初始序号 和初始化的recvBuffer大小</li>
+</ul>
+</li>
+</ul>
+<h4 id="三次握手"><a href="#三次握手" class="headerlink" title="三次握手"></a>三次握手</h4><ul>
+<li><p><strong>流程</strong>：client的进程向和server的进程建立TCP连接<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-13-57-17.png"></p>
+</li>
+<li><p><strong>1. client向server发送SYN报文段</strong></p>
+<ul>
+<li>请求发起连接，并告知对方自己的初始序列号。</li>
+<li>不含应用层数据</li>
+<li>SYN = 1</li>
+<li>seq = client_isn。</li>
+<li>client状态变化：CLOSE -&gt; SYN_SENT<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-04-20.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>2. server向client发送SYNACK报文段(SYNACK segment)</strong></p>
+<ul>
+<li>收到了client的连接请求，收到了对方的初始化序列号，并同意建立连接，并告知对方自己的初始序列号。</li>
+<li>不含应用层数据</li>
+<li>SYN = 1 </li>
+<li>seq num = server_isn</li>
+<li>ACK = 1 , ack num = client_isn + 1</li>
+<li>server状态变化：LISTEN -&gt; SYN_RCVD<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-16-38.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>3. client向server发送发送ACK报文段</strong></p>
+<ul>
+<li>client告诉server，自己收到了对方对于连接建立的确认，以及收到了对方的初始化序列号。</li>
+<li>可含应用层数据</li>
+<li>ACK = 1 , ack num = server_isn + 1</li>
+<li>client状态：SYN_SENT -&gt; ESTABLISHED</li>
+<li>server收到client发送的这个ack报文段后:SYN_RCVD -&gt; ESTABLISHED<blockquote>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-21-14-18-15.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="三次握手问题"><a href="#三次握手问题" class="headerlink" title="三次握手问题"></a>三次握手问题</h4><ul>
+<li>三次而非两次？见blog TCP2</li>
+</ul>
+<h3 id="TCP连接关闭"><a href="#TCP连接关闭" class="headerlink" title="TCP连接关闭"></a>TCP连接关闭</h3><h4 id="四次挥手"><a href="#四次挥手" class="headerlink" title="四次挥手"></a>四次挥手</h4><ul>
+<li>客户端，服务器分别关闭它自己这一侧的连接<ul>
+<li>将TCP连接分为两个方向，每个方向单独拆除。 </li>
+<li>发送FIN bit = 1的TCP段</li>
+</ul>
+</li>
+<li>一旦接收到FIN，用ACK回应 <ul>
+<li>接到FIN段，ACK可以和它自己发出的FIN段一起发<br>送</li>
+</ul>
+</li>
+<li>可以处理同时的FIN交换</li>
+<li><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-18-12.png"></li>
+<li><strong>主动关闭连接的，才有 TIME_WAIT 状态</strong></li>
+</ul>
+<h4 id="TIME-WAIT问题"><a href="#TIME-WAIT问题" class="headerlink" title="TIME_WAIT问题"></a>TIME_WAIT问题</h4><p>…</p>
+<h3 id="连接管理状态机"><a href="#连接管理状态机" class="headerlink" title="连接管理状态机"></a>连接管理状态机</h3><ul>
+<li><p>client的状态机<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-20-38.png"></p>
+</li>
+<li><p>server的状态机<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-20-21-07.png"></p>
+</li>
+</ul>
+<h2 id="拥塞控制"><a href="#拥塞控制" class="headerlink" title="拥塞控制"></a>拥塞控制</h2><p>见blog 拥塞控制</p>
+<p>没有准确定义<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-22-22-06-12.png"></p>
+<p>网络拥塞特点<br>延时大<br>为了让网络达到有效的泵出 我的输入要泵入很多速率<br>拥塞时会重传没有必要重传的分组 从而让网络更慢<br>不加控制 马上不可控制 网络瘫痪</p>
+<p>拥塞控制目的：<br>不是为了不发生拥塞，而是在不发生拥塞的情况下，尽可能地提高它的发送速率。</p>
+<p>TCP采用端到端控制<br>（互联网架构将复杂性放在端上）</p>
+<p>流量窗口 拥塞窗口</p>
+<p>警戒值之后线性增长<br>警戒值之前指数增长<br>喝的大醉 滑动窗口变为1 警戒值变为发疯的一半<br>半倒不倒 3个冗余ack<br>喝的半醉 滑动窗口减为一半，进入拥塞避免，省了一个慢启动阶段。</p>
+<p>慢启动阶段并不慢。很快 指数型增加</p>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-42-08.png"></p>
+<p>慢启动 很快 时间忽略不计<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-47-16.png"></p>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-50-51.png"></p>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-52-42.png"><br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-24-16-53-01.png"><br>tcp公平<br>udp对tcp不友好 只顾着自己</p>
+<hr>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-19-18-18-03.png"></p>
+<p>返回的ack 是 最老的 未确认的字节的编号</p>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-30-37.png"></p>
+<p><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-17-22-33-52.png"></p>
+<p>滑动窗口协议GO BY N ,SR 窗口如何滚动 接收窗口作用 这部分内容很重要 对理解pipeline协议 提高效率的同时实现可靠传递 很重要</p>
+<p>快速重传：在定时器到时之前 如果收到3个冗余的ack 就重传</p>
+<p>快速重传的各种情况<br><img src="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/2022-10-15-12-49-23.png"></p>
+<p>捎带发送确认</p>
+<p>流量控制目的：发送方发送的不至于太快，</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%BD%91/" rel="tag"># 计网</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/14/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9103-%E5%90%8C%E6%AD%A5%E6%8E%A7%E5%88%B6/" rel="prev" title="操作系统-并发03-同步控制">
+      <i class="fa fa-chevron-left"></i> 操作系统-并发03-同步控制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/" rel="next" title="操作系统_并发-真实世界的并发编程">
+      操作系统_并发-真实世界的并发编程 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TCP"><span class="nav-number">1.</span> <span class="nav-text">TCP</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8A%A5%E6%96%87%E7%BB%93%E6%9E%84"><span class="nav-number">1.2.</span> <span class="nav-text">报文结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BA%8F%E5%8F%B7%E3%80%81%E7%A1%AE%E8%AE%A4%E5%8F%B7"><span class="nav-number">1.2.1.</span> <span class="nav-text">序号、确认号</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BE%80%E8%BF%94%E5%BB%B6%E6%97%B6%EF%BC%88RTT%EF%BC%89%E5%92%8C-TCP%E8%B6%85%E6%97%B6"><span class="nav-number">1.3.</span> <span class="nav-text">往返延时（RTT）和 TCP超时</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BE%80%E8%BF%94%E6%97%B6%E9%97%B4RTT%E9%A2%84%E4%BC%B0"><span class="nav-number">1.3.1.</span> <span class="nav-text">往返时间RTT预估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#RTT%E5%8F%98%E5%8C%96-%E9%A2%84%E4%BC%B0"><span class="nav-number">1.3.2.</span> <span class="nav-text">RTT变化 预估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%BE%E7%BD%AE%E5%92%8C%E7%AE%A1%E7%90%86-%E9%87%8D%E4%BC%A0%E8%B6%85%E6%97%B6%E9%97%B4%E9%9A%94"><span class="nav-number">1.3.3.</span> <span class="nav-text">设置和管理 重传超时间隔</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-%E5%A6%82%E4%BD%95rdt-%E5%8F%AF%E9%9D%A0%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93"><span class="nav-number">1.4.</span> <span class="nav-text">TCP: 如何rdt?(可靠数据传输)</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E5%8F%91%E9%80%81%E6%96%B9%EF%BC%88%E7%AE%80%E5%8C%96%EF%BC%89"><span class="nav-number">1.4.1.</span> <span class="nav-text">TCP发送方（简化）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">1.4.1.1.</span> <span class="nav-text">状态机</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%96%87%E5%AD%97%E7%89%88-Action-and-Event"><span class="nav-number">1.4.1.2.</span> <span class="nav-text">文字版 Action and Event</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#code"><span class="nav-number">1.4.1.3.</span> <span class="nav-text">code</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BE%8B%E5%AD%90"><span class="nav-number">1.4.1.4.</span> <span class="nav-text">例子</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E6%8E%A5%E6%94%B6%E6%96%B9"><span class="nav-number">1.4.2.</span> <span class="nav-text">TCP接收方</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A1%A5%E5%85%85-TCP%E5%8F%91%E9%80%81%E6%96%B9-%E4%B9%8B-%E5%BF%AB%E9%80%9F%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6"><span class="nav-number">1.4.3.</span> <span class="nav-text">补充 : TCP发送方 之 快速重传机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6"><span class="nav-number">1.5.</span> <span class="nav-text">流量控制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E5%BF%B5"><span class="nav-number">1.5.1.</span> <span class="nav-text">概念</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B"><span class="nav-number">1.5.2.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E7%AE%A1%E7%90%86-%EF%BC%88%E5%8D%B3-TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B-%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">连接管理 （即 TCP三次握手 四次挥手）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E8%BF%9E%E6%8E%A5%E5%BB%BA%E7%AB%8B"><span class="nav-number">1.6.1.</span> <span class="nav-text">TCP连接建立</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B"><span class="nav-number">1.6.1.1.</span> <span class="nav-text">三次握手</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E9%97%AE%E9%A2%98"><span class="nav-number">1.6.1.2.</span> <span class="nav-text">三次握手问题</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP%E8%BF%9E%E6%8E%A5%E5%85%B3%E9%97%AD"><span class="nav-number">1.6.2.</span> <span class="nav-text">TCP连接关闭</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B"><span class="nav-number">1.6.2.1.</span> <span class="nav-text">四次挥手</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#TIME-WAIT%E9%97%AE%E9%A2%98"><span class="nav-number">1.6.2.2.</span> <span class="nav-text">TIME_WAIT问题</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E7%AE%A1%E7%90%86%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">1.6.3.</span> <span class="nav-text">连接管理状态机</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-number">1.7.</span> <span class="nav-text">拥塞控制</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'ff0a9be13cba4846395e38a4ba163d01',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

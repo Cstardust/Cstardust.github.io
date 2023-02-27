@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="lab1 : 实现一个接收端的重排器 lab2实现的 TCP receiver 的重要功能：处理乱序到达的数据包 ，该功能即lab1 所谓的 重排器 reassembler 就是让我们实现一个tcp的滑动窗口协议的接收端。 TCP协议中的滑动窗口协议是SR协议和GBN协议的结合 发送窗口 &gt; 1 ack代表 : 接收方接收到的顺序到来的最后一个字节 + 1 像GBN协议的部分 :   发">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab1">
+<meta property="og:url" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="lab1 : 实现一个接收端的重排器 lab2实现的 TCP receiver 的重要功能：处理乱序到达的数据包 ，该功能即lab1 所谓的 重排器 reassembler 就是让我们实现一个tcp的滑动窗口协议的接收端。 TCP协议中的滑动窗口协议是SR协议和GBN协议的结合 发送窗口 &gt; 1 ack代表 : 接收方接收到的顺序到来的最后一个字节 + 1 像GBN协议的部分 :   发">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2022-12-31-20-50-45.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-49-14.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2022-12-31-20-50-45.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-08-41-21.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-10-21-26.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-48-56.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-49-14.png">
+<meta property="og:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-14-47-51.png">
+<meta property="article:published_time" content="2022-12-29T10:38:51.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:44.562Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2022-12-31-20-50-45.png">
+
+<link rel="canonical" href="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab1 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab1
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-12-29 18:38:51" itemprop="dateCreated datePublished" datetime="2022-12-29T18:38:51+08:00">2022-12-29</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:44" itemprop="dateModified" datetime="2023-02-27T23:23:44+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2022-12-31-20-50-45.png"></li>
+<li>lab1 : 实现一个接收端的重排器<ul>
+<li>lab2实现的 TCP receiver 的重要功能：处理乱序到达的数据包 ，该功能即lab1 所谓的 重排器 reassembler</li>
+<li>就是让我们实现一个tcp的滑动窗口协议的接收端。</li>
+<li>TCP协议中的滑动窗口协议是SR协议和GBN协议的结合<ul>
+<li>发送窗口 &gt; 1</li>
+<li>ack代表 : 接收方接收到的顺序到来的最后一个字节 + 1</li>
+<li>像GBN协议的部分 : <ul>
+<li><ol>
+<li>发送窗口内只有一个定时器（窗口内最老的分组的定时器）</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>发送ack累计确认</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>像SR协议的部分 : <ul>
+<li><ol>
+<li>可以乱序接收 </li>
+</ol>
+</li>
+<li><ol start="2">
+<li>sender重传超时分组（最老的），receiver给sender发送新的ackno , sender可以发送新的数据. 是否重传发送窗口中的其他分组，取决于ackno的大小. 若大于send window中的所有segment , 则清空send window,不必重传所有分组. 若小于send window中的某些segment , 则会重传这某些分组.</li>
+</ol>
+<ul>
+<li>我目前认为网上有些人说的 重传 所有分组 是不对的。又不是GBN协议. receve window是 &gt; 0的</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>receiving_window 接收窗口 [the first unassembled , the first unaccepted)<br>capacity = bytestream.buffer_size() + receiving_window.size()<br><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-49-14.png"></p>
+</li>
+<li><p>从某种意义上来说，receive_window就是就是从bytestream中划出了一部分用作乱序缓存<br>bytestream(顺序字节) + receive_window(乱序字节) = capacity</p>
+</li>
+</ul>
+<span id="more"></span>
+
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><ul>
+<li><p><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2022-12-31-20-50-45.png"></p>
+<ul>
+<li>上图：我们将实现的TCP的 每一个模块的安排 以及 数据的流向。<ul>
+<li>TCP的工作是在不可靠的datagram网络之上 传输两个方向的ByteStream，因此写入socket的字节(outbound)会在连接的对端作为可读字节(inbound)出现，反之亦然。</li>
+<li>Lab0实现了图中的ByteStream。</li>
+<li>Lab1实现的是流重组器(StreamReassembler)</li>
+<li>Lab2是TCP接收器(TCPReceiver)</li>
+<li>Lab3是TCP发送器(TCPSender)</li>
+<li>Lab4是TCP连接（TCPConnection) 将他们组合在一起</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>我为什么要实现TCP ? </p>
+<ul>
+<li><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-08-41-21.png"></li>
+<li>在不可靠的服务之上 提高服务或者抽象 可以解释网络中的许多有趣的问题。<ul>
+<li>在过去四十年中，调查者和实践者已经解决了如何通过互联网传输各种各样的信息 如邮件、超链接、搜索引擎、声音、视频、写作文件共享、数字货币。</li>
+</ul>
+</li>
+<li>TCP自己的角色是：使用不可靠的数据报 提供可靠的字节流。就是上述所说的在不可靠服务之上提供服务的经典案例。一个合理的观点是：TCP是地球上使用的最广泛的非凡的计算机程序。</li>
+</ul>
+</li>
+<li><p>实验会要求你以模块化的方式构造一种TCP的实现。在接下来的四个实验中，你将会实现</p>
+<ul>
+<li>通过网络传输lab0中实现的bytestream：<ul>
+<li>outbound bytestream，用于本地的数据写入socket然后发送给TCP连接的对端；</li>
+<li>inbound bytestream，用于接收来自对端的数据，这些数据会被本地的app读取。</li>
+</ul>
+</li>
+<li>lab1中，我们将实现一个流重组器（stream reassembler）<ul>
+<li>该模块用于将字节流中的片段（被称为substrings / segments）重组为顺序的字节流。</li>
+</ul>
+</li>
+<li>lab2中 我们将实现TCPReceiver : <ul>
+<li>负责处理inbound bytestream。</li>
+<li>这包括了思考TCP是如何将字节流中的每个字节的位置标记为序列号；TCPReceiver负责告知发送方inbound bytestrean有能力组装多少字节；并且发送方被允许再发送多少bytes.(这就是所谓的流量控制)</li>
+</ul>
+</li>
+<li>lab3中 我们将实现TCPSender : <ul>
+<li>负责处理outbound bytestream.</li>
+<li>TCPSender需要如何反应 当它认为一个传输了的segment在路上丢失了；它在什么时候需要重传丢失的segment</li>
+</ul>
+</li>
+<li>lab4中 我们将组合之前的lab，来创建构建一个TCP实现：一个TCP包含了TCPSender和TCPReceiver的连接。你将使用该TCP实现去和全世界的server通信。 </li>
+</ul>
+</li>
+</ul>
+<h2 id="要求"><a href="#要求" class="headerlink" title="要求"></a>要求</h2><ul>
+<li><strong>背景</strong>：<ul>
+<li>在lab1和lab2，你将要<strong>实现TCP receiver</strong>。这个模块接收datagrams，并且将他们转化成将要被user从socket中读取的可靠字节流（就像lab0中 从webserver读取字节流的webget一样）<ul>
+<li>TCP Sender会将字节流切割成short segment（每片不大于1460bytes的substring），因此每个short segment都可以放入一个datagram中。</li>
+<li>但是网络可能会打乱datagram的顺序，或者丢弃他们，或者重复投递他们。</li>
+<li><strong>TCP receiver需要 重新组合这些segments，将其重组进顺序连续的字节流（就像发送方刚开始发送的字节流一样）</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>约定：segment/substring/bytes not reassembled<br>还没重组的字节：我们将 还没有 形成 顺序的 连续的 segment/byte，称为乱序的byte，也即需要reassemble重组的byte，这些byte被缓存在receving_window中，由于和bytestream中的byte还没连续起来，故不加入bytestream，等待所需字节的到来，也即等待reassemble。<br>重组完成的字节：已经形成了顺序的、连续的byte，这些byte已经从receving_window被压入bytestream中.<br>老数据：已经从bytestream中读走的字节 以及 已经压入到bytestream中的字节<br>新数据：下标范围落在receiving_window中的字节。这些字节可能之前已经被缓存在receive_window中。</p>
+<p>StreamReassembler要求如下</p>
+<ul>
+<li><p><strong>本实验实现目标：StreamReassembler 流重组器</strong>。</p>
+<ul>
+<li>所谓的流重组器StreamReassembler，也就是我们常说的 滑<strong>动窗口协议中 接收窗口大小大于1时（Selective Repeat协议） 的 接收端</strong>。只不过这里接收窗口的大小不是固定的，是和bytestream的大小加在一起=capacity）</li>
+<li>StreamReassembler接收segment(substring)<ul>
+<li>segment结构：string data , index(data[0])</li>
+</ul>
+</li>
+<li>整个字节流的起始byte下标为0.</li>
+<li>output bytestream : StreamReassembler 的输出接口。<ul>
+<li>其中装载的是已经顺序的连续的字节。</li>
+<li>output.write(msg) : 一旦StreamReassembler确认流中顺序的下一个字节，就将其写入ByteStream.</li>
+<li>output.read() : user可以使用该output bytestream，并在任何时候从其中读取字节。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>接口</strong></p>
+<ul>
+<li>void push_segment(const string &amp;data, const uint64_t index, const bool eof);<ul>
+<li>data : the segment</li>
+<li>index : data[0]在整个字节流中的下标</li>
+<li>eof : 该data segment的最后一个字节将成为整个流的最后一个字节<ul>
+<li>可以看出，eof本身并不占据字节流中的位置，不消耗下标。（也即stream_idx不记录eof）</li>
+</ul>
+</li>
+<li>接收segment data , 将相应的部分落入 recving_window , 并将连续的bytes写入output bytestream。超出capactiy部分的字节将自动被舍弃。</li>
+</ul>
+</li>
+<li>size_t unassembled_bytes() const;<ul>
+<li>被缓存 但还没被重组的 segment的字节数量。（segment stored but not yet reassembled）</li>
+</ul>
+</li>
+<li>bool empty() const<ul>
+<li>我认为是 outputstream和recving_window均为empty（Is the internal state empty (other than the output stream)?）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>关于capacity</strong></p>
+<ul>
+<li>一言以蔽之: <strong>capacity = bytestream.buffer_size() + receving_window.size()</strong></li>
+<li><strong>也即，capacity = reassembled bytes (in bytestream)+ unreassembled bytes (in segment)</strong></li>
+<li><strong>也可以看作是 从 bytestream的capacity中，划走一部分作为接收窗口（即缓存）</strong></li>
+<li><strong>capacity</strong>作用：流量控制的一部分，防止己方接受过多bytes<ul>
+<li>push_substring()会忽略任何超出capacity的字节，这防止了StreamReassembler没有限制的使用内存，不管TCP Sender打算做什么。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>整个字节流图。整个字节流从左向右增长，从右向左流动。<br>  <img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-10-21-26.png"></p>
+</li>
+</ul>
+<p><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-48-56.png"></p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p><strong>class StreamReassembler</strong><br>由上述分析可知，<strong>我们所要实现的，就是一个接受窗口大小&gt;1的滑动窗口协议接收端</strong></p>
+<ul>
+<li><p><strong>图</strong><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-11-49-14.png"></p>
+</li>
+<li><p>一些关系</p>
+<ul>
+<li><strong>capacity = bytestream.size() + receving_window.size()</strong></li>
+<li>从某种意义上来说<ul>
+<li><strong>receive_window就是就是从bytestream中划出了一部分用作乱序缓存</strong> </li>
+<li><strong>bytestream(顺序字节) + receive_window(乱序字节) = capacity</strong></li>
+</ul>
+</li>
+<li>bytestream中 存储的是 StreamReassembler已经重组完成的顺序连续字节。上层user可通过调用bytestream.read()将其读走</li>
+<li><strong>receiving_window : [first_unassembled,first_unacceptable)</strong><ul>
+<li><strong>作用：缓存乱序字节</strong><ul>
+<li>receiving_window 中存储的是 没能和bytestream形成连续的字节，当其能和bytestream连起来时，就将连起来的字节压入bytestream。</li>
+</ul>
+</li>
+<li>大小变化，受capacity限制。</li>
+<li>实现：unordered_map&lt;size_t , char&gt; _receving_window;</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>成员</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    ByteStream _output;  <span class="comment">//!&lt; The reassembled in-order byte stream  有序的bytes</span></span><br><span class="line">    <span class="keyword">size_t</span> _capacity;    <span class="comment">//!&lt; The maximum number of bytes   </span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  receiving_window</span></span><br><span class="line">    <span class="built_in">unordered_map</span>&lt;<span class="keyword">size_t</span> , <span class="keyword">char</span>&gt; _receving_window;      <span class="comment">//  乱序到达的，还没加入bytestream的bytes</span></span><br><span class="line">    <span class="keyword">size_t</span> _first_unread;         <span class="comment">//  第一个没被读的byte的索引。其大小等于上层已经从bytestream读走了多少bytess</span></span><br><span class="line">    <span class="keyword">size_t</span> _first_unassembled;    <span class="comment">//  第一个没加入bytestream的byte的索引（第一个乱序的byte索引）</span></span><br><span class="line">    <span class="function"><span class="keyword">size_t</span> <span class="title">first_unacceptable</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;<span class="keyword">return</span> _first_unread + _capacity;&#125;   <span class="comment">//  the first_unacceptable</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  eof</span></span><br><span class="line">    <span class="keyword">size_t</span> _eof_idx;</span><br><span class="line">    <span class="keyword">bool</span> _eof;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>push_segment实现</strong> </p>
+<ul>
+<li>void StreamReassembler::push_substring(const string &amp;data, const size_t index, const bool eof)</li>
+<li>主要分为<strong>两步</strong><ul>
+<li><strong>1. 将segment data的相应部分，正确的缓存在receiving_window中</strong>（1.）<ul>
+<li>这也就是 所谓的 StreamReassembler 所做的重组工作，即将字节正确的排列在receiving_window中，当形成连续的顺序字节时，就输出出去(即送入bytestream中)</li>
+<li>对于segment data，可分为如下情况讨论。</li>
+<li>segment data全部是老数据，那么不必缓存在receiving_window中</li>
+<li>segment data全部是新数据，那么则将其全部缓存在receiving_window中（当然超出capacity的要截断）<ul>
+<li>这里我的实现可能会造成重复缓存的问题，可以优化，比如用一个数组记录下接收窗口中连续字节的起始位置，不过目前还没做优化，只是保证正确性，反正没超0.5s。</li>
+</ul>
+</li>
+<li>segment data一部分是老数据，一部分是新数据，那么截断新数据，缓存进receiving_window中.</li>
+</ul>
+</li>
+<li><strong>2. 将receiving_window中 已经重组好的字节 压入 output bytestream中</strong>（3.）<ul>
+<li>就是 根据规则<strong>移动receiving_window接收窗口</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>核心代码逻辑如下</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//! \details This function accepts a substring (aka a segment) of bytes,</span></span><br><span class="line"><span class="comment">//! possibly out-of-order, from the logical stream, and assembles any newly</span></span><br><span class="line"><span class="comment">//! contiguous substrings and writes them into the output stream in order.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StreamReassembler::push_substring</span><span class="params">(<span class="keyword">const</span> <span class="built_in">string</span> &amp;data, <span class="keyword">const</span> <span class="keyword">size_t</span> index, <span class="keyword">const</span> <span class="keyword">bool</span> eof)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//  0. corner case</span></span><br><span class="line">    <span class="keyword">if</span>(corner(data,index,eof))</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line"></span><br><span class="line">    _first_unread = _output.bytes_read();</span><br><span class="line">    _first_unassembled = _output.bytes_written();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  1. 将data的相应部分cached into receiving_window</span></span><br><span class="line">    <span class="keyword">size_t</span> last_idx = cached_into_receiving_window(data,index,non);</span><br><span class="line">    <span class="comment">//  2. 计算eof下标</span></span><br><span class="line">    whether_eof(data,index,eof,last_idx);</span><br><span class="line">    <span class="comment">//  3. 将receiving_window中的顺序字节加入bytestream，宏观来看就是移动接收窗口</span></span><br><span class="line">    move_receiving_window();</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>test passed</p>
+<blockquote>
+<p><img src="/2022/12/29/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab1/2023-01-01-14-47-51.png"></p>
+</blockquote>
+</li>
+</ul>
+<ul>
+<li>几个小问题<ul>
+<li>2个小bug<ul>
+<li>eof本身并不占据字节流中的索引位置（即不消耗stream_idx），故即使其位于first_unacceptable(recving_window的右开边界)，也可以将eof加入到bytestream中。</li>
+<li><strong>如果push_segment之前已经有了eof，那么接下来的push_segment该怎么办？</strong><ul>
+<li>首先bytestream 的eof标志后面，就不应当再加入任何字节到bytestream中。（即外界禁止调用bytestream.write(data)）</li>
+<li>其次关于这个问题，我们应当看eof位于哪里。</li>
+<li>如果eof已经加入了bytestream，则接下来的push_segment直接返回。因为此时bytestream已经关闭了，再往receive_window中加也没有意义，并且逻辑上来讲就不该再有字节。</li>
+<li>如果eof只是在receive_window中，也即还并没有加入bytestream，则正常push_segment。(因为此时receive_window中eof之前 还并没有形成连续的字节。)直到接收窗口中字节重组完毕 连带着eof加入bytestream。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>对于字节流中的同一下标位置，是否会出现不同的字节？也即对于同一index，是否会出现不同的data？该如何处理？<ul>
+<li>本实验中认为不会出现这种不一致的情况，也即外界调用push_segment 传给reassembler的字节流是一个唯一的字节流，且所有的segment 是字节流的正确的一个个切片。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="杂记"><a href="#杂记" class="headerlink" title="杂记"></a>杂记</h2><p>感觉大部分时间都画在搞懂实验要求上了。。<br>明确我们要实现的是个接收窗口之后 就好办很多了</p>
+<ul>
+<li>代码拆开见下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//! \details This function accepts a substring (aka a segment) of bytes,</span></span><br><span class="line"><span class="comment">//! possibly out-of-order, from the logical stream, and assembles any newly</span></span><br><span class="line"><span class="comment">//! contiguous substrings and writes them into the output stream in order.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">StreamReassembler::push_substring</span><span class="params">(<span class="keyword">const</span> <span class="built_in">string</span> &amp;data, <span class="keyword">const</span> <span class="keyword">size_t</span> index, <span class="keyword">const</span> <span class="keyword">bool</span> eof)</span> </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  corner case 1 : data empty </span></span><br><span class="line">    <span class="keyword">if</span>(data.empty() &amp;&amp; (!eof))</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    <span class="comment">//  corner case 2 : data empty and eof</span></span><br><span class="line">    <span class="keyword">if</span>(data.empty() &amp;&amp; eof)</span><br><span class="line">    &#123;</span><br><span class="line">        _output.end_input();</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    _first_unread = _output.bytes_read();</span><br><span class="line">    _first_unassembled = _output.bytes_written();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  1. 将data的相应部分 正确的放入receving window   O(n)</span></span><br><span class="line">    <span class="comment">//  (1). data全部是已经排好序的老数据，即data全部是已经加入bytestream _output的数据,</span></span><br><span class="line">    <span class="comment">//  则不必加入bytestream，也不必有其他操作</span></span><br><span class="line">    <span class="keyword">if</span> (index + data.size() &lt; _first_unassembled) &#123;</span><br><span class="line">        <span class="keyword">return</span>;  <span class="comment">//  nothiing</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  (2). data全部是还没加入bytestream output的数据</span></span><br><span class="line">    <span class="comment">//  则将其加入_receving_window、这里可能会重复加入，效率低，不过先无所谓了，保证正确性再说别的。</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (index &gt;= _first_unassembled &amp;&amp; index &lt; first_unacceptable()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; len; ++i) &#123;</span><br><span class="line">            _receving_window[index + i] = data[i];</span><br><span class="line">        &#125;</span><br><span class="line">        last_idx = index + len;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  (3).  data全部位于receving_window范围之外</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (index &gt;= first_unacceptable()) &#123;</span><br><span class="line">        <span class="keyword">return</span>;  <span class="comment">//  nothing</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  (4). data一部分加入 一部分没加入bytestream</span></span><br><span class="line">    <span class="comment">//  则截取相应部分落入recv_window</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (index &lt; _first_unassembled &amp;&amp; index + data.size() &gt;= _first_unassembled) &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; len; ++i) &#123;</span><br><span class="line">            _receving_window[_first_unassembled + i] = data[i + start_idx];</span><br><span class="line">        &#125;</span><br><span class="line">        last_idx = _first_unassembled + len;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;sth unknown happened!!&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (eof &amp;&amp; index + data.size() &lt;= first_unacceptable()) &#123;      <span class="comment">//  注意是 &lt;= 。eof本身并不占据字节流中的位置(stream_idx)，只是标记结束。</span></span><br><span class="line">        _eof = <span class="literal">true</span>;</span><br><span class="line">        _eof_idx = last_idx;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;============receving window to bytestream=============&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">size_t</span> old_first_unacceptable = first_unacceptable();</span><br><span class="line">    <span class="comment">//  2.  将recv_window中已经顺序的加入bytestream</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">size_t</span> i = _first_unassembled; i &lt;= old_first_unacceptable; ++i) &#123;     <span class="comment">//  == first_unacceptable 仅仅是为了eof可能出现在first_unacceptable处。</span></span><br><span class="line">        <span class="keyword">if</span>(i == _eof_idx &amp;&amp; _eof)</span><br><span class="line">        &#123;</span><br><span class="line">            _output.end_input();</span><br><span class="line">            <span class="keyword">break</span>;   </span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span>(i == old_first_unacceptable)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (_receving_window.find(i) == _receving_window.end())</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  从recving_window进入bytestream</span></span><br><span class="line">        _output.write(<span class="built_in">string</span>(<span class="number">1</span>,_receving_window[i]));</span><br><span class="line">        <span class="comment">//  从recving_window中移除</span></span><br><span class="line">        _receving_window.erase(i);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/12/26/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab0/" rel="prev" title="计算机网络-CS144-lab0">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab0
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/" rel="next" title="计算机网络-CS144-lab2">
+      计算机网络-CS144-lab2 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A6%81%E6%B1%82"><span class="nav-number">2.</span> <span class="nav-text">要求</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%82%E8%AE%B0"><span class="nav-number">4.</span> <span class="nav-text">杂记</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '7a88ef09b6c7d020292aad5504d76123',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

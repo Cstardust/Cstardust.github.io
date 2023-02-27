@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="摘自jyy课件以及自己笔记 对 goroutine介绍 : 线程和协程的结合. 然而我没用过，没啥体会.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统_并发-真实世界的并发编程">
+<meta property="og:url" content="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="摘自jyy课件以及自己笔记 对 goroutine介绍 : 线程和协程的结合. 然而我没用过，没啥体会.">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/2022-10-16-15-16-31.png">
+<meta property="og:image" content="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/2022-10-16-13-37-24.png">
+<meta property="article:published_time" content="2022-10-16T03:47:45.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:21:26.365Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="OS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/2022-10-16-15-16-31.png">
+
+<link rel="canonical" href="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统_并发-真实世界的并发编程 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统_并发-真实世界的并发编程
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-16 11:47:45" itemprop="dateCreated datePublished" datetime="2022-10-16T11:47:45+08:00">2022-10-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:26" itemprop="dateModified" datetime="2023-02-27T23:21:26+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>2.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>2 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>摘自jyy课件以及自己笔记<ul>
+<li>对 goroutine介绍 : 线程和协程的结合. 然而我没用过，没啥体会.</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="如何用好一台计算机？"><a href="#如何用好一台计算机？" class="headerlink" title="如何用好一台计算机？"></a>如何用好一台计算机？</h1><ul>
+<li>如何用一台 (可靠的) 计算机尽可能多地服务并行的请求<ul>
+<li>关键指标：QPS, tail latency , …</li>
+</ul>
+</li>
+<li>我们有的工具<ul>
+<li>线程 (threads)</li>
+<li>协程 (coroutines)<ul>
+<li>多个可以保存/恢复的执行流 (M2 - libco)</li>
+<li>比线程更轻量 (完全没有系统调用，也就没有操作系统状态)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="数据中心：协程和线程"><a href="#数据中心：协程和线程" class="headerlink" title="数据中心：协程和线程"></a>数据中心：协程和线程</h2><ul>
+<li><img src="/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/2022-10-16-15-16-31.png"></li>
+<li><img src="/2022/10/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9104-%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%9A%84%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/2022-10-16-13-37-24.png"></li>
+<li>协程：<ul>
+<li>优点：协程间切换开销小。</li>
+<li>缺点：不受os调度，会有blocking问题；无法利用多处理器<ul>
+<li>一个thread的协程block后，该thread的所有协程都block了。</li>
+<li>一个thread上即便有多个协程，同一时刻只有一个协程在运行。即 如果只有一个thread，该thread有多个协程，那么只能使用一个cpu核。没做到并行。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>thread：<ul>
+<li>优点：擅长并行，可以利用多处理器。<ul>
+<li>有多少个thread 就能运行在多少核上。(thread number &lt; core number)</li>
+</ul>
+</li>
+<li>缺点：占用资源多，thread切换开销大。</li>
+</ul>
+</li>
+</ul>
+<h2 id="Go-和-Goroutine"><a href="#Go-和-Goroutine" class="headerlink" title="Go 和 Goroutine"></a>Go 和 Goroutine</h2><ul>
+<li>Go: 小孩子才做选择，多处理器并行和轻量级并发我全都要！</li>
+<li>Goroutine: 概念上是线程，实际是线程和协程的混合体！</li>
+<li>每个 CPU 上有一个 Go Worker，自由调度 goroutines<ul>
+<li><strong>执行到 blocking API 时</strong> (例如 sleep, read)<ul>
+<li><strong>Go Worker 偷偷改成 non-blocking 的版本</strong><ul>
+<li><strong>成功 → 立即继续执行</strong></li>
+<li><strong>失败 → 立即 yield 到另一个需要 CPU 的 goroutine</strong><ul>
+<li>太巧妙了！<strong>CPU 和操作系统全部用到 100%</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>go中可以创建几百万个goroutine 完全没问题</li>
+<li>如上图 再多的协程 实际上最多并行的也只有T1 T2 T3三个thread</li>
+<li>go 几乎已经把程序运行的开销降到最低了。将CPU切换的时间都省掉了（一个CPU一个thread）</li>
+</ul>
+<h2 id="现代编程语言上的系统编程"><a href="#现代编程语言上的系统编程" class="headerlink" title="现代编程语言上的系统编程"></a>现代编程语言上的系统编程</h2><blockquote>
+<p>要理解一点 os课上会讲很多并发算法peterson 生产者-消费者 哲学家 但是实际真正编程时 我们几乎不需要用他们。<br>那为什么还要学？为了理解。<br>有原子操作 就可以实现条件变量 有条件变量 就可以实现任何并发算法<br>正如我们需要学汇编，但实际并不需要写汇编。<br>Do not communicate by sharing memory; instead, share memory by communicating. ——Effective Go</p>
+</blockquote>
+<ul>
+<li><strong>不要用共享内存 也即：不要去设计peterson算法那种并发的协议</strong></li>
+<li>共享内存 = 万恶之源</li>
+<li>在奇怪调度下发生的各种并发 bugs<ul>
+<li>条件变量：broadcast 性能低，不 broadcast 容易错</li>
+<li>信号量：在管理多种资源时就没那么好用了</li>
+</ul>
+</li>
+</ul>
+<p><strong>既然生产者-消费者能解决绝大部分问题，提供一个 API 不就好了</strong>？</p>
+<ul>
+<li><p>producer-consumer.go</p>
+<ul>
+<li>缓存为 0 的 <strong>channel</strong> 可以用来同步 (先到者等待)，而不是用共享内存</li>
+</ul>
+</li>
+<li><p>当然go里也有共享内存</p>
+</li>
+<li><p>go 解决的问题</p>
+<ul>
+<li>goroutine 在协程等待的时候切换到另一个协程。(数据中心的IO)</li>
+<li>并发编程：不用共享内存 而用channel</li>
+</ul>
+</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ul>
+<li>希望每个同学都有一个 “主力现代编程语言”<ul>
+<li>Modern C++, Rust, Javascript, …</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>尽管对并发原语和并行性进行了多年的研究，但使用锁进行编程仍然具有挑战性。通常最好将锁隐藏在更高级别的结构中，如同步队列，尽管xv6没有这样做。如果您使用锁进行编程，明智的做法是使用试图识别竞争条件（race conditions）的工具，因为很容易错过需要锁的不变量。</li>
+<li>大多数操作系统都支持POSIX线程（Pthread），它允许一个用户进程在不同的CPU上同时运行几个线程。Pthread支持用户级锁（user-level locks）、障碍（barriers）等。支持Pthread需要操作系统的支持。例如，应该是这样的情况，如果一个Pthread在系统调用中阻塞，同一进程的另一个Pthread应当能够在该CPU上运行。另一个例子是，如果一个线程改变了其进程的地址空间（例如，映射或取消映射内存），内核必须安排运行同一进程下的线程的其他CPU更新其硬件页表，以反映地址空间的变化。</li>
+<li>没有原子指令实现锁是可能的，但是代价昂贵，并且大多数操作系统使用原子指令。</li>
+<li>如果许多CPU试图同时获取相同的锁，可能会付出昂贵的开销。如果一个CPU在其本地cache中缓存了一个锁，而另一个CPU必须获取该锁，那么更新保存该锁的cache行的原子指令必须将该行从一个CPU的cache移动到另一个CPU的cache中，并且可能会使cache行的任何其他副本无效。从另一个CPU的cache中获取cache行可能比从本地cache中获取一行的代价要高几个数量级。</li>
+<li>为了避免与锁相关的开销，许多操作系统使用无锁的数据结构和算法。例如，可以实现一个像本章开头那样的链表，在列表搜索期间不需要锁，并且使用一个原子指令在一个列表中插入一个条目。然而，无锁编程比有锁编程更复杂；例如，人们必须担心指令和内存重新排序。有锁编程已经很难了，所以xv6避免了无锁编程的额外复杂性。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OS/" rel="tag"># OS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/15/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-TCP/" rel="prev" title="计算机网络-传输层-TCP">
+      <i class="fa fa-chevron-left"></i> 计算机网络-传输层-TCP
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/" rel="next" title="操作系统-并发06-bug-数据竞争">
+      操作系统-并发06-bug-数据竞争 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%94%A8%E5%A5%BD%E4%B8%80%E5%8F%B0%E8%AE%A1%E7%AE%97%E6%9C%BA%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">如何用好一台计算机？</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%BF%83%EF%BC%9A%E5%8D%8F%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B"><span class="nav-number">1.1.</span> <span class="nav-text">数据中心：协程和线程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Go-%E5%92%8C-Goroutine"><span class="nav-number">1.2.</span> <span class="nav-text">Go 和 Goroutine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8E%B0%E4%BB%A3%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80%E4%B8%8A%E7%9A%84%E7%B3%BB%E7%BB%9F%E7%BC%96%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">现代编程语言上的系统编程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'b1e3f2b8c1e2eeea97246b946486bcb7',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

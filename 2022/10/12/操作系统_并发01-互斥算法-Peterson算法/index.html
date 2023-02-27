@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="不借助硬件支持，在【纯软件】层面实现 【共享内存的互斥】：【Peterson算法】">
+<meta property="og:type" content="article">
+<meta property="og:title" content="并发-互斥算法-Peterson算法">
+<meta property="og:url" content="http://example.com/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="不借助硬件支持，在【纯软件】层面实现 【共享内存的互斥】：【Peterson算法】">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/2022-10-12-16-16-53.png">
+<meta property="article:published_time" content="2022-10-12T06:32:38.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:21:32.451Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="OS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/2022-10-12-16-16-53.png">
+
+<link rel="canonical" href="http://example.com/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>并发-互斥算法-Peterson算法 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          并发-互斥算法-Peterson算法
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-12 14:32:38" itemprop="dateCreated datePublished" datetime="2022-10-12T14:32:38+08:00">2022-10-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:32" itemprop="dateModified" datetime="2023-02-27T23:21:32+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>不借助硬件支持，在【纯软件】层面实现 【共享内存的互斥】：【Peterson算法】</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="在共享内存上实现互斥"><a href="#在共享内存上实现互斥" class="headerlink" title="在共享内存上实现互斥"></a>在共享内存上实现互斥</h1><p>thread: 人<br>共享内存：物理世界</p>
+<h2 id="失败的尝试"><a href="#失败的尝试" class="headerlink" title="失败的尝试"></a>失败的尝试</h2><ul>
+<li>最开始 没做任何努力</li>
+<li>发现可能同时进入Alipay_withdraw的if</li>
+<li><strong>失败：处理器没有办法使得balance的load和store这两条指令原子的执行！</strong>  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;chrono&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> balance = <span class="number">100</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> LOAD(x) x</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> STORE(x, y) (x) = (y)</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//  fail 原因</span></span><br><span class="line">    <span class="comment">//  balance 的 load 和 store 没有办法原子的完成！！！！</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Alipay_withdraw</span><span class="params">(<span class="keyword">int</span> amt)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// if(balance &gt;= amt)      //  load</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">LOAD</span>(balance) &gt;= amt)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  可能两个thread都进入这里。unsigned -到&lt;0后就会最大。</span></span><br><span class="line">        std::this_thread::<span class="built_in">sleep_for</span>(std::chrono::<span class="built_in">microseconds</span>(<span class="number">1</span>));</span><br><span class="line">        <span class="comment">// balance -= amt;     //  store</span></span><br><span class="line">        <span class="built_in">STORE</span>(balance, balance - amt);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Talipay</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">Alipay_withdraw</span>(<span class="number">100</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">std::thread <span class="title">t1</span><span class="params">(Talipay)</span></span>;</span><br><span class="line">    <span class="function">std::thread <span class="title">t2</span><span class="params">(Talipay)</span></span>;</span><br><span class="line">    t1.<span class="built_in">join</span>();</span><br><span class="line">    t2.<span class="built_in">join</span>();</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;balance = %lu\n&quot;</span>, balance);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br><span class="line">balance = <span class="number">0</span></span><br><span class="line">balance = <span class="number">18446744073709551516</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>尝试用一个flag来标志，我们命名为lock<ul>
+<li>lock = LOCKED / lock = UNLOCKED</li>
+<li>我们为什么要尝试lock？<ul>
+<li>因为 load , ++ , and store 原本不是原子的。<ul>
+<li>我们企图通过加入lock 来令这段code互斥，同一时刻只能有一个thread的pc在执行这段代码。使得处理器只能一次把他们执行完。即我们人为的把这些指令搞成原子的。</li>
+<li>结果失败，失败原因</li>
+<li><strong>lock的load和store这两条指令没有办法原子的完成！！！</strong>，实际上和上面code的失败原因本质是一样的。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;thread&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> UNLOCK 0</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> LOCK 1</span></span><br><span class="line"><span class="keyword">int</span> locked = UNLOCK;</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">long</span> check = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  失败 原因</span></span><br><span class="line">    <span class="comment">//  lock的load和store这两条指令没有办法原子的完成！！！处理器办不到！</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">critical_section</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">while</span>(locked!=UNLOCK);      <span class="comment">//  load lock</span></span><br><span class="line"><span class="comment">// retry:</span></span><br><span class="line"><span class="comment">//     if(locked!=UNLOCK)</span></span><br><span class="line"><span class="comment">//         goto retry;</span></span><br><span class="line"></span><br><span class="line">    locked = LOCK;              <span class="comment">//  store lock</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  thread a 和 thread b可能同时进入这里</span></span><br><span class="line">    <span class="comment">//  load , ++ , and store 原本不是原子的。</span></span><br><span class="line">    <span class="comment">//  我们企图通过加入lock 来使得处理器只能一次把他们执行完、人为的把他们搞成原子的。</span></span><br><span class="line">    <span class="comment">//  结果失败</span></span><br><span class="line">        <span class="comment">//  失败原因</span></span><br><span class="line">        <span class="comment">//  lock的load和store这两条指令没有办法原子的完成！！！处理器办不到！</span></span><br><span class="line">    ++check;</span><br><span class="line"></span><br><span class="line">    locked = UNLOCK;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thead_func</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">critical_section</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">std::thread <span class="title">t1</span><span class="params">(thead_func)</span></span>;</span><br><span class="line">    <span class="function">std::thread <span class="title">t2</span><span class="params">(thead_func)</span></span>;</span><br><span class="line">    t1.<span class="built_in">join</span>();</span><br><span class="line">    t2.<span class="built_in">join</span>();</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;check = %lu\n&quot;</span>,check);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// shc@DESKTOP-TVUERHD:~/Code/try/lock$ ./execute_try02.sh | head -2000 | uniq -c</span></span><br><span class="line"><span class="comment">//    1199 check = 2</span></span><br><span class="line"><span class="comment">//       1 check = 1</span></span><br><span class="line"><span class="comment">//     800 check = 2</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Peterson"><a href="#Peterson" class="headerlink" title="Peterson"></a>Peterson</h2><h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><ul>
+<li><p>Petetson算法本质上还是个<strong>自私</strong>的算法，</p>
+<ul>
+<li>即便A/B在自己想进入临界区的时候都会先邀请对方上厕所。</li>
+<li>但是这只是一种<strong>假客气</strong></li>
+<li>即便我们邀请了对方，一旦对方邀请了我们，那么我们就不客气，直接进入临界区。<ul>
+<li>那么对方什么时候进入临界区？当我们离开临界区之后，对方检查到我们不想进入临界区（即离开了临界区），那么对方就会进入临界区）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Peterson 是 不依赖硬件原子指令, 完全 由软件实现的算法</p>
+</li>
+</ul>
+<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><blockquote>
+<p>摘</p>
+</blockquote>
+<ul>
+<li><p>A 和 B 争用[厕所的包厢] : 即[临界区]</p>
+</li>
+<li><p>想进入包厢之前，A/B 都要先举起自己的旗子 : x = 1 / y = 1(举旗子代表己方想要进入临界区)</p>
+<ul>
+<li>A 确认旗子举好以后，往厕所门上贴上 “B 正在使用” 的标签 : turn = B(贴对方的标签代表邀请对方先进入临界区(假客气))</li>
+<li>B 确认旗子举好以后，往厕所门上贴上 “A 正在使用” 的标签 : turn = A</li>
+</ul>
+</li>
+<li><p>然后，如果对方的旗子举起来 &amp;&amp; 门上的名字不是自己，等待 : while(y == 1 &amp;&amp; turn != A)</p>
+<ul>
+<li>否则可以进入包厢<ul>
+<li>如果对方的旗子没举起来,意味着对方不需要上厕所，我们可以直接进入临界区</li>
+<li>如果门上的名字是自己,意味着对方已经将我们的名字贴上去，我们的假客气被对方覆盖了，那么我们直接进入临界区。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>出包厢后，放下自己的旗子 : x = 0 / y = 0</p>
+</li>
+<li><p>以下为总结</p>
+</li>
+</ul>
+<hr>
+<ul>
+<li><p>A和B有临界区func</p>
+</li>
+<li><p><strong>0. :</strong> A想要进入func </p>
+<ul>
+<li><strong>0.1 :</strong> 先<strong>举起自己的旗子</strong>(举旗子代表己方想要进入临界区) : x = 1</li>
+<li><strong>0.2 :</strong> 并且在临界区上<strong>贴上对方B的标签</strong>。(贴对方的标签代表邀请对方先进入临界区(<strong>假客气</strong>)) : turn = B</li>
+</ul>
+</li>
+<li><p><strong>1. :</strong> <strong>A在进入func之前, : while(y == 1 &amp;&amp; turn != A)</strong></p>
+<ul>
+<li><strong>1.1 检查对方是否想要进入临界区 : y == 1 ?</strong> <ul>
+<li>(对方的旗子是否举了起来) (对方的旗子举起来的话就代表对方会跟我们客气一下)</li>
+</ul>
+</li>
+<li><strong>1.2 若 y != 1 , 则进入临界区</strong><ul>
+<li>y!=1 ，即对方的旗子没举起来. 意味着对方不需要进临界区，我们可以直接进入临界区</li>
+</ul>
+</li>
+<li><strong>1.3 若 y == 1 , 则观察临界区的标签是否是己方A : turn != A ?</strong> . <ul>
+<li>y==1 ，即对方想要进入临界区</li>
+<li><strong>turn != A 如果不是A的话</strong>，那么我们<strong>等待</strong><ul>
+<li>等待对方跟我们客气一下 , 即对方将我们的标签贴上去.（此时对方还没进入临界区,还没客气)。</li>
+<li>或者等待对方离开临界区, 放下旗子. (对方的假客气已经被我们的假客气覆盖了,对方会进入临界区,我们只能等待对方结束临界区使用)</li>
+</ul>
+</li>
+<li><strong>turn == A 如果是A的话</strong>，那么我们可以<strong>直接进入</strong>临界区。<ul>
+<li>如果门上的名字是己方,意味着对方已经将我们的名字贴上去，我们的假客气被对方覆盖了，那么我们直接进入临界区。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>2. :</strong> 1中条件不满足时，进入临界区。</p>
+</li>
+<li><p><strong>3. :</strong> 从临界区中出来之后，放下自己的旗 : x = 0。（自己不想进入临界区了） </p>
+</li>
+</ul>
+<h3 id="code"><a href="#code" class="headerlink" title="code"></a>code</h3><ul>
+<li>Peterson算法</li>
+<li>最后仍会出现错误是因为编译器会进行重排，处理器也会执行重排。不过我们的算法是没有错误的，正确的。经历了足足121778757次才发生错误  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;atomic&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;thread&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;cassert&gt;</span></span></span><br><span class="line"></span><br><span class="line">std::atomic&lt;<span class="keyword">int</span>&gt; check;     <span class="comment">//  check设置成atomic 是因为我们要验证peterson算法。验证这个算法实现了互斥。那么就要保证目标的互斥代码段内没有破坏互斥的因素。</span></span><br><span class="line">std::atomic&lt;<span class="keyword">int</span>&gt; cnt;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> A 0</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> B 1</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> <span class="keyword">volatile</span> x = <span class="number">0</span>, y = <span class="number">0</span>, turn = A;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">critical_section</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    ++cnt;</span><br><span class="line">    ++check;</span><br><span class="line">    <span class="keyword">if</span>(check!=<span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;cnt = %d\n&quot;</span>,cnt.<span class="built_in">load</span>());</span><br><span class="line">        <span class="built_in">exit</span>(<span class="number">-1</span>);           <span class="comment">//  never reach</span></span><br><span class="line">    &#125;</span><br><span class="line">    --check;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread_func_A</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">/* PC1 */</span> x = <span class="number">1</span>;          <span class="comment">//  A 举旗子</span></span><br><span class="line">        <span class="comment">/* PC2 */</span> turn = B;       <span class="comment">//  贴 nameB （假客气一下hhh）</span></span><br><span class="line">        <span class="comment">/* PC3 */</span> <span class="keyword">while</span>(y == <span class="number">1</span> &amp;&amp; turn != A);     <span class="comment">//  此时B也要上厕所(y==1)，且B还没贴name--厕所的name不是A 那么A等等。因为A知道 B已经把旗子举了起来 B之后会将nameA贴上去。会覆盖掉A贴的nameB。所以A其实只是假客气一下 先把nameB贴上去 假意邀请B先上厕所，但如果B也客气一下（B如果要上厕所的话会先将nameA贴上去），那么A就不客气了，直接进入厕所。</span></span><br><span class="line">        <span class="comment">/* PC4 */</span> <span class="built_in">critical_section</span>();             <span class="comment">//  进入厕所</span></span><br><span class="line">        <span class="comment">/* PC5 */</span> x = <span class="number">0</span>;          <span class="comment">//  A 放下旗子</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">thread_fund_B</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">/* PC1 */</span> y = <span class="number">1</span>;          <span class="comment">//  B举旗子</span></span><br><span class="line">        <span class="comment">/* PC2 */</span> turn = A;       <span class="comment">//  贴nameA</span></span><br><span class="line">        <span class="comment">/* PC3 */</span> <span class="keyword">while</span>(x == <span class="number">1</span> &amp;&amp; turn != B);     <span class="comment">//  此时A要上厕所 且厕所的name不是B 那么B等等</span></span><br><span class="line">        <span class="comment">/* PC4 */</span> <span class="built_in">critical_section</span>();</span><br><span class="line">        <span class="comment">/* PC5 */</span> y = <span class="number">0</span>;          <span class="comment">//  B放旗子 </span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">std::thread <span class="title">t1</span><span class="params">(thread_func_A)</span></span>;</span><br><span class="line">    <span class="function">std::thread <span class="title">t2</span><span class="params">(thread_fund_B)</span></span>;</span><br><span class="line">    t1.<span class="built_in">join</span>();</span><br><span class="line">    t2.<span class="built_in">join</span>();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shc@DESKTOP-TVUERHD:~/Code/<span class="keyword">try</span>/lock$ ./execute_peterson.sh</span><br><span class="line">cnt = <span class="number">121778757</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="model-checker-工具"><a href="#model-checker-工具" class="headerlink" title="model checker 工具"></a>model checker 工具</h2><ul>
+<li>model checker的基本假设：每一行源代码的执行是原子的</li>
+<li>列出所有状态及转移关系。</li>
+<li>如图中红色区域：即为t1 t2都进入了临界区！<img src="/2022/10/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9101-%E4%BA%92%E6%96%A5%E7%AE%97%E6%B3%95-Peterson%E7%AE%97%E6%B3%95/2022-10-12-16-16-53.png"></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/OS/" rel="tag"># OS</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/11/muduo-EventLoop/" rel="prev" title="muduo-EventLoop">
+      <i class="fa fa-chevron-left"></i> muduo-EventLoop
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%E4%B8%8EqueueInLoop/" rel="next" title="muduo-关于EventLoop的runInLoop与queueInLoop">
+      muduo-关于EventLoop的runInLoop与queueInLoop <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9C%A8%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%E4%B8%8A%E5%AE%9E%E7%8E%B0%E4%BA%92%E6%96%A5"><span class="nav-number">1.</span> <span class="nav-text">在共享内存上实现互斥</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%B1%E8%B4%A5%E7%9A%84%E5%B0%9D%E8%AF%95"><span class="nav-number">1.1.</span> <span class="nav-text">失败的尝试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Peterson"><span class="nav-number">1.2.</span> <span class="nav-text">Peterson</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.2.1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B"><span class="nav-number">1.2.2.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#code"><span class="nav-number">1.2.3.</span> <span class="nav-text">code</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#model-checker-%E5%B7%A5%E5%85%B7"><span class="nav-number">1.3.</span> <span class="nav-text">model checker 工具</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '4620152179306a35c1f727ccdff48eda',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

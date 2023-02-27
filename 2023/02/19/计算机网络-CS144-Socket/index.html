@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="CS144lab1-7 自顶向下 实现了HTTP(GET) , TCP , IP(util) ,ARP(NetworkInterface) , Ethernet(util)(NetworkInterface use) , 最后在用户态组成了一个可靠数据传输的socket FullStackSocket概述 2 thread (main thread , tcp thread) 3 fd(user">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-Socket及Lab总结">
+<meta property="og:url" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="CS144lab1-7 自顶向下 实现了HTTP(GET) , TCP , IP(util) ,ARP(NetworkInterface) , Ethernet(util)(NetworkInterface use) , 最后在用户态组成了一个可靠数据传输的socket FullStackSocket概述 2 thread (main thread , tcp thread) 3 fd(user">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-33-37.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-07-47.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-11-03-04.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-38-22.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-43-58.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-47-59.png">
+<meta property="og:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-27-13-18-56.png">
+<meta property="article:published_time" content="2023-02-19T08:02:16.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:39.708Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-33-37.png">
+
+<link rel="canonical" href="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-Socket及Lab总结 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-Socket及Lab总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-02-19 16:02:16" itemprop="dateCreated datePublished" datetime="2023-02-19T16:02:16+08:00">2023-02-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:39" itemprop="dateModified" datetime="2023-02-27T23:23:39+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>CS144lab1-7 自顶向下 实现了HTTP(GET) , TCP , IP(util) ,ARP(NetworkInterface) , Ethernet(util)(NetworkInterface use) , 最后在用户态组成了一个可靠数据传输的socket<ul>
+<li>FullStackSocket概述<ul>
+<li>2 thread (main thread , tcp thread)</li>
+<li>3 fd(user socket , 内置的_thread_data(与协议栈交互) , tap fd)</li>
+<li>eventloop注册事件</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<ul>
+<li>看完FullStackSocket之后 重新体会到socket是站在用户层和传输层之间的这句话了</li>
+<li>FullStackSocket通过一个socketpair 将user看到的Socket和实际与协议栈交互的Socket(_thread_data)分开. main thread 使用 _socket , tcp_thread使用_thread_data</li>
+<li>user只需要站在user层拿着_socket就好 等待数据到来 , 交付数据即可。背后协议栈的处理以及网卡数据的读写以及_thread_data交付数据都不需要管,都由tcp_thread的eventloop负责监听和处理了。user甚至可以认为 他就是直接通过这个_socket去和外界交互的.</li>
+</ul>
+<h1 id="FullStackSocket"><a href="#FullStackSocket" class="headerlink" title="FullStackSocket"></a>FullStackSocket</h1><ul>
+<li>镇楼<br><img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-33-37.png"><br>outbound buffer和inbound buffer就是俩bytestream</li>
+</ul>
+<h2 id="3Fd"><a href="#3Fd" class="headerlink" title="3Fd"></a>3Fd</h2><ul>
+<li>FullStackSocket中总共有<strong>3</strong>个Fd<ul>
+<li><strong>_socket fd</strong> : user see . (main thread)<ul>
+<li>user认为就是这个fd和internet交互，实际上是在和_thread_data进行交互 , 最终和internet交互的是网卡TAP fd</li>
+</ul>
+</li>
+<li><strong>_thread_data fd</strong> : 和_socket交互 (TCP thread)</li>
+<li><strong>TAP fd</strong> : 和外界交互,接收发送frame (TCP thread)</li>
+</ul>
+</li>
+</ul>
+<h3 id="pipe-socketpair"><a href="#pipe-socketpair" class="headerlink" title="pipe(socketpair)"></a>pipe(socketpair)</h3><ul>
+<li><p><strong>_socket和_thread_data是socketpair. 通过pipe通信</strong></p>
+<ul>
+<li>tcp_thread对_thread_data进行操作 </li>
+<li>main thread 对_socket进行操作. </li>
+<li>避免了对同一socket复杂的线程通信操作.</li>
+<li>感觉这就是所谓的”通过通信共享内存，而不是通过共享内存通信.”; </li>
+<li>通过pipe , tcp_thread和main_thread“共享”(通信）了user要发送和下层读取到的data</li>
+</ul>
+</li>
+<li><p><strong>main thread对_socket的操作</strong></p>
+<ul>
+<li>main thread对_socket进行write , 将data送入pipe之后即可返回</li>
+<li>main thread对_socket进行read(block) , 从pipe中读到数据后即可返回</li>
+</ul>
+</li>
+<li><p><strong>tcp thread对_thread_data的操作</strong></p>
+<ul>
+<li>TCP thread负责监听_thread_data读事件，并读出_thread_data数据并送入TCP/IP协议栈处理</li>
+<li>TCP thread负责监听_thread_data写事件，并将data从_thread_data写入,送给pipe的另一端_socket</li>
+</ul>
+</li>
+</ul>
+<h3 id="TAP-Fd"><a href="#TAP-Fd" class="headerlink" title="TAP Fd"></a>TAP Fd</h3><ul>
+<li>除此之外，<strong>tcp thread还需要对TAP Fd进行操作</strong><ul>
+<li>监听TAP Fd写事件,并处理</li>
+<li>监听TAP Fd读事件,并处理</li>
+</ul>
+</li>
+<li>TAP device接收上层构造好的链路层帧(link-layer frames)并直接发送出去</li>
+</ul>
+<h2 id="2-thread"><a href="#2-thread" class="headerlink" title="2 thread"></a>2 thread</h2><ul>
+<li>FullStackSocket中总共有2个thread<ul>
+<li><strong>main thread</strong> (user)<ul>
+<li>main thread对_socket进行write , 将data送入pipe之后即可返回</li>
+<li>main thread对_socket进行read(block) , 从pipe中读到数据后即可返回</li>
+</ul>
+</li>
+<li><strong>TCP thread</strong><ul>
+<li><strong>一言以蔽之</strong>：<ul>
+<li>负责 和上层main thread的_socket交互.</li>
+<li>TCP/IP协议栈处理数据  </li>
+<li>以及读写网卡  </li>
+</ul>
+</li>
+<li>有个很重要的组件 : <strong>eventloop</strong>. 下文介绍.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="eventloop-tcp-thread"><a href="#eventloop-tcp-thread" class="headerlink" title="eventloop (tcp thread)"></a>eventloop (tcp thread)</h3><p><strong>eventloop</strong></p>
+<ul>
+<li><p>好像到处都有eventloop哈，libsponge有，muduo有，redis有。是个reactor就有。</p>
+</li>
+<li><p>大概来说如下</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span>(condition)</span><br><span class="line">&#123;</span><br><span class="line">    poll();</span><br><span class="line">    handleEvents();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>不过只能说类似,因为我们没有listenfd.只有connfd<blockquote>
+<p><img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-07-47.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>eventloop监听事件如下</p>
+<ul>
+<li><strong>EventA</strong> : adapter的读事件. 即TAP Fd 接收到frame<ul>
+<li>Handler : network interface 读取frame并交付给上层协议栈</li>
+<li>注册条件 : 只有local tcp存活时 才监听并处理该事件</li>
+</ul>
+</li>
+<li><strong>EventB</strong> : _thread_data的读事件. 即_thread_data接收到了_socket写入pipe的数据<ul>
+<li>Handler : tcp sender 读取_thread_data的数据并发送</li>
+<li>注册条件 : 在local tcp存活 &amp;&amp; 写不关闭 &amp;&amp; local tcp outbound_buffer仍有空闲空间时 可监听并处理此事件</li>
+</ul>
+</li>
+<li><strong>EventC</strong> : _thread_data的写事件.<ul>
+<li>Handler : _thread_data从inbound buffer中读出数据，写入pipe</li>
+<li>注册条件 : tcp inbound buffer有数据可读出写入_thread_data</li>
+</ul>
+</li>
+<li><strong>EventD</strong> : TAP Fd可写. <ul>
+<li>Handler : datagram adapter读取TCPsender发送的segment。层层封装成frame 写给TAP Fd</li>
+<li>注册条件 : tcp outbound buffer有数据可读出送入协议栈</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="关于写事件的注册"><a href="#关于写事件的注册" class="headerlink" title="关于写事件的注册"></a>关于写事件的注册</h4><ul>
+<li><p>背景: 如何正确的在epoll/poll LT模式下正确的执行写操作.</p>
+<ul>
+<li>易知poll为水平触发 , 在LT模式下如果注册了某fd的写事件到epoll上，那么只要fd背后的pipe亦或者kernel buffer没被填满，就会触发该事件,基本上一定会陷入死循环（busy wait)(loop刚刚回到poll就再次触发事件)。</li>
+</ul>
+</li>
+<li><p>如何正确执行写操作 -&gt; 如何正确的在poll上注册写事件,使得写事件可以在有数据写的时候发生,没有的时候就不发生？而不会频繁的触发写事件陷入busy wait ?</p>
+<ul>
+<li>解决方案很简单如下：<ul>
+<li><strong>设置一个 注册写事件的先决条件</strong>(code中的interest).</li>
+<li>如先决条件为有数据可写,那么如下 </li>
+<li>也即 只有在<strong>有数据时才注册写事件</strong>到poll</li>
+<li>并且 在<strong>不满足该条件时，就立刻将该写事件从poll上拿下来</strong>.</li>
+</ul>
+</li>
+<li>如<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Event C interest</span><br><span class="line">    <span class="comment">//  interest : 如果tcp的outbound buffer有数据要可发 才注册 ; 不符合该条件时立刻移除</span></span><br><span class="line">    [&amp;] &#123; <span class="keyword">return</span> <span class="keyword">not</span> _tcp-&gt;segments_out().empty(); &#125;);</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Event D interest</span><br><span class="line">    [&amp;] &#123;</span><br><span class="line">    <span class="comment">//  tcp的inbound buffer不空(有数据可交付给上层app) || tcp的inbound buffer读到eof亦或者出错error (那就可以返回给上层eof或是error) </span></span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">not</span> _tcp-&gt;inbound_stream().buffer_empty()) <span class="keyword">or</span></span><br><span class="line">            ((_tcp-&gt;inbound_stream().eof() <span class="keyword">or</span> _tcp-&gt;inbound_stream().error()) <span class="keyword">and</span> <span class="keyword">not</span> _inbound_shutdown);</span><br><span class="line">    &#125;);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="之前的一些问题"><a href="#之前的一些问题" class="headerlink" title="之前的一些问题"></a>之前的一些问题</h2><ul>
+<li><p>使用</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  des addr :  ip and port</span></span><br><span class="line"><span class="function">Address <span class="title">addr</span><span class="params">(host,<span class="string">&quot;http&quot;</span>)</span></span>;    <span class="comment">//  getaddrinfo : host -&gt; ip ; http -&gt; port </span></span><br><span class="line"><span class="comment">//  connect</span></span><br><span class="line">FullStackSocket tcp_socket;</span><br><span class="line">tcp_socket.connect(addr);   </span><br><span class="line"><span class="comment">//  send req</span></span><br><span class="line"><span class="function"><span class="built_in">string</span> <span class="title">request</span><span class="params">(<span class="string">&quot;GET &quot;</span> + path + <span class="string">&quot; HTTP/1.1\r\n&quot;</span> + <span class="string">&quot;Host: &quot;</span> + host + <span class="string">&quot;\r\n&quot;</span> + <span class="string">&quot;Connection: close\r\n&quot;</span> + <span class="string">&quot;\r\n&quot;</span>)</span></span>;</span><br><span class="line">tcp_socket.write(request);</span><br><span class="line"><span class="keyword">while</span>(!tcp_socket.eof())</span><br><span class="line">&#123;</span><br><span class="line">    <span class="built_in">cout</span>&lt;&lt;tcp_socket.read();</span><br><span class="line">&#125;</span><br><span class="line">tcp_socket.wait_until_closed();</span><br></pre></td></tr></table></figure></li>
+<li><p>wait_until_closed()</p>
+<ul>
+<li>此时peer已经停止写(receiver 接收fin)</li>
+<li>于是我们 _socket 关闭读写, 致使 _thread_data关闭读 , 通过之前注册的回调 , 致使tcpconnection关闭写 , 于是local tcp sender发送fin给peer. 完成四次挥手. clean shutdown<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> AdaptT&gt;</span><br><span class="line"><span class="keyword">void</span> TCPSpongeSocket&lt;AdaptT&gt;::wait_until_closed() &#123;</span><br><span class="line">    <span class="comment">//  关闭user看到的_socketfd的读写   </span></span><br><span class="line">    shutdown(SHUT_RDWR);</span><br><span class="line">    <span class="keyword">if</span> (_tcp_thread.joinable()) &#123;</span><br><span class="line">        <span class="built_in">cerr</span> &lt;&lt; <span class="string">&quot;DEBUG: Waiting for clean shutdown... &quot;</span>;    <span class="comment">//  </span></span><br><span class="line">        _tcp_thread.join();     <span class="comment">//  等待tcp thread结束</span></span><br><span class="line">        <span class="built_in">cerr</span> &lt;&lt; <span class="string">&quot;done.\n&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="port"><a href="#port" class="headerlink" title="port"></a>port</h3><ul>
+<li>port是传输层的，可是我们没在lab4的tcpconnection中填充，他在什么时候填充的 ?<ul>
+<li>tcpConnection 填充了 seq num , ack num , window , data , ack , rst , syn , fin. urg和psh没用到</li>
+<li>tcpsegment自己计算了dataoffset , checksum</li>
+<li><img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-11-03-04.png"></li>
+<li>在wrap_tcp_in_ip中填充的<br><img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-38-22.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>本地IP和本地Port在什么时候告知Socket？: connect时随机生成port ; peer的IP和Port呢？: user传入. 见connect.<br>  <img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-43-58.png"></p>
+</li>
+<li><p>port在什么时候起到作用 ? 怎么用于区分segment是不是给我们的socket的？<br>  <img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-20-10-47-59.png"></p>
+</li>
+</ul>
+<ul>
+<li>tcp协议的端口只是逻辑上的端口，并没有实际物理意义，没有对应设备 只是个逻辑上的 用于区分socket罢了. 其范围0到65535是受报文中给port的空间限制的 .<ul>
+<li>在网络技术中，端口(Port)大致有两种意思：一是物理意义上的端口，比如，ADSL Modem、集线器、交换机、路由器用于连接其他网络设备的接口，如RJ-45端口、SC端口等等；二是逻辑意义上的端口，一般是指TCP/IP协议中的端口，端口号的范围从，比如用于浏览网页服务的80端口，用于FTP服务的21端口等等。</li>
+</ul>
+</li>
+</ul>
+<h3 id="关于IP分片"><a href="#关于IP分片" class="headerlink" title="关于IP分片"></a>关于IP分片</h3><p><img src="/2023/02/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-Socket/2023-02-27-13-18-56.png"></p>
+<ul>
+<li>可以看到 util以及libsonge中并没有IP分片的代码. 为什么 ?<ul>
+<li>因为我们只实现了TCP/IP协议栈. 并没有实现UDP/IP . </li>
+<li>UDP才会在IP分片，TCP不会在IP分片. 原因如下</li>
+</ul>
+</li>
+<li><strong>TCP</strong>会进行<strong>分段</strong>,临界为称为(Max Segment Size). <strong>MSS</strong><ul>
+<li>放入TCP Segment的最大应用层报文段大小.</li>
+<li>MSS的大小一般都是参考了MTU. 如MTU = 1500bytes , 则 MSS = 1500 - IP Header - TCP Header = 1460 Bytes</li>
+</ul>
+</li>
+<li><strong>IP</strong>层<strong>分片</strong>的临界是(Max Transimssion Unit)<strong>MTU</strong>. <ul>
+<li>MTU是由数据链路层决定的. 如Ethernet II的MTU就是1500 bytes</li>
+<li>MTU = IP Header + TCP Header + MSS</li>
+</ul>
+</li>
+<li>易知一个IP datagram里面封装一个 TCP Segment. 又由于 MSS &lt; MTU , 故<strong>TCP分段避免了IP分片</strong>.</li>
+<li>TCP MSS目的 : 为了让IP层少分包或是不分包 ,因为<strong>IP分片丢失会导致TCP重传所有分片组成的那个Segment.</strong></li>
+<li>因为 IP 层本身没有超时重传机制，它由传输层的 TCP 来负责超时和重传。<ul>
+<li>当某一个 IP 分片丢失后，接收方的 IP 层就无法组装成一个完整的 TCP 报文（头部 + 数据），也就无法将数据报文送到 TCP 层，所以接收方不会响应 ACK 给发送方，因为发送方迟迟收不到 ACK 确认报文，所以会触发超时重传，就会重发「整个 TCP 报文（头部 + 数据）」(该TCPSegment大于MTU)。</li>
+<li>因此，IP 层进行分片，如果丢失某个分片，则重传效率很低</li>
+</ul>
+</li>
+</ul>
+<h3 id="listening-fd"><a href="#listening-fd" class="headerlink" title="listening fd"></a>listening fd</h3><ul>
+<li>与kernel实现不同. Kernel里面，对于server，会有一个listening socket（与peer进行三次握手建立连接)。然后为到来的建立连接请求创建connection socket. 去和client的connfd进行通信.</li>
+<li>libsponge的实现没有listening socket,仅仅就是一个connection socket。这个connection去和client的connfd进行三次握手、通信以及四次挥手.</li>
+</ul>
+<h2 id="PS-eventloop相关code"><a href="#PS-eventloop相关code" class="headerlink" title="PS :  eventloop相关code"></a>PS :  eventloop相关code</h2><ul>
+<li>tcp_spong_socket.cc</li>
+</ul>
+<h1 id="收获"><a href="#收获" class="headerlink" title="收获"></a>收获</h1><ul>
+<li>通过CS144 lab0-7 <ul>
+<li>掌握了如何实现基本的TCP协议(TCPSender TCPReceiver) , 更加理解了TCP协议是如何应对 对于两军问题导致的双方难以达成clean shutdown的情况 , 并对TCP/IP协议栈(TCP IP ARP Ethernet)以及路由(Router)有了更深刻的理解.</li>
+<li>学会了c++14的一些新特性,如optional , string_view </li>
+<li>学习FullStackSocket的设计 : 事件交给worker thread的eventloop来做 , user 在另一个thread等待 , 二者通过pipe传输.</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/02/15/c++_string_view/" rel="prev" title="c++_string_view">
+      <i class="fa fa-chevron-left"></i> c++_string_view
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/02/22/c++_Any/" rel="next" title="c++_Any">
+      c++_Any <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#FullStackSocket"><span class="nav-number">1.</span> <span class="nav-text">FullStackSocket</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#3Fd"><span class="nav-number">1.1.</span> <span class="nav-text">3Fd</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#pipe-socketpair"><span class="nav-number">1.1.1.</span> <span class="nav-text">pipe(socketpair)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TAP-Fd"><span class="nav-number">1.1.2.</span> <span class="nav-text">TAP Fd</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-thread"><span class="nav-number">1.2.</span> <span class="nav-text">2 thread</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#eventloop-tcp-thread"><span class="nav-number">1.2.1.</span> <span class="nav-text">eventloop (tcp thread)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E5%86%99%E4%BA%8B%E4%BB%B6%E7%9A%84%E6%B3%A8%E5%86%8C"><span class="nav-number">1.2.1.1.</span> <span class="nav-text">关于写事件的注册</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B9%8B%E5%89%8D%E7%9A%84%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">1.3.</span> <span class="nav-text">之前的一些问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#port"><span class="nav-number">1.3.1.</span> <span class="nav-text">port</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E4%BA%8EIP%E5%88%86%E7%89%87"><span class="nav-number">1.3.2.</span> <span class="nav-text">关于IP分片</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#listening-fd"><span class="nav-number">1.3.3.</span> <span class="nav-text">listening fd</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PS-eventloop%E7%9B%B8%E5%85%B3code"><span class="nav-number">1.4.</span> <span class="nav-text">PS :  eventloop相关code</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%94%B6%E8%8E%B7"><span class="nav-number">2.</span> <span class="nav-text">收获</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '5415aef956220f507ac18a5e7762e146',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

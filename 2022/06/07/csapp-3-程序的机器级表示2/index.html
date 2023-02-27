@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Procedure">
+<meta property="og:type" content="article">
+<meta property="og:title" content="csapp_3_程序的机器级表示2">
+<meta property="og:url" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="Procedure">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-07-09-13-33.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-09-22-55.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-09-59-58.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-10-07-30.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-10-48-50.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-07-42-57.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-08-09-07.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-08-43-22.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-25-11.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-38-23.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-49-17.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-48-16.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-48-58.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-11-02-36.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-17-02-54.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-10-14.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-40-59.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-51-24.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-56-33.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-11-50.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-14-56.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-32-42.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-16-35-58.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-16-52-27.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-18-48-20.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-08-20.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-18-30.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-26-10.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-20-45.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-19-28.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-19-35.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-18-20-16-44.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-56-40.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-57-03.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-59-11.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-34-09.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-32-32.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-35-13.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-49-02.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-12-43.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-53-46.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-53-39.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-10-16-34.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-55-29.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-09-49-05.png">
+<meta property="og:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-09-51-12.png">
+<meta property="article:published_time" content="2022-06-07T00:18:42.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:17:53.613Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-07-09-13-33.png">
+
+<link rel="canonical" href="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>csapp_3_程序的机器级表示2 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          csapp_3_程序的机器级表示2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-07 08:18:42" itemprop="dateCreated datePublished" datetime="2022-06-07T08:18:42+08:00">2022-06-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:17:53" itemprop="dateModified" datetime="2023-02-27T23:17:53+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Procedure</p>
+<span id="more"></span>
+
+
+<h2 id="Mechanisms-in-Procedures"><a href="#Mechanisms-in-Procedures" class="headerlink" title="Mechanisms in Procedures"></a>Mechanisms in Procedures</h2><p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-07-09-13-33.png"></p>
+<h1 id="Procedure-过程"><a href="#Procedure-过程" class="headerlink" title="Procedure 过程"></a>Procedure 过程</h1><ul>
+<li><p>过程：一种很重要的抽象，提供了一种封装代码的方式，用一组参数和一个返回值实现了某种功能，隐藏了行为的具体实现。</p>
+</li>
+<li><p>不同语言中，过程形式多样：函数、方法、子例程、处理函数，</p>
+</li>
+<li><p>假设过程P调用过程Q，Q执行后返回P。这些动作包括以下机制.</p>
+</li>
+<li><p><strong>传递控制</strong>：<strong>passing control</strong></p>
+<ul>
+<li>进入过程Q时，程序计数器（PC/%rip）必须被设置为：过程Q代码的起始地址。（过程Q的地址）</li>
+<li>从过程Q返回时，程序计数器必须被设置为：P中调用Q这句代码<code>call Q</code>的下一行代码的地址。（P中的）</li>
+</ul>
+</li>
+<li><p><strong>传递数据</strong>：<strong>passing data</strong></p>
+<ul>
+<li>P必须能向Q提供一个或多个参数<ul>
+<li>参数&lt;=6个，通过寄存器传递</li>
+<li>参数&gt;6个，通过将P要传递给Q的参数（6个开外的那些）压入过程P的栈帧来传递。</li>
+</ul>
+</li>
+<li>Q必须能向P返回一个值（一般用%rax返回）</li>
+</ul>
+</li>
+<li><p><strong>分配和释放内存</strong>：<strong>memory management</strong></p>
+<ul>
+<li>Q可能需要为局部变量分配空间，在返回时，又必须释放这些空间。（移动%rsp）</li>
+</ul>
+</li>
+</ul>
+<h2 id="Stack-Structure-运行时栈"><a href="#Stack-Structure-运行时栈" class="headerlink" title="Stack Structure 运行时栈"></a>Stack Structure 运行时栈</h2><ul>
+<li><strong>重要图</strong><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-09-22-55.png"><br>纠正：被保存的reg中的%rsp换成%rbx</li>
+<li><strong>栈</strong>由高地址向低地址增长；**%rsp时刻指向栈顶元素**；pushq、popq将数据存入、弹出栈；%rsp减小可以为没指定初始值的数据在栈上分配空间；也可通过增大%rsp释放空间。</li>
+<li>x86-64过程需要的存储空间超过寄存器能存放的时，就会在栈上分配空间，分配的空间称为<strong>栈帧</strong>。当前在运行的栈帧总是在栈顶。</li>
+<li>P调用Q时，会将Q过程结束后的返回地址（Q返回后，P过程继续执行的地址）压入栈中。我们将这个返回地址视作P栈帧的一部分。（因为这个返回地址说P过程代码的地址，存放的是与P相关的状态）</li>
+<li>Q代码会扩展当前栈的边界，分配它的栈帧所需的空间。<ul>
+<li>这个空间中，它可以保存寄存器的值、分配局部变量空间、为调用过程设置参数。</li>
+</ul>
+</li>
+<li>大多数栈帧都是定长的，在过程的开始就分配好了。但是也有些过程需要变长的帧<ul>
+<li>3.10.5。比如P调用Q过程时，Q需要&gt;6个参数，那么P就需要将多出的参数存入P自己的栈帧中。如果&lt;=6个，那么就只需要用寄存器传参数即可。</li>
+</ul>
+</li>
+<li>实际上，许多函数甚至不需要栈帧<ul>
+<li>当所有局部变量都可以保存在寄存器中，且该函数不会调用其他函数。</li>
+</ul>
+</li>
+<li><strong>栈</strong>是所有过程的集合，<strong>栈帧</strong>是一个过程，在栈顶的栈帧是当前正在执行的过程。<ul>
+<li>也意味着，代码中的其他(过程)函数，无论有多少，在该时刻都被冻结，任何时刻运行的只有一个函数(过程)(位于栈顶的栈帧)</li>
+</ul>
+</li>
+</ul>
+<h2 id="传递控制-Passing-Control"><a href="#传递控制-Passing-Control" class="headerlink" title="传递控制 Passing Control"></a>传递控制 Passing Control</h2><ul>
+<li><p>大体来说，就是传递控制，就是适当的<strong>改变PC/%rip</strong>，以控制该执行哪条指令。并在此过程中会用到栈来存储%rip应该变成的地址。</p>
+</li>
+<li><p>控制从P转移到Q：将PC设置为Q的起始地址即可</p>
+</li>
+<li><p>控制从Q返回到P：将PC设置为P中call Q的下一条指令的地址。</p>
+</li>
+<li><p>call Q ：过程调用</p>
+<ul>
+<li>（pushq A）将地址A压入栈中。紧跟在call指令后面的那条指令的地址。</li>
+<li>（%rip = Q_addr）将PC设置为Q的起始地址</li>
+</ul>
+</li>
+<li><p>ret ：从过程调用中返回</p>
+<ul>
+<li>（popq）从栈中弹出地址A</li>
+<li>（%rip=A）把PC设置为A</li>
+</ul>
+</li>
+<li><p>例子1</p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">begin of fun mulstore</span><br><span class="line"><span class="number">0x0000000000400540</span> &lt;mulstore&gt;</span><br><span class="line">    <span class="number">400540</span>: <span class="number">53</span>                     push %rbx</span><br><span class="line">    <span class="number">400541</span>: <span class="number">48</span> <span class="number">89</span> d3               mov %rdx,%rbx</span><br><span class="line">    ...</span><br><span class="line">    <span class="number">40054</span>d: c3                     retq</span><br><span class="line">    ...</span><br><span class="line">main</span><br><span class="line">    <span class="number">400563</span>: e8 d8 ff ff ff          callq <span class="number">400540</span>&lt;mulstore&gt;</span><br><span class="line">    <span class="number">400568</span>: <span class="number">48</span> <span class="number">8b</span> <span class="number">54</span> <span class="number">24</span> <span class="number">08</span>          mov <span class="number">0x8</span>(%rsp),%rdx</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-09-59-58.png"></p>
+</li>
+<li><p>练习<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-10-07-30.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-12-10-48-50.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-07-42-57.png"></p>
+<h2 id="传递数据-Passing-Data"><a href="#传递数据-Passing-Data" class="headerlink" title="传递数据 Passing Data"></a>传递数据 Passing Data</h2></li>
+</ul>
+<h3 id="Managing-local-data"><a href="#Managing-local-data" class="headerlink" title="Managing local data"></a>Managing local data</h3><ul>
+<li>当调用一个过程时，除了把控制传递给他，并在返回时再传递回来时；还可能包括把数据作为参数传递，而从过程返回害有可能包括返回一个值。</li>
+<li>过程间的数据大部分通过寄存器传递。<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-08-09-07.png"></li>
+<li>如P调用Q，当参数的个数大于6个之后，就需要Q在自己的栈帧中为要传递给q的参数构造参数，称为参数构造区。当构造完成后，即可进行call Q。</li>
+<li>例子<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-08-43-22.png"></li>
+</ul>
+<h3 id="Local-Storage-On-Stack-栈上的局部存储"><a href="#Local-Storage-On-Stack-栈上的局部存储" class="headerlink" title="Local Storage On Stack 栈上的局部存储"></a>Local Storage On Stack 栈上的局部存储</h3><ul>
+<li>某些时候，过程的局部数据必须存放在内存中（虚拟内存中的stack）<ul>
+<li>寄存器数量不够，无法存储所有本地数据。</li>
+<li>对一个局部变量使用取址&amp;，因此必须为他产生一个地址</li>
+<li>某些局部变量时数组或结构，因此必须通过数组或结构引用被访问到。</li>
+</ul>
+</li>
+<li>一般来说，过程通过减小%rsp指针在战胜分配空间，分配的结果作为栈帧的一部分，如重要图中的”局部变量区”。</li>
+<li>例子</li>
+</ul>
+<blockquote>
+<p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-25-11.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-38-23.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-49-17.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-48-16.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-10-48-58.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-11-02-36.png"></p>
+</blockquote>
+<ul>
+<li>注意事项：<ul>
+<li>为调用过程开辟栈帧，是在call Q之后，进入Q之后做得事情，是被调用过程Q自己负责做得。</li>
+<li>不仅直接移动%rsp会开辟栈帧，push也会；call 也会移动%rsp，拓展栈帧。</li>
+</ul>
+</li>
+</ul>
+<h3 id="寄存器中的局部存储空间"><a href="#寄存器中的局部存储空间" class="headerlink" title="寄存器中的局部存储空间"></a>寄存器中的局部存储空间</h3><ul>
+<li><p>寄存器组是唯一被所有过程<strong>共享</strong>的资源</p>
+</li>
+<li><p>为防止覆盖过程执行时覆盖寄存器的问题，按执行保存动作的对象来进行分类</p>
+</li>
+<li><p><strong>被调用者保存寄存器</strong></p>
+<ul>
+<li>%rbx、%rbp 、%r12~%r15</li>
+<li>当P调用Q时，Q必须保存寄存器的值，保证他们的值在离开Q返回P时与进入Q之前是一样的。</li>
+<li>执行过程是保存寄存器的原值是被调用者Q的责任<ul>
+<li>过程Q根本不改变他</li>
+<li>过程Q把原始值压入栈中（在栈中的这部分称为被保存的寄存器），再改变寄存器。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>调用者保存寄存器</strong></p>
+<ul>
+<li>其他所有寄存器，除了栈指针%rsp</li>
+<li>过程P调用过程Q。Q可以任意修改这些寄存器。在调用Q之前就保存好这些寄存器的数据是P的责任。</li>
+</ul>
+</li>
+<li><p>把P中不想让被调用过程Q覆盖、改变的值存入被调用者保存寄存器，然后再调用Q即可。</p>
+</li>
+<li><p>举例<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-16-17-02-54.png"></p>
+</li>
+<li><p>注意：过程中的局部变量先保存在被调用者保存的寄存器中，如果数量不够，那么在存入本过程的栈帧中。</p>
+</li>
+</ul>
+<h2 id="Illustration-Of-Recursion"><a href="#Illustration-Of-Recursion" class="headerlink" title="Illustration Of Recursion"></a>Illustration Of Recursion</h2><ul>
+<li>感觉没啥好说的。。</li>
+</ul>
+<hr>
+<h1 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h1><h2 id="Array"><a href="#Array" class="headerlink" title="Array"></a>Array</h2><h3 id="Basic-Principle-基本原则"><a href="#Basic-Principle-基本原则" class="headerlink" title="Basic Principle 基本原则"></a>Basic Principle 基本原则</h3><ul>
+<li>T A[N]<ul>
+<li>该声明有两个效果</li>
+<li>首先，在内存中分配一个L*N字节的连续区域。（L是数据类型T的大小）</li>
+<li>其次，引入标识符A，可以用A来作为指向数组开头的指针，指针的值就是xa。</li>
+<li>x+i*L即为第i个元素的起始地址(i属于[0,N-1])</li>
+<li>但是我们定义一个指针的时候，就只有该指针而没有额外分配的空间</li>
+</ul>
+</li>
+<li>指针运算<ul>
+<li>E的起始地址在%rdx; i存在%rcx<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-10-14.png"></li>
+<li>看出：关于int的操作是4bytes，用movl；关于指针的操作是8bytes，用leaq。<ul>
+<li>地址计算用leaq，数据计算用movb/w/l/q</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Multi-dimensional-nested-嵌套-多维数组-内存连续"><a href="#Multi-dimensional-nested-嵌套-多维数组-内存连续" class="headerlink" title="Multi-dimensional(nested) 嵌套/多维数组  (内存连续)"></a>Multi-dimensional(nested) 嵌套/多维数组  (内存连续)</h3><ul>
+<li><p>整个数组内存连续，在一起，可以一次性计算内存要取的地址。因此，取得数组数据只需一次内存访问mem。（就是计算出地址之后进行一次mem）</p>
+</li>
+<li><p>嵌套数组和多维数组等价。是一个东西。 </p>
+</li>
+<li><p><code>typedef int row3_t[3]; row3_t A[5]</code>等价于<code>int A[5][3]</code><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-40-59.png"></p>
+</li>
+<li><p><code>T D[R][C]</code></p>
+<ul>
+<li><code>&amp;D[i][j] = xd + L(C*i+j)</code></li>
+</ul>
+</li>
+<li><p>如何取得数组元素。如下</p>
+</li>
+<li><p>例1：设int A[5][3]。将A[i][j]复制到寄存器%eax中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">A in %rdi , i in %rsi , j in %<span class="function">rdi</span></span><br><span class="line"><span class="function"><span class="title">leaq</span> <span class="params">(%rsi,%rsi,<span class="number">2</span>)</span>,%rax   %rax </span>= <span class="number">3</span>*i      # <span class="number">1</span>行有<span class="number">3</span>个元素,计算i行有几个元素</span><br><span class="line">leaq (%rdi,%rax,<span class="number">4</span>),%rax   %rax = %rdi + <span class="number">4</span>*%rax  = xa + <span class="number">4</span>*(<span class="number">3</span>*i)   <span class="number">1</span>个元素<span class="number">4b</span>ytes,<span class="number">4</span>*(<span class="number">3</span>i) i行占多少个bytes     </span><br><span class="line">movl (%rax,%rdx,<span class="number">4</span>),%rax   %rax = %rax + <span class="number">4</span>*%rdx  = xa + <span class="number">4</span>*(<span class="number">3</span>*i) + <span class="number">4</span>*j  加j个元素大小</span><br></pre></td></tr></table></figure></li>
+<li><p>例2：设int pgh[5][4]。将pgh[i][j]放入%eax<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-51-24.png"></p>
+</li>
+</ul>
+<h3 id="Multi-level-多层次数组-内存不连续"><a href="#Multi-level-多层次数组-内存不连续" class="headerlink" title="Multi-level 多层次数组 (内存不连续)"></a>Multi-level 多层次数组 (内存不连续)</h3><ul>
+<li>例子<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">zip_dig cmu = &#123; <span class="number">1</span>, <span class="number">5</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">3</span> &#125;; </span><br><span class="line">zip_dig mit = &#123; <span class="number">0</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">3</span>, <span class="number">9</span> &#125;; </span><br><span class="line">zip_dig ucb = &#123; <span class="number">9</span>, <span class="number">4</span>, <span class="number">7</span>, <span class="number">2</span>, <span class="number">0</span> &#125;; </span><br><span class="line">...</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> UCOUNT 3 </span></span><br><span class="line"><span class="keyword">int</span> *univ[UCOUNT] = &#123;mit, cmu, ucb&#125;;</span><br><span class="line">univ一维数组，每个元素是一个指针，占<span class="number">8b</span>ytes。这个指针指向的是一维数组的起始地址。也就是说，这个元素本身的地址并不是数组的起始地址，而是它里面存的值，是数组的起始地址</span><br></pre></td></tr></table></figure></li>
+<li>如何取得值。由于内存不连续，不能一次性计算出地址。<ul>
+<li>需要先内存访问mem一次（读取指针），读取指针指向的一维数组的起始地址。然后再在这个的地址进行列的偏移计算。</li>
+<li>所以获取一个unix[i][j]数据，需要进行两次内存访问。第一次是在计算地址时，第二次是在根据地址获取数据时。<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-10-56-33.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-11-50.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="区别"><a href="#区别" class="headerlink" title="区别"></a>区别</h3><ul>
+<li>nested array：嵌套/多维数组<ul>
+<li>内存连续，可一次性计算出元素地址。获取数据只需要一次 mem_read</li>
+</ul>
+</li>
+<li>multi-level array：多层次数组<ul>
+<li>内存不连续，不能一次性计算出元素地址，获取元素需要两次mem_read<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-14-56.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="使用数组"><a href="#使用数组" class="headerlink" title="使用数组"></a>使用数组</h3><p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-23-11-32-42.png"></p>
+<p>数组越界<br>1.得到一个随机值<br>2.地址无效，发生段错误</p>
+<h2 id="struct-结构"><a href="#struct-结构" class="headerlink" title="struct 结构"></a>struct 结构</h2><ul>
+<li>将不同类型的对象组合到一起的机制：结构struct；联合union</li>
+<li>struct结构的所有组成部分都存放在内存中一段<strong>连续</strong>的区域内。（虽字段内会有内存对齐，但这些字段是连续的）指向结构的指针就是结构第一个字节的地址。</li>
+<li>编译器维护关于每个结构类型的信息，指示每个字段的字节偏移。<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-16-35-58.png"></li>
+</ul>
+<h2 id="union-联合体"><a href="#union-联合体" class="headerlink" title="union 联合体"></a>union 联合体</h2><ul>
+<li>联合：一种方式，规避C语言的类型系统，允许以多种类型来引用一个对象。即用<strong>不同字段来引用相同的内存块</strong>。</li>
+<li>一个联合的大小 等于 它最大字段的大小</li>
+</ul>
+<p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-16-52-27.png"></p>
+<h3 id="联合作用："><a href="#联合作用：" class="headerlink" title="联合作用："></a>联合作用：</h3><ul>
+<li>一个结构中的两个不同字段的使用是互斥的，那么就将这两个字段声明为联合的一部分，来节省空间。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">node_s</span>&#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">node_s</span> *<span class="title">left</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">node_s</span> *<span class="title">right</span>;</span></span><br><span class="line">  <span class="keyword">double</span> data[<span class="number">2</span>];</span><br><span class="line">&#125;</span><br><span class="line"><span class="number">8</span>+<span class="number">8</span>+<span class="number">16</span> = <span class="number">32b</span>ytes</span><br><span class="line">--&gt;</span><br><span class="line">struct <span class="keyword">node_t</span>&#123;</span><br><span class="line">  <span class="keyword">type_t</span> t;     <span class="comment">//  4bytes</span></span><br><span class="line">  <span class="class"><span class="keyword">union</span>&#123;</span>  </span><br><span class="line">    <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">node_t</span> *<span class="title">letf</span>;</span></span><br><span class="line">      <span class="class"><span class="keyword">struct</span> <span class="title">node_t</span> *<span class="title">right</span>;</span></span><br><span class="line">    &#125;internal;</span><br><span class="line">    <span class="keyword">double</span> data[<span class="number">2</span>];</span><br><span class="line">  &#125;info   <span class="comment">//  16 bytes</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="number">4</span> + [<span class="number">4</span>] + <span class="number">16</span> = <span class="number">24</span></span><br></pre></td></tr></table></figure></li>
+<li>联合还可用来<strong>访问不同数据类型的相同位模式</strong>。<ul>
+<li>普通的强制数据类型转换：double d = xxx ; unsigned long u = (unsigned long ) d。u是d的整数表示，且从d转化成u的过程按照IEEE754的标准需要进行位级别的改变（请看上一节博客），也就是说u和d的位模式大不相同。</li>
+<li>使用union联合<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="title">double2bits</span><span class="params">(<span class="keyword">double</span> d)</span></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">union</span>&#123;</span></span><br><span class="line">    <span class="keyword">double</span> d;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> u;</span><br><span class="line">  &#125; temp;</span><br><span class="line">  temp.d = d;</span><br><span class="line">  <span class="keyword">return</span> temp.u;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>以一种数据类型（double）来存储union中的参数，又以另一种形式（unsigned long）访问它。temp.d和temp.u所引用的内存块中的位完全相同。</li>
+</ul>
+</li>
+</ul>
+<h2 id="Alignment-数据对齐"><a href="#Alignment-数据对齐" class="headerlink" title="Alignment 数据对齐"></a>Alignment 数据对齐</h2><h3 id="对齐原则"><a href="#对齐原则" class="headerlink" title="对齐原则"></a>对齐原则</h3><ul>
+<li>许多计算机系统对<strong>基本数据类型的合法地址</strong>做出了一些限制，要求某种数据类型对象的地址必须是某个<strong>K</strong>(2/4/8)值的倍数。这种<strong>对齐限制</strong>简化了处理器和内存系统之间接口的硬件设计，（注意是基本数据类型，结构体本身不是基本数据类型）</li>
+<li><strong>对齐原则</strong>是任何<strong>K字节的基本对象的地址必须是K的倍数</strong><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-18-48-20.png"></li>
+<li>确保每种数据类型都是按照指定方式来组织和分配，即每种类型的对象都满足他的对齐限制，就可以保证实施对齐。如<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-08-20.png"></li>
+</ul>
+<h3 id="结构的字段对齐"><a href="#结构的字段对齐" class="headerlink" title="结构的字段对齐"></a>结构的字段对齐</h3><ul>
+<li><p>总的来说，结构的对齐要求就是</p>
+<ul>
+<li><strong>(1)</strong> K大小的对象的起始地址必须是K的倍数</li>
+<li><strong>(2)</strong> 为了下个同类型的结构体的起始地址，需要对本结构体的尾部进行填充。（(2)由(1)推出）<ul>
+<li>一个结构体的起始地址应当是这个结构体内最大字段的倍数。（因为基本数据类型最大就是8ytes了。其他都是1、2、4。同时存在1、2、4、8时，起始地址是8的倍数才能满足所有类型的对齐要求。（反正我这么觉得）</li>
+<li>因此也可以说是，一个结构体的大小，应当是其最大字段的倍数。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>对于包含结构的代码，编译器可能需要在阶段的分配中插入间隙，以保证满足元素的对齐要求。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">S1</span>&#123;</span></span><br><span class="line">  <span class="keyword">int</span> i;</span><br><span class="line">  <span class="keyword">char</span> c;</span><br><span class="line">  <span class="keyword">int</span> j;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-18-30.png"></p>
+</li>
+<li><p>为了下一个同类型结构体，对尾部进行填充。（默认进行填充）（按理来说似乎应该结构体数组才会起到作用）</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">S2</span>&#123;</span></span><br><span class="line">  <span class="keyword">int</span> i;</span><br><span class="line">  <span class="keyword">int</span> j;</span><br><span class="line">  <span class="keyword">char</span> c;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-19-26-10.png"></p>
+</li>
+</ul>
+<ul>
+<li>练习<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-20-45.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-19-28.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-19-35.png"></li>
+<li>重排字段顺序，以最小化浪费的空间：一个有效的方式是按照字段由大到小排列。</li>
+</ul>
+<h1 id="安全"><a href="#安全" class="headerlink" title="安全"></a>安全</h1><h2 id="指针"><a href="#指针" class="headerlink" title="指针"></a>指针</h2><ul>
+<li>强转指针类型：只改变类型不改变值。</li>
+<li>函数指针<ul>
+<li>函数指针的值是函数机器代码的第一条指令的地址<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  定义函数</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fun</span><span class="params">(<span class="keyword">int</span> x,<span class="keyword">int</span> *p)</span></span>;</span><br><span class="line"><span class="comment">//  定义指针</span></span><br><span class="line"><span class="built_in"><span class="keyword">int</span></span> (*fp)(<span class="keyword">int</span> ,<span class="keyword">int</span> *);</span><br><span class="line"><span class="comment">//  指针赋值</span></span><br><span class="line">fp = fun;</span><br><span class="line"><span class="comment">//  使用指针调用函数:</span></span><br><span class="line"><span class="built_in">fp</span>(<span class="number">1</span>,&amp;x);</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>int *f(int *)<ul>
+<li>f是一个函数。接收参数int* 返回 int*</li>
+</ul>
+</li>
+<li>int (*f)(int *)<ul>
+<li>f是一个函数指针。指向函数原型为 参数为int* 返回值为int的函数</li>
+</ul>
+</li>
+</ul>
+<h2 id="地址范围"><a href="#地址范围" class="headerlink" title="地址范围"></a>地址范围</h2><ul>
+<li>程序虚拟地址的大小范围[0,0x00007FFFFFFFFFFF]<ul>
+<li>现在64位机器限制使用47位地址。</li>
+<li>64位bits 可以表示 2^64个地址 也就是意味着需要有16*10^18个字节。买这么多内存是一笔巨款。（即便是47位也是一笔巨款啊。<code>2^47/2^20/2^8 *150 = 2^19 * 150 = 75 * 10^6 = 75000000 = 7千5百万）（假设256G内存150RMB）</code><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-18-20-16-44.png"></li>
+</ul>
+</li>
+<li>栈大小<ul>
+<li>linux常用系统上，栈stack的大小是8MB，意味着如果用指针访问超过栈的8bytes，就会发生段错误seg fault<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/Shared_ln/csapp/bomb$ ulimit -<span class="function">a</span></span><br><span class="line"><span class="function">core file <span class="title">size</span>          <span class="params">(blocks, -c)</span> 0</span></span><br><span class="line"><span class="function">data seg <span class="title">size</span>           <span class="params">(kbytes, -d)</span> unlimited</span></span><br><span class="line"><span class="function">scheduling <span class="title">priority</span>             <span class="params">(-e)</span> 0</span></span><br><span class="line"><span class="function">file <span class="title">size</span>               <span class="params">(blocks, -f)</span> unlimited</span></span><br><span class="line"><span class="function">pending <span class="title">signals</span>                 <span class="params">(-i)</span> 15409</span></span><br><span class="line"><span class="function">max locked <span class="title">memory</span>       <span class="params">(kbytes, -l)</span> 65536</span></span><br><span class="line"><span class="function">max memory <span class="title">size</span>         <span class="params">(kbytes, -m)</span> unlimited</span></span><br><span class="line"><span class="function">open <span class="title">files</span>                      <span class="params">(-n)</span> 1024</span></span><br><span class="line"><span class="function">pipe <span class="title">size</span>            <span class="params">(<span class="number">512</span> bytes, -p)</span> 8</span></span><br><span class="line"><span class="function">POSIX message <span class="title">queues</span>     <span class="params">(bytes, -q)</span> 819200</span></span><br><span class="line"><span class="function">real-time <span class="title">priority</span>              <span class="params">(-r)</span> 0</span></span><br><span class="line"><span class="function">**stack <span class="title">size</span>              <span class="params">(kbytes, -s)</span> 8192**</span></span><br><span class="line"><span class="function">cpu <span class="title">time</span>               <span class="params">(seconds, -t)</span> unlimited</span></span><br><span class="line"><span class="function">max user <span class="title">processes</span>              <span class="params">(-u)</span> 15409</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="title">memory</span>          <span class="params">(kbytes, -v)</span> unlimited</span></span><br><span class="line"><span class="function">file <span class="title">locks</span>                      <span class="params">(-x)</span> unlimited</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="缓冲区溢出"><a href="#缓冲区溢出" class="headerlink" title="缓冲区溢出"></a>缓冲区溢出</h2><h3 id="后果"><a href="#后果" class="headerlink" title="后果"></a>后果</h3><ul>
+<li><p>在栈中分配某个字符数组来保存字符串，但是字符串的长度超出了分配的空间。可能会导致</p>
+<ul>
+<li>破坏本栈帧未被使用的栈空间</li>
+<li>破坏稍后离开本栈帧返回时的返回地址</li>
+<li>破坏调用者的栈帧状态</li>
+</ul>
+</li>
+<li><p>例子<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-56-40.png"><br>所谓的改变返回地址，实际上就是通过改变存在栈中的ret_addr来<strong>改变ret时PC的内容</strong>，也就是%rip将要指向的指令地址<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-57-03.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-21-59-11.png"></p>
+</li>
+<li><p>题<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-34-09.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-32-32.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-35-13.png"></p>
+</li>
+</ul>
+<h3 id="插入攻击代码"><a href="#插入攻击代码" class="headerlink" title="插入攻击代码"></a>插入攻击代码</h3><ul>
+<li>缓冲区溢出<strong>最致命</strong>的是可能会让程序执行它本不愿意执行的函数。<ul>
+<li>通过在输入的字符串中加入<ul>
+<li>可执行代码的字节编码，即<strong>攻击代码</strong>。</li>
+<li>指向攻击代码指令地址的<strong>指针</strong>，覆盖原本的ret addr。</li>
+</ul>
+</li>
+<li>如P调用Q，Q离开时<ul>
+<li>原本%rip应当指向正常设置好的ret_addr（位于.<strong>text</strong>段），然后%rip一步步++去执行下一条指令。</li>
+<li>然而，通过上述操作，使得ret_addr被更改为<strong>栈</strong>中的另一块地址，并且，栈中的这另一块地址也放入了编号的攻击代码。那么，%rip就会指向这段攻击代码的起始地址。随着%rip++，这段攻击代码就会被执行。</li>
+</ul>
+</li>
+<li><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-22-49-02.png"><ul>
+<li>如图。gets的字符串溢出。字符串包括 exploit code（攻击代码）、pad（空）、（攻击代码地址）。（pad是为了让ret_addr被覆盖）</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="对抗缓冲区溢出攻击"><a href="#对抗缓冲区溢出攻击" class="headerlink" title="对抗缓冲区溢出攻击"></a>对抗缓冲区溢出攻击</h2><ul>
+<li>随机化、栈保护、限制那部分内存可以存储可执行代码<ul>
+<li>是用于最小化程序缓冲区溢出攻击漏洞的三种最常见机制。</li>
+<li>不需要程序员做任何特殊的奴鲁，带来的性能代价很小甚至没有。</li>
+</ul>
+</li>
+</ul>
+<h3 id="栈随机化"><a href="#栈随机化" class="headerlink" title="栈随机化"></a>栈随机化</h3><ul>
+<li><p>为了在系统中插入攻击代码，攻击者既要插入exploit code，又要插入指向exploit code的pointer，这个pointer也是攻击字符串的一部分。其中产生这个pointer，需要知道字符串缓冲区的栈地址。</p>
+</li>
+<li><p>如果栈地址非常容易预测，且运行同样程序和操作系统的不同机器上，栈的位置都相当固定。因此，攻击者确定了一个常用的服务器所用的栈空间，就可以设计一个许多机器上都能实现的攻击。形成安全单一化现象：许多系统都易受到同一病毒攻击。</p>
+</li>
+<li><p><strong>栈随机化</strong>：栈的位置在程序每次运行时都有变化。因此，当许多机器运行同样的代码，他们的栈地址是不同的。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> x;</span><br><span class="line"><span class="keyword">int</span> y = <span class="number">9</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">fun</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> <span class="number">0</span>;&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">long</span> local;</span><br><span class="line">    <span class="keyword">int</span> * p = (<span class="keyword">int</span>*)<span class="built_in">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">int</span>));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;size = %ld\n&quot;</span>,<span class="keyword">sizeof</span>(&amp;local));</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;local at %p\n&quot;</span>,&amp;local);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;local at %p\n&quot;</span>,p);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;local at %p\n&quot;</span>,&amp;x);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;local at %p\n&quot;</span>,&amp;y);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;local at %p\n&quot;</span>,fun);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;    </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">  shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ gcc aslr.c -o asl.out -Wall</span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./asl.out </span><br><span class="line">size = <span class="number">8</span></span><br><span class="line">local at <span class="number">0x7ffd1b230218</span></span><br><span class="line">local at <span class="number">0x55a4564ab260</span></span><br><span class="line">local at <span class="number">0x55a454c25018</span></span><br><span class="line">local at <span class="number">0x55a454c25010</span></span><br><span class="line">local at <span class="number">0x55a454a246fa</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./asl.out </span><br><span class="line">size = <span class="number">8</span></span><br><span class="line">local at <span class="number">0x7ffc2e7746b8</span></span><br><span class="line">local at <span class="number">0x55d825bc1260</span></span><br><span class="line">local at <span class="number">0x55d824e70018</span></span><br><span class="line">local at <span class="number">0x55d824e70010</span></span><br><span class="line">local at <span class="number">0x55d824c6f6fa</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./asl.out </span><br><span class="line">size = <span class="number">8</span></span><br><span class="line">local at <span class="number">0x7fffb1830868</span></span><br><span class="line">local at <span class="number">0x55fa6f69c260</span></span><br><span class="line">local at <span class="number">0x55fa6f05d018</span></span><br><span class="line">local at <span class="number">0x55fa6f05d010</span></span><br><span class="line">local at <span class="number">0x55fa6ee5c6fa</span></span><br><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/<span class="keyword">try</span>$ ./asl.out </span><br><span class="line">size = <span class="number">8</span></span><br><span class="line">local at <span class="number">0x7ffc45a56418</span></span><br><span class="line">local at <span class="number">0x557de4b6c260</span></span><br><span class="line">local at <span class="number">0x557de2e3c018</span></span><br><span class="line">local at <span class="number">0x557de2e3c010</span></span><br><span class="line">local at <span class="number">0x557de2c3b6fa</span></span><br><span class="line">似乎只有栈在变。。为啥捏。。</span><br><span class="line">&gt;视频：global和fun不变，<span class="built_in">stack</span>上的局部变量的地址每次会改变，害有heap上的地址每次也会改变</span><br></pre></td></tr></table></figure>
+<ul>
+<li>实现方式：程序开始时，在栈上分配[0,n]bytes之间随即大小的空间。程序不使用这段空间。但他会导致每次执行时后续的栈位置发生变化。<ul>
+<li>分配的范围n必须足够大，才能获得足够多的栈地址变化，但又要足够小，不至于浪费程序太多空间。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>地址空间布局随机化</strong>(Address-Space Layout Randomization  — ASLR)</p>
+<ul>
+<li><blockquote>
+<p>每次程序运行时的不同部分：程序代码、库代码、栈、全局变量和堆数据，都被加载到内存不同区域。这意味着不同机器上运行的相同程序，其地址映射不同，以此对抗攻击。 </p>
+</blockquote>
+</li>
+<li>但我运行了以下没变啊。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>空操作雪橇</strong><ul>
+<li>在攻击代码前插入一段很长的nop空指令。只有PC++的效果，无其他行为。只要攻击者能猜中这段序列的某个地址，程序就会划过这个序列。</li>
+<li>应该是这个意思。至于如何保证pointer放置在原ret_addr位置上，我也不到啊。<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-12-43.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="栈破坏检测"><a href="#栈破坏检测" class="headerlink" title="栈破坏检测"></a>栈破坏检测</h3><ul>
+<li><p><strong>检测栈何时被破坏</strong></p>
+<ul>
+<li>C无法防止数组越界写，但我们可以在数组越界时，在<strong>造成任何有害结果</strong>前，尝试检测到他。</li>
+</ul>
+</li>
+<li><p><strong>栈保护者</strong>机制</p>
+<ul>
+<li>在栈帧中任何局部缓冲区与栈状态之间存储一个特殊的金丝雀值（canary），也被称为哨兵值。（攻击者没法轻易获取该值）<ul>
+<li>在<strong>恢复寄存器状态和从过程返回之前</strong>，程序会<strong>检查</strong>这个<strong>金丝雀</strong>值是否被该过程的某个操作或者该过程调用的某个过程的某个操作改变。若是，程序异常终止。<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-53-46.png"><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-08-53-39.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>canary原本被存储在只读段 %fs:40（段寻址）。xorq，结果非0代表canary被改变。</p>
+</li>
+<li><p>栈保护很好的防止了缓冲区溢出攻击破坏存储在程序栈上的状态，性能损失也很小。</p>
+</li>
+<li><p>GCC只在函数中有局部char类型缓冲区时才插入这样的代码。</p>
+</li>
+<li><p>栈状态相关的局部变量应比buf更靠近栈顶，这样buf溢出就更不会破坏局部变量的值。所以自顶向底应该是局部变量、canary、buf。</p>
+</li>
+</ul>
+<h3 id="限制可执行代码区域"><a href="#限制可执行代码区域" class="headerlink" title="限制可执行代码区域"></a>限制可执行代码区域</h3><ul>
+<li><strong>消除攻击者向系统插入可执行代码的能力</strong></li>
+<li>方法：限制那些内存区域能够存放可执行代码。<ul>
+<li>在典型的程序中，只有保存编译器产生的代码的那部分(text)内存才需要是可执行的，其他部分被限制为只允许读和写。详情见csapp第9章。</li>
+<li>硬件支持多种形式的内存保护，可以指明用户程序和os内核所允许的访问形式。</li>
+<li>许多系统允许控制三种访问形式：<strong>读</strong>（从内存中读数据）、<strong>写</strong>（写数据到内存）、<strong>执行</strong>（将内存的内容看作机器级代码）。</li>
+<li>以前，x86将读和执行合并成1位标志位，这样任何被标记为可读的页也是可执行的。因为栈上的字节可读，因此栈上的字节也是可执行的。</li>
+<li>后来，x8664引入No-Excute位，<strong>将读和执行模式分开</strong>，栈上的字节可以被标记为可读可写不可知性，而检查页是否可执行由<strong>硬件</strong>完成，效率上没损失。</li>
+</ul>
+</li>
+</ul>
+<h2 id="变长栈帧"><a href="#变长栈帧" class="headerlink" title="变长栈帧"></a><strong>变长栈帧</strong></h2><ul>
+<li><p>场景：当函数中存在变长数组时</p>
+</li>
+<li><p><strong>帧指针 : frame pointer</strong></p>
+<ul>
+<li>也被称为<strong>基指针 : base pointer</strong></li>
+</ul>
+</li>
+<li><p>为了<strong>管理变长栈帧</strong>，x86-64使用<strong>寄存器%rbp作为帧指针</strong></p>
+</li>
+<li><p>使用帧指针的栈帧结构<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-10-16-34.png"></p>
+</li>
+<li><p>%rbp作用：在函数的整个执行过程中，%rbp一直指向那个时刻栈的位置，然后用固定长度的局部变量（例如i）<strong>相对于%rbp的偏移量来引用他们</strong>。</p>
+<ul>
+<li>也就是说，用作一个基坐标，去确定其他变量的地址。</li>
+</ul>
+</li>
+<li><p>非变长栈帧时，用的基坐标是%rsp，其中注意%rsp时刻指向栈顶，因此当栈帧长度无法确定（编译时无法确定，需运行时确定如由用户输入确定时），编译器就无法确定在某一时刻%rsp的位置，也就无法把他当作基坐标去定位其他变量。因此需要引入一个<strong>固定</strong>的地址，因此就需要%rbp作为基指针，保存某一时刻（进入过程时）的栈的位置不变，作为基坐标，去定位本过程中用到的其他变量。</p>
+</li>
+<li><p>剩下的有时间再整理。该补数罗作业了。。。</p>
+</li>
+<li><p>csapp 202 + 3.49</p>
+</li>
+<li><p>较早版本的x86中，每个函数都使用帧指针（%rbp存储），而现在，只有栈帧长度为变长时（编译时无法确定的长度）才使用，如例子中的frame。</p>
+</li>
+</ul>
+<h1 id="GDB"><a href="#GDB" class="headerlink" title="GDB"></a>GDB</h1><ul>
+<li>详情见gdb调试博客<br><code>$&gt;gdb prog</code><br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-25-20-55-29.png"></li>
+</ul>
+<h1 id="大小端"><a href="#大小端" class="headerlink" title="大小端"></a>大小端</h1><ul>
+<li>总容易搞混啊md</li>
+<li>大端模式：低地址放高位 Sprac</li>
+<li>小端模式：低地址放低位。Intel    x86,    ARM    Android    and    IOS    </li>
+<li>一个字节内不存在什么大小端。（因为一地址一字节）</li>
+<li><strong>大小端模式存在于一个基本类型的对象内，其内部的低地址存储低位数据，高地址存储高位数据。</strong></li>
+<li>而不是不存在于一个数组中，那整个数组岂不是倒过来了。如数组c[8]，那么c[0]位于低地址，c[7]位于高地址。</li>
+<li>小端x86<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-09-49-05.png"></li>
+<li>大端<br><img src="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/2022-06-26-09-51-12.png"></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/06/06/csapp-Data-Lab/" rel="prev" title="datalab">
+      <i class="fa fa-chevron-left"></i> datalab
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/" rel="next" title="csapp_6_存储器层次结构">
+      csapp_6_存储器层次结构 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Mechanisms-in-Procedures"><span class="nav-number">1.</span> <span class="nav-text">Mechanisms in Procedures</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Procedure-%E8%BF%87%E7%A8%8B"><span class="nav-number"></span> <span class="nav-text">Procedure 过程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Stack-Structure-%E8%BF%90%E8%A1%8C%E6%97%B6%E6%A0%88"><span class="nav-number">1.</span> <span class="nav-text">Stack Structure 运行时栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%A0%E9%80%92%E6%8E%A7%E5%88%B6-Passing-Control"><span class="nav-number">2.</span> <span class="nav-text">传递控制 Passing Control</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%A0%E9%80%92%E6%95%B0%E6%8D%AE-Passing-Data"><span class="nav-number">3.</span> <span class="nav-text">传递数据 Passing Data</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Managing-local-data"><span class="nav-number">3.1.</span> <span class="nav-text">Managing local data</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Local-Storage-On-Stack-%E6%A0%88%E4%B8%8A%E7%9A%84%E5%B1%80%E9%83%A8%E5%AD%98%E5%82%A8"><span class="nav-number">3.2.</span> <span class="nav-text">Local Storage On Stack 栈上的局部存储</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8%E4%B8%AD%E7%9A%84%E5%B1%80%E9%83%A8%E5%AD%98%E5%82%A8%E7%A9%BA%E9%97%B4"><span class="nav-number">3.3.</span> <span class="nav-text">寄存器中的局部存储空间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Illustration-Of-Recursion"><span class="nav-number">4.</span> <span class="nav-text">Illustration Of Recursion</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number"></span> <span class="nav-text">数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Array"><span class="nav-number">1.</span> <span class="nav-text">Array</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Basic-Principle-%E5%9F%BA%E6%9C%AC%E5%8E%9F%E5%88%99"><span class="nav-number">1.1.</span> <span class="nav-text">Basic Principle 基本原则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Multi-dimensional-nested-%E5%B5%8C%E5%A5%97-%E5%A4%9A%E7%BB%B4%E6%95%B0%E7%BB%84-%E5%86%85%E5%AD%98%E8%BF%9E%E7%BB%AD"><span class="nav-number">1.2.</span> <span class="nav-text">Multi-dimensional(nested) 嵌套&#x2F;多维数组  (内存连续)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Multi-level-%E5%A4%9A%E5%B1%82%E6%AC%A1%E6%95%B0%E7%BB%84-%E5%86%85%E5%AD%98%E4%B8%8D%E8%BF%9E%E7%BB%AD"><span class="nav-number">1.3.</span> <span class="nav-text">Multi-level 多层次数组 (内存不连续)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8C%BA%E5%88%AB"><span class="nav-number">1.4.</span> <span class="nav-text">区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E6%95%B0%E7%BB%84"><span class="nav-number">1.5.</span> <span class="nav-text">使用数组</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#struct-%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">struct 结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#union-%E8%81%94%E5%90%88%E4%BD%93"><span class="nav-number">3.</span> <span class="nav-text">union 联合体</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%81%94%E5%90%88%E4%BD%9C%E7%94%A8%EF%BC%9A"><span class="nav-number">3.1.</span> <span class="nav-text">联合作用：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Alignment-%E6%95%B0%E6%8D%AE%E5%AF%B9%E9%BD%90"><span class="nav-number">4.</span> <span class="nav-text">Alignment 数据对齐</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%B9%E9%BD%90%E5%8E%9F%E5%88%99"><span class="nav-number">4.1.</span> <span class="nav-text">对齐原则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BB%93%E6%9E%84%E7%9A%84%E5%AD%97%E6%AE%B5%E5%AF%B9%E9%BD%90"><span class="nav-number">4.2.</span> <span class="nav-text">结构的字段对齐</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AE%89%E5%85%A8"><span class="nav-number"></span> <span class="nav-text">安全</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E9%92%88"><span class="nav-number">1.</span> <span class="nav-text">指针</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9C%B0%E5%9D%80%E8%8C%83%E5%9B%B4"><span class="nav-number">2.</span> <span class="nav-text">地址范围</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA"><span class="nav-number">3.</span> <span class="nav-text">缓冲区溢出</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%8E%E6%9E%9C"><span class="nav-number">3.1.</span> <span class="nav-text">后果</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%92%E5%85%A5%E6%94%BB%E5%87%BB%E4%BB%A3%E7%A0%81"><span class="nav-number">3.2.</span> <span class="nav-text">插入攻击代码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9%E6%8A%97%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA%E6%94%BB%E5%87%BB"><span class="nav-number">4.</span> <span class="nav-text">对抗缓冲区溢出攻击</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E9%9A%8F%E6%9C%BA%E5%8C%96"><span class="nav-number">4.1.</span> <span class="nav-text">栈随机化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E7%A0%B4%E5%9D%8F%E6%A3%80%E6%B5%8B"><span class="nav-number">4.2.</span> <span class="nav-text">栈破坏检测</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%99%90%E5%88%B6%E5%8F%AF%E6%89%A7%E8%A1%8C%E4%BB%A3%E7%A0%81%E5%8C%BA%E5%9F%9F"><span class="nav-number">4.3.</span> <span class="nav-text">限制可执行代码区域</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%98%E9%95%BF%E6%A0%88%E5%B8%A7"><span class="nav-number">5.</span> <span class="nav-text">变长栈帧</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#GDB"><span class="nav-number"></span> <span class="nav-text">GDB</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%A7%E5%B0%8F%E7%AB%AF"><span class="nav-number"></span> <span class="nav-text">大小端</span></a></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '7aee6703f83f21106cea4201e418ed53',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

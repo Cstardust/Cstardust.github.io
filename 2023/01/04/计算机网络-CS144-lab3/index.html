@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="实现 TCPSender 发送新segment : fill_window() when 上层有数据 &amp;&amp; receive_window有空间 fill_window 负责一直向后走 发送新数据. 更新send_window 重传的部分交由tick()来做   定时器超时重传 : tick() 更新send_window ; 重启定时器 ; 超时重传 , RTO加倍 Retran">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab3">
+<meta property="og:url" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="实现 TCPSender 发送新segment : fill_window() when 上层有数据 &amp;&amp; receive_window有空间 fill_window 负责一直向后走 发送新数据. 更新send_window 重传的部分交由tick()来做   定时器超时重传 : tick() 更新send_window ; 重启定时器 ; 超时重传 , RTO加倍 Retran">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-06-15-35-14.png">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-06-16-53-45.png">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-07-00-17-39.png">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-22-03-33.png">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-20-52-20.png">
+<meta property="og:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-22-03-33.png">
+<meta property="article:published_time" content="2023-01-04T00:57:07.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:43.486Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-06-15-35-14.png">
+
+<link rel="canonical" href="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab3 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab3
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-04 08:57:07" itemprop="dateCreated datePublished" datetime="2023-01-04T08:57:07+08:00">2023-01-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:43" itemprop="dateModified" datetime="2023-02-27T23:23:43+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>21k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>19 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>实现 TCPSender<ul>
+<li>发送新segment : fill_window() when 上层有数据 &amp;&amp; receive_window有空间<ul>
+<li>fill_window 负责一直向后走 发送新数据. 更新send_window</li>
+<li>重传的部分交由tick()来做</li>
+</ul>
+</li>
+<li>定时器超时重传 : tick()<ul>
+<li>更新send_window ; 重启定时器 ; 超时重传 , RTO加倍</li>
+<li><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/rfc6298/?include_text=1">Retransmission Timer [RFC]</a></li>
+</ul>
+</li>
+<li>收到ACK报文 : ack_received()<ul>
+<li>更新rwnd , sender自动继续发送fill_window.(因为rwnd可能变大)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>我们Sender并没有实现快速重传(可以不实现，易知不影响其正确性，仍然可以可靠传输)</li>
+<li>有趣的是我们Sender并没有实现拥塞控制，但TCP仍然可以正常运行.<ul>
+<li>原因如下 : 拥塞控制只是为了TCP的公平性，使得其不会无节制的占用带宽. 如我们的信道中有两条TCP连接，若都实现了拥塞控制，那么最终二者所占带宽会向y=x收敛.</li>
+<li>而为了保证己方Sender可以和对端Receiver正常交互，我们只需要保证：<ul>
+<li>每个字节都令对方接受到并返回ACK : 重传保证</li>
+<li>对端receiver不会由于己方发送过快而导致receiver buf缓存溢出<ul>
+<li>这通过流量控制就解决了.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-06-15-35-14.png"></p>
+<ul>
+<li>lab0中, 我们实现了bytestream</li>
+<li>lab1 和 lab2中, 我们实现了StreamReassembler 和 TCPReceiver : 将通过不可靠的datagrams传送来的segment 重组到 bytestream中</li>
+<li>lab3中, 我们将实现tcp connection的另一端 : TCPSender：TCPSender 将 outbound bytestream 转化成 不可靠datagrams的负载内容</li>
+<li>lab4中，我们将组装lab0123 来实现tcp：一个包含 TCPSender 和 TCPReceiver 的 tcp connection。我们将使用lab4实现的tcp 去和互联网上真实的server进行通信</li>
+</ul>
+<h2 id="TCP-Sender-概述"><a href="#TCP-Sender-概述" class="headerlink" title="TCP Sender 概述"></a>TCP Sender 概述</h2><ul>
+<li>TCP 协议 是一个 在不可靠的 datagram之上 传输可靠 的 流量控制的 字节流 的协议。<br>参与TCP连接的双方 都同时扮演了sender和 receiver的角色。</li>
+<li>本周，我们将实现 TCP Sender。TCPSender 负责读取 outbound bytestream ，并将 stream转化成将要发出的一系列 tcp segment。（在对端，TCP receiver 将这些 segment(those that arrive—they might not all make it)重组为原先的字节流，并发送ack 和 window size 给sender。）</li>
+<li>TCP sender 和 receiver 各自负责 TCP segment的一部分. <ul>
+<li>TCP Sender 添写 lab2 中 TCP receiver 相关的 所有字段 sequence number , syn , fin , payload (其他的在wrap in ip , unwrap in ip)</li>
+<li>TCP Sender 只读取 receiver 填写的字段 : ackno , window size<br><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-06-16-53-45.png"></li>
+</ul>
+</li>
+</ul>
+<h2 id="TCPSender-责任"><a href="#TCPSender-责任" class="headerlink" title="TCPSender 责任"></a>TCPSender 责任</h2><ul>
+<li><p>TCP Sender 负责</p>
+</li>
+<li><p>关注 receiver window , 处理传入的 ackno 和 window size</p>
+</li>
+<li><p>填充receiver window : 在可能的时候 通过 读取outbound bytestream ，创建 tcp segment(include syn , fin) 并发送。TCP Sender应当持续发送segment 直到 receiver window满了 或者 bytestream 空了。（没有可发送的segment，即 no data payload(bytestream.eof()) &amp;&amp; no flags)</p>
+</li>
+<li><p>outstanding segment : 关注sent but not acked 的segment，我们称之为 outstanding segment（未完成的segment，就是之前学的send window).</p>
+</li>
+<li><p>重传 outstanding segment 当超时（从发送之后开始计时）</p>
+</li>
+<li><p>我为什么要做这个 ？</p>
+<ul>
+<li>基本原理是 automatic repeat request(ARQ) : (fill window)sender发送任何receiver允许发送的segment，并且持续重传segment，直到receiver ack了每个segment。</li>
+<li>TCP sender 将流切分成segment，并在receiver允许的范围内尽可能地发送他们。</li>
+<li>由之前实现易知, tcp receiver 可以重组至少接收到一次的byte；那么Sender需要保证receiver对于每个byte都至少接收到了一次</li>
+</ul>
+</li>
+</ul>
+<h2 id="TCPSender如何知道-segment-lost"><a href="#TCPSender如何知道-segment-lost" class="headerlink" title="TCPSender如何知道 segment lost"></a>TCPSender如何知道 segment lost</h2><ul>
+<li><p>TCPSender 如何知道一个segment丢失了 ? (即发送方没有接收到 接收方 发送的 对该segment的ack)</p>
+</li>
+<li><p>TCPSender 将会持续发送一堆segment,每个segment都包含了来自outbound bytestream的substring，每个segment都有一个seqno作为下标来代表其在字节流中的位置,并且用SYN flagstream的开始,FIN flag标记stream的结束。</p>
+</li>
+<li><p>除了发送segment，TCPSender还需要关注 outstanding segment 直到 其被 ack。</p>
+</li>
+<li><p>TCP Sender也会周期性的调用tick方法，标记着时间的流逝。</p>
+</li>
+<li><p>TCP Sender负责 查询所有outstanding segment 然后决定 最老的outstanding segment是否已经超时（长时间没被ack,outstanding for too long）。（这句话就是说在tick的时候 如果定时器超时（全局只有一个最老的outstanding segment的定时器））</p>
+<ul>
+<li>如果是，则重传该分组</li>
+</ul>
+</li>
+<li><p>Here are outstanding for too long的含义 </p>
+<ul>
+<li>These are based on a simplified version of the “real” rules for TCP: RFC 6298, recommendations 5.1 through 5.6. The version here is a bit simplified, but your TCP implementation will still be able to talk with real servers on the Internet</li>
+<li>你将要实现如下逻辑，有一点详细，但我们不希望你过于教条或者面向case编程。（感觉就是这意思）。lab3将给你一些合理的测试。lab4会给全部测试</li>
+</ul>
+</li>
+<li><p>我为什么要做这个 ?</p>
+<ul>
+<li>总体目标是 让sender及时检测到segment丢失 并 需要重新发送。</li>
+<li>超时时间很重要：你不会希望发送方在重传segment之前等待过长时间（因为这样延迟了字节流向发送方），但是你也不会想重传一个即将收到ack的segment，因为这样会浪费宝贵的网络流量。（重传出去的这个segment就相当于没用了，因为之前发送的该segment的ack马上就收到，而之后再收到的重传的segment的ack就没用了，因为segment已经被ack了，已经不在send_window中了）</li>
+</ul>
+</li>
+<li><ol>
+<li>每隔一些微秒，TCPSender 就会调用 tick(elapsed_milliseconds)，来告知tcp sender 举例上次调用tick已经过去了多长时间(elapsed_milliseconds)。</li>
+</ol>
+<ul>
+<li>使用tick来维护TCPSender处于活跃状态的总微秒数。不要调用syscall 如 time,clock function. tick 是我们操作时间流逝的唯一途径。这使得事情具有确定性和可测试性。</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>TCPSender 在构建是就会初始化 retransmission timeout (RTO) 的初始值(initial retransmission timeout)</li>
+</ol>
+<ul>
+<li>RTO是超时时间。RTO的值 会随着超时次数变化，但是初始值不变。</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>你将实现 重传定时器retransmission timer : 一个可以计时 RTO时间 时钟。当RTO过去之后，alarm goes off 报警。我们强调通过tick method来获取时间流逝的概念 而非通过获取真实的时间。</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>每次发送segment时（nonzero length in sequence space），不管是第一次发送该报文还是重传该报文，如果timer没有启动，那么启动timer，这样RTO之后，timer就会expire过期(感觉可以理解成报警）。</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>当所有的outstanding data都被ack了，那么停止 retransmission timer</li>
+</ol>
+</li>
+<li><ol start="6">
+<li>调用tick , timer过期</li>
+</ol>
+<ul>
+<li>a. 重传outstanding segment中 最早发送的segment(lowest sequence number)。<pre><code>为实现此功能，你需要用一个数据结构来存储这些outstanding segment
+</code></pre>
+</li>
+<li>b. if receiver window size != 0 <ul>
+<li>i. 关注consecutive retransmissions，当重传sth时 ++cnt。<ul>
+<li>你的TCP连接将使用该信息，来决定一条连接是否已经没有希望，需要被放弃.(当重传次数cnt过多时)</li>
+</ul>
+</li>
+<li>ii. RTO *= 2 , 减缓了我们在糟糕的网络上进行重传，以免进一步把事情搞糟(拥塞控制这就是 ?)</li>
+</ul>
+</li>
+<li>c.  重置timer 并启动timer，使其在RTO之后过期（注意RTO可能翻倍） </li>
+<li>可以看到，在tick函数的具体实现里，基本就是完全照着这abc三步做的</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><ol start="7">
+<li>当发送端接收了接收方发送的确认新数据的ackno时（ackno比之前接收到的ackno都要大）（就是说ackno确认了outstanding的segment(即send window中的segment)）</li>
+</ol>
+<ul>
+<li>a. 重置RTO = initial(我的实现是将RTO交给timer保管)</li>
+<li>b. 如果TCP Sender有任何outstanding segment，那么重启timer</li>
+<li>c. 重置consecutive retransmissions = 0</li>
+</ul>
+</li>
+</ul>
+<h2 id="Retransmission-Timer-RFC"><a href="#Retransmission-Timer-RFC" class="headerlink" title="Retransmission Timer [RFC]"></a>Retransmission Timer [RFC]</h2><p><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/rfc6298/?include_text=1">RFC 中 共识的 TCP retransmission timer 实现</a></p>
+<ul>
+<li><ol start="5">
+<li> Managing the RTO Timer</li>
+</ol>
+<ul>
+<li>An implementation MUST manage the retransmission timer(s) in such a<br>way that a segment is never retransmitted too early, i.e., less than<br>one RTO after the previous transmission of that segment.</li>
+<li>The following is the RECOMMENDED algorithm for managing the<br>retransmission timer:</li>
+<li>(5.1) Every time a packet containing data is sent (including a<pre><code> retransmission), if the timer is not running, start it running
+ so that it will expire after RTO seconds (for the current value
+ of RTO).
+</code></pre>
+</li>
+<li>(5.2) When all outstanding data has been acknowledged, turn off the<pre><code> retransmission timer.
+</code></pre>
+</li>
+<li>(5.3) When an ACK is received that acknowledges new data, restart the<pre><code> retransmission timer so that it will expire after RTO seconds
+ (for the current value of RTO).
+</code></pre>
+</li>
+<li>When the retransmission timer expires, do the following:<ul>
+<li>(5.4) Retransmit the earliest segment that has not been acknowledged<br>   by the TCP receiver.</li>
+<li>(5.5) The host MUST set RTO &lt;- RTO * 2 (“back off the timer”).  The<br>   maximum value discussed in (2.5) above may be used to provide<br>   an upper bound to this doubling operation.</li>
+<li>(5.6) Start the retransmission timer, such that it expires after RTO<br>   seconds (for the value of RTO after the doubling operation<br>   outlined in 5.5).</li>
+<li>(5.7) If the timer expires awaiting the ACK of a SYN segment and the<br>   TCP implementation is using an RTO less than 3 seconds, the RTO<br>   MUST be re-initialized to 3 seconds when data transmission<br>   begins (i.e., after the three-way handshake completes).</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="State"><a href="#State" class="headerlink" title="State"></a>State</h2><p>next_seqno_abs : sender要发送的下一个字节的绝对索引，syn和fin也会占据一个字节。<br>bytes_in_flight : bytes sent but not acked</p>
+<p><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-07-00-17-39.png"></p>
+<ul>
+<li><p><strong>State</strong></p>
+<ul>
+<li>为了测试你的代码，test会期待你的sender经历一系列状态：从发送第一个syn报文，到发送所有数据，到发送fin报文，以及最终获得fin的ack。我们不认为你需要设计更多的变量来追踪这些状态。这些状态被简单的定义在tcp sender的接口中。但是为了让你理解test的输出，这里有一个tcpsender在stream的生命中的演化图。你不必要担心error state 或者 rst flag 直到lab4</li>
+</ul>
+</li>
+<li><p><strong>CLOSED</strong> : waiting for stream to begin</p>
+<ul>
+<li>next_seqno_absolute() = 0</li>
+<li>字节流中还没有任何字节，连最一开始的syn segment也没有发送</li>
+</ul>
+</li>
+<li><p><strong>SYN_SENT</strong> : stream started but nothing acked</p>
+<ul>
+<li>sender发送了第一个syn报文(可能携带数据)(可能也接着发送了其他带data得segment)，但是sender还没有收到receiver对该syn报文的ack</li>
+<li>next_seqno_absolute() == bytes_in_flight() &amp;&amp; next_seqno_absolute() &gt; 0<ul>
+<li>next_seqno_absolute() == bytes_in_flight() : syn 和 data segment 都在 send_window中</li>
+<li>next_seqno_absolute() &gt; 0 : 至少有一个syn了 </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>SYN_ACKED</strong> : stream outgoing</p>
+<ul>
+<li>sender已经接收到了 syn 的 ack，那么syn就不会在bytes_in_flight中占据字节了（即不会在send window中占据字节了），但是syn仍然一直占据着abs_seqno空间里的0号位置。故会next_seqno_abs &gt; bytes_in_flight）</li>
+<li>next_seqno_absolute() &gt; bytes_in_flight() &amp;&amp; not stream_in().eof()<ul>
+<li>next_seqno_absolute() &gt; bytes_in_flight() : syn 不在 send_window中 (即syn已经acked)</li>
+<li>not stream.eof() : stream还没到结尾</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>SYN_ACKED (also)</strong> ： stream outgoing (stream has reached EOF , but FIN flag hasn’t been sent yet)</p>
+<ul>
+<li>sender的stream已经到eof了，但是sender还没有发送FIN seg</li>
+<li>outbound_stream.eof() &amp;&amp; next_seqno_absolute() &lt; outbound_stream.bytes_written() + 2;</li>
+<li>那么sender应该何时发送fin seg : <ul>
+<li>在sender 处于syn_acked(also)状态时，且此时接受窗口的大小 还能装下 当前seg(syn + data)附带上一个fin flag,那么，发送fin segment</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>FIN_SENT</strong> : stream finished(FIN sent) but not fully acked</p>
+<ul>
+<li>sender 已经 发送了 fin segment 但是还没有接收到 fin segment的ack</li>
+<li>也即 sender 已经 将outbound stream的 字节全部发送出去，并发送了代表关闭的fin seg ， 但是sender还没有收到receiver对outbound stream中的所有字节的确认（因为fin还没被确认）</li>
+<li>bytes_in_flight() &gt; 0 &amp;&amp; outbound_stream.eof() &amp;&amp; next_seqno_abs() == outbound_stream.bytes_written() + 2 &amp;&amp; bytes_in_flight() &gt; 0<ul>
+<li>bytes_in_flight() &gt; 0 : 至少有一个fin segment sent but not acked</li>
+<li>outbound_stream.eof() : 好理解，outbound已经走到了eof</li>
+<li>next_seqno_abs() == outbound_stream.bytes_written() + 2 : 已经发送了fin<ul>
+<li>next_seqno_abs = fin seq + 1。</li>
+<li>好比outbound_stream发送了abcdef,那么下标为<ul>
+<li>////   0  1 2 3 4 5 6 7   8///</li>
+<li>////  syn a b c d e f fin ////</li>
+<li>易知 next_abs_seq = 8</li>
+<li>同时，outbound_stream.bytes_written() = 6 , 因为bytestream 并不会将 syn fin 作为占据stream_idx的字节。故+2 = next_seqno_abs</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>FIN_ACKED</strong> : stream finished fully acked<ul>
+<li>outbound_stream的字节已经全部被acked</li>
+<li>outbound_stream.eof() &amp;&amp; next_seq_abs = outbound_stream.bytes_written() + 2 &amp;&amp; bytes_in_flight() == 0<ul>
+<li>outbound_stream.eof() : outbound_stream已经走到of</li>
+<li>next_seq_abs = outbound_stream.bytes_written() + 2 : sender已经发送fin</li>
+<li>bytes_in_flight() == 0 : sender没有sent but not acked 的segment（ -&gt; fin segment已经被acked）</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="TCPSender-实现"><a href="#TCPSender-实现" class="headerlink" title="TCPSender 实现"></a>TCPSender 实现</h2><ul>
+<li>We’ve discussed the basic idea of what the TCP sender does (given an outgoing ByteStream, split it up into segments, send them to the receiver, and if they don’t get acknowledged soon enough, keep resending them). And we’ve discussed when to conclude that an outstanding segment was lost and needs to be resend.</li>
+</ul>
+<ul>
+<li><p>TCPsender 主要关注以下几类事件</p>
+<ul>
+<li>发送新segment : fill_window() when 上层有数据 &amp;&amp; receive_window有空间</li>
+<li>定时器超时重传 : tick()</li>
+<li>收到ACK报文 : ack_received()<ul>
+<li>维护receive_window</li>
+<li>新ackno : 更新recv_window</li>
+<li>老ackno : 我的实现是忽略·<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">event: <span class="function">data received from application above </span></span><br><span class="line"><span class="function">  create TCP segment with sequence number NextSeqNum </span></span><br><span class="line"><span class="function">  <span class="title">if</span> <span class="params">(timer currently <span class="keyword">not</span> running)</span> </span></span><br><span class="line"><span class="function">    start timer pass segment to IP </span></span><br><span class="line"><span class="function">  NextSeqNum </span>= NextSeqNum + length(data) </span><br><span class="line"></span><br><span class="line">event: timer timeout </span><br><span class="line">  retransmit <span class="keyword">not</span>-yet-acknowledged segment with smallest sequence number </span><br><span class="line">  start timer </span><br><span class="line"></span><br><span class="line">event: ACK received, <span class="function">with ACK field value of y </span></span><br><span class="line"><span class="function">  <span class="title">if</span> <span class="params">(y &gt; SendBase)</span> </span>&#123; </span><br><span class="line">    SendBase = y</span><br><span class="line">    <span class="keyword">if</span> (there are currently <span class="keyword">not</span>-yet-acknowledged segments) </span><br><span class="line">      start timer </span><br><span class="line">  &#125; </span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>接口如下。这四个接口每个都可能以发送tcp segment作为结尾</p>
+</li>
+</ul>
+<h3 id="重要成员"><a href="#重要成员" class="headerlink" title="重要成员"></a>重要成员</h3><ul>
+<li>图<br><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-22-03-33.png"></li>
+</ul>
+<p>约定outstanding segment : segment sent but not acked<br>约定超时时间：在重传一个outstanding segment之前所等待的时间。（从该segment被发送出去之后开始计时）<br>约定rwnd :  receive_window_size<br>约定 earliest outstanding segment : 最早发送的outstanding segment，即 send_window的左边界的segment的timer。<br>约定：携带数据的segment：即占据了sequence num的分组，即syn + payload + fin 不为空</p>
+<ul>
+<li><p><strong>_next_seqno{0}</strong></p>
+<ul>
+<li>含义：sender将要发送的下一个byte 在 字节流中的 abs_seqno</li>
+<li>_next_seqno 是 单增的，只从stream中读取新数据来发送，而不管需要超时重传的数据。</li>
+</ul>
+</li>
+<li><p><strong>约定 : send_window</strong>(中科大郑老师这么叫的，不过书上和rfc似乎没有这种叫法hhh)</p>
+<ul>
+<li>即将 bytes_in_flight 的 bytes 都称为落在 send_window中的bytes</li>
+<li>即将 outstanding segment 都称为落在send_window中的segment</li>
+<li><strong>[last_ackno , _next_seqno)</strong></li>
+<li><strong>bytes sent but not acked : sebder已经发送但还没被接收到ack确认的字节</strong></li>
+<li>随着sender接收到的ack_no的增大，send_window的左端也随之增大</li>
+<li>随着sender发送新segment(_next_seqno增大)，send_window的右端也随之增大</li>
+<li>实现<ul>
+<li><strong><code>deque&lt;TCPSegment&gt; _send_window&#123;&#125;</code></strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>std::queue<TCPSegment> _segments_out{};</TCPSegment></strong></p>
+<ul>
+<li>sender发送segment：将 segment 压入queue </li>
+</ul>
+</li>
+<li><p><strong>size_t _receive_window_size{1}</strong></p>
+<ul>
+<li>sender认为receive_window_size</li>
+<li><strong>rwnd初始化为1</strong>（在还没有接收到接收方的任何ack报文时）<ul>
+<li><strong>原因 ？</strong>：我觉得为了使得sender可以发送出第一个SYN报文？不然会一直等待</li>
+<li><strong>或许rfc中有</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>unsigned int _initial_retransmission_timeout</strong></p>
+<ul>
+<li>retransmission timer for the connection</li>
+</ul>
+</li>
+<li><p><strong>Timer _timer</strong></p>
+<ul>
+<li>TCPSender全局只有一个定时器</li>
+<li>该timer监测：earliest outstanding segment</li>
+<li>该timer超时，重传earliest outstanding segment</li>
+<li>sender的使用者通过tick()来使用_timer</li>
+</ul>
+</li>
+<li><p>ByteStream _stream</p>
+<ul>
+<li>outgoing stream of bytes that have not yet been sent</li>
+</ul>
+</li>
+<li><p><strong>uint64_t _consecutive_retransmissions_cnt;</strong></p>
+<ul>
+<li>对于同一分组的 重传次数</li>
+</ul>
+</li>
+<li><p>enum <strong>State</strong> { ERROR = 0, CLOSED , SYN_SENT, SYN_ACKED_1,SYN_ACKED_2,FIN_SENT,FIN_ACKED,};</p>
+<ul>
+<li>见State</li>
+</ul>
+</li>
+</ul>
+<h3 id="fill-window"><a href="#fill-window" class="headerlink" title="fill_window"></a>fill_window</h3><ul>
+<li><p><strong>fill_window含义: 从outbound_stream中读取新数据（还没发送过的数据），依据receive_window大小，尽可能多的发送出去。该方法并不负责重传segment，重传segment由tick方法负责。</strong></p>
+</li>
+<li><p><strong>fill_window 到什么时候停止发送 segment ?</strong></p>
+<ul>
+<li>只要同时满足AB两个条件，就一直发送segment<ul>
+<li>(as long as there are new bytes to be read and space available in the window.) </li>
+<li>A. 还有segment可以发送 <ul>
+<li>payload!=0 (outbound_bytestream 中还有可读字节) + 需要发送 syn / fin flag </li>
+</ul>
+</li>
+<li>B. receive_window还有空间</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>在正确的时刻发送syn和fin flag</strong></p>
+<ul>
+<li>发送syn flag<ul>
+<li>TCP Sender 处于 CLOSED 状态 : 字节流中还没有任何字节，连最一开始的syn segment也没有发送</li>
+</ul>
+</li>
+<li>发送fin flag<ul>
+<li>TCP Sender 处于 SYN_ACKED_2 状态 : TCP Sender的stream已经到eof了，但是TCP Sender还没有发送FIN seg</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>发送segment</strong> : _segment_out.push(seg)</p>
+</li>
+<li><p><strong>start timer</strong> : 如果没有开启定时器（send_window empty之后 第一次发送数据），那么重新开启定时器 </p>
+</li>
+<li><p>更新_next_seqno</p>
+<ul>
+<li>_next_seqno含义：将要发送的下一个byte 在 字节流中的 abs_seqno</li>
+<li>_next_seqno 是 单增的，只从stream中读取新数据来发送，而不管需要超时重传的数据。</li>
+<li>代表sender将要发送到第几个字节了。</li>
+</ul>
+</li>
+<li><p><strong>当sender收到receiver声明的rwnd = 0时，sender应当保持发送1byte的segment给receiver</strong></p>
+<ul>
+<li><strong>代码体现</strong>：调用fill_window时，若<strong>receive_window_size = 0</strong> , 则 fill_window() 先将其<strong>视为1</strong>。</li>
+<li><strong>为什么sender要发送1 byte的segment？</strong><ul>
+<li>其实感觉就是一个<strong>探测报文</strong>的作用，<strong>sender为了及时获知receiver的receive_window是否有了空闲空间。</strong><ul>
+<li>如果receiver没有空闲空间，那么sender发送的这个segment就被receiver丢弃，且sender也不会收到任何报文</li>
+<li>如果receiver有空闲空间，那么就会接收该探测segment到receive_window中，且发送一个携带了receive_window_size的ack segment给sender。sender得知rwnd之后，会fill_window。</li>
+</ul>
+</li>
+<li>既然是为了起到探测报文的作用，自然发送的大小越小越好，所以其payload = 1byte。</li>
+</ul>
+</li>
+<li><blockquote>
+<p>如《自顶向下》中所说</p>
+</blockquote>
+<ul>
+<li><blockquote>
+<p>假设receiver 的 receive_window_size = 0, 在将rwnd告知sender后，还要假设receiver没有任何数据要发送给sender。此时，考虑发生什么情况：</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>因为TCP中，receiver只在有数据或者有确认要发送时，才会给sender发送segment，因此在receiver将接收缓存清空的过程中以及清空后，receiver不会给sender发送任何带有rwnd新值的报文。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>那么 sender就永远也无法得知  receiver的 receive_window中有空闲空间了(rwnd!=0)，那么sender就被阻塞而永远也不会发送新数据。（如fill_window中，如果按照receive_window_size = 0来运行，那么不会发送数据）。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>为解决该问题，TCP规范中要求：当sender认为receiver的receive_window_size = 0时，sender继续发送只有1个byte数据的报文段，这些segment最终会被receiver确认（因为receiver的receve_window迟早会出现空闲空间），receiver会向sender发送对该1byte的segment的ack segment（其中会有新的receive_window_size）</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>fill_window核心逻辑</strong>: </p>
+<ul>
+<li><ol>
+<li>计算 remaining_recv_window，然后开始发送segment，直到消耗完recv_window_space</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>创建tcp segment</li>
+</ol>
+<ul>
+<li>syn + payload from bytestream + fin</li>
+</ul>
+</li>
+<li>3.1 发送tcp segment<ul>
+<li>_segments_out.push(seg);</li>
+</ul>
+</li>
+<li>3.2 存入send_window<ul>
+<li>_send_window.push_back(seg);</li>
+</ul>
+</li>
+<li><ol start="4">
+<li>start timer if need</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>update vars such as_next_seqno<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  try to send segment to fill the receive window</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPSender::fill_window</span><span class="params">()</span> </span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  1. 计算 remaining_recv_window</span></span><br><span class="line">    <span class="keyword">size_t</span> remaining_recv_window_sz = _receive_window_size == <span class="number">0</span> ? <span class="number">1</span> : _receive_window_size;</span><br><span class="line">    <span class="keyword">if</span>(bytes_in_flight() &gt; remaining_recv_window_sz)</span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    remaining_recv_window_sz -= bytes_in_flight();</span><br><span class="line">    <span class="comment">//  开始发送segment</span></span><br><span class="line">    <span class="keyword">while</span>(remaining_recv_window_sz &gt; <span class="number">0</span>)     <span class="comment">//  check B</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  2. build tcpsegment</span></span><br><span class="line">        TCPSegment seg;</span><br><span class="line">            seg.header().seqno = next_seqno();</span><br><span class="line">            <span class="comment">//  syn flag</span></span><br><span class="line">            <span class="keyword">if</span>(state() == State::CLOSED)    <span class="comment">//  remain_recv_window_sz &gt;= 1 （肯定的）</span></span><br><span class="line">                seg.header().syn = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">//  payload</span></span><br><span class="line">            <span class="keyword">size_t</span> payload_sz = min(&#123;TCPConfig::MAX_PAYLOAD_SIZE,remaining_recv_window_sz - seg.header().syn,_stream.buffer_size()&#125;);</span><br><span class="line">            seg.payload() = _stream.read(payload_sz);       </span><br><span class="line">            </span><br><span class="line">            <span class="comment">//  fin flag</span></span><br><span class="line">            <span class="comment">//  疑问a</span></span><br><span class="line">            <span class="keyword">if</span>(state() == SYN_ACKED_2 &amp;&amp; remaining_recv_window_sz &gt; payload_sz + seg.header().syn)</span><br><span class="line">                seg.header().fin = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  check A : 如果这个segment 既没有 flag 如 syn fin；又没有 payload 则 不必发送该seg</span></span><br><span class="line">        <span class="keyword">if</span>(seg.length_in_sequence_space() == <span class="number">0</span>)</span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  3.1 send seg !</span></span><br><span class="line">        _segments_out.push(seg);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  3.2 update send_window</span></span><br><span class="line">        _send_window.push_back(seg);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  4. 如果这是 send_window empty之后 第一次发送数据（装入数据到_send_window）。</span></span><br><span class="line">        <span class="keyword">if</span>(!_timer.active())</span><br><span class="line">        &#123;</span><br><span class="line">            _timer.reset();</span><br><span class="line">            _timer.start(_initial_retransmission_timeout);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  5.  update</span></span><br><span class="line">        <span class="comment">//  update _next_seq</span></span><br><span class="line">        _next_seqno += seg.length_in_sequence_space();</span><br><span class="line">        <span class="comment">//  update receive_window_size</span></span><br><span class="line">        remaining_recv_window_sz -= seg.length_in_sequence_space();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">- remaining_recv_window_sz -= bytes_in_flight() : </span><br><span class="line">- 如sender给receiver分别发送a b c <span class="number">3</span>个segment(已知receive_window = <span class="number">3</span>).receiver接收到了a之后，给sender发送ack segment，（abs_ackno = <span class="number">1</span> , rwnd = <span class="number">2</span>),那么ack_received会更新rwnd，并且调用fill_window。易知fill_window会依照rwnd的大小，继续从bytestream读取新数据发送,那么实际上，虽然sender收到的rwnd=<span class="number">2</span>，但是sender不能直接使用，还要减去bytes_in_flight，这些byte，sent but <span class="keyword">not</span> acked，receiver稍后就会对他们ack，存入receive_window. sender发送新segment时，这些新segment在recv_window所占的空间应当在bc之后，故应当将recv_window - bytes_in_flight。获取当sender继续发送数据时，应当认为recv_window是多大。</span><br><span class="line">- <span class="keyword">if</span>(bytes_in_flight() &gt; remaining_recv_window_sz) <span class="keyword">return</span> ;</span><br><span class="line">- 此时receive_window没有空闲空间，无法发送，返回即可。</span><br><span class="line">- 由于我们ack_received 没有实现将segment拆开了acked，也即更新了recv_window（减小），但是send_window中的字节并没有移除，故可能会出现recv_window &lt; bytes_in_flight的情况，无法成功的remaining_recv_window_sz -= bytes_in_flight() = <span class="number">0</span>(溢出)，所以需要特判返回。</span><br><span class="line">- 如果实现了则应当不需要。</span><br><span class="line">- In fact , the receive_window is full now , but because of our sender implementation , we can<span class="number">&#x27;</span>t acked part of the segment , so we can<span class="number">&#x27;</span>t bascially remaining_recv_window_sz -= bytes_in_flight() to get <span class="number">0</span> . Instead, we should <span class="keyword">return</span> now</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="ack-received"><a href="#ack-received" class="headerlink" title="ack_received"></a>ack_received</h3><ul>
+<li>void ack received( const WrappingInt32 ackno, const uint16 t window size)<ul>
+<li>含义:(何时调用) sender收到了包含 ackno 和 rwnd 的 segment</li>
+<li>更新sender看到的receive_window_sz</li>
+<li>sender 查询send_window中所有segment，并移除其中被ackno确认的segment<ul>
+<li>什么样的segment才是被ackno确认的segment？<ul>
+<li>segment.abs_seqno + seg.length &lt;= abc_ackno</li>
+<li><strong>我们的实现中，sender 认为 segment只能被完整的确认，而不能部分确认</strong>。也即如下，sender发送了”abc”segment，receiver分别返回了ack_for_a , ack_for_b , ack_for_c，那么对于我们实现的sender,收到的ack_for_a 和 ack_for_b 都是无用的，只有收到了ack_for_c时，sender会知道receiver确认了”abc”segment，将其从send_window中移除。</li>
+<li>以下摘自指导书<ul>
+<li><blockquote>
+<p>我应该怎么做，如果有一个ack报文只确认了某个outstanding segment的一部分?我应该将该segment进行切割吗？将确认的字节切割出去？</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>一个TCP Sender 可以做到这点，不过就这个类的目的而言，没有必要这么花哨。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>将每个segment视为一个整体都outstanding,直到她完全被一个ack确认（直到它每个字节的seqno都小于收到的ack）</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>TCP Sender 需要 查询outstanding segment的集合，并且移除其中 seqno &lt; ack的 segment</p>
+</li>
+<li><p>TCP Sender 需要 再次fill window 如果receive window中有新的空间</p>
+</li>
+<li><p><strong>核心逻辑：核心代码见下</strong></p>
+<ul>
+<li><strong>0.</strong> update window_size</li>
+<li><ol>
+<li>检验ackno是否合法</li>
+</ol>
+</li>
+<li><strong>2.</strong> 从send_window中移除被acked的segment</li>
+<li><strong>3.1</strong> 为send_window中的 新的 earliest outstanding segment 计数 _consecutive_retransmissions_cnt = 0;</li>
+<li><strong>3.2</strong> 为send_window中的 新的 earliest outstanding segment 开启 timer</li>
+<li><strong>4. fill_window(起到自动响应receiver，sender继续发送的作用)</strong> : 因为更新了rwnd 且 bytes_in_flight可能也减少了。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPSender::ack_received</span><span class="params">(<span class="keyword">const</span> WrappingInt32 ackno, <span class="keyword">const</span> <span class="keyword">uint16_t</span> window_size)</span> </span></span><br><span class="line"><span class="function"></span>&#123; </span><br><span class="line">    <span class="comment">//  0. </span></span><br><span class="line">    _receive_window_size = window_size;</span><br><span class="line">    <span class="keyword">uint64_t</span> abs_ackno = unwrap(ackno,_isn,_next_seqno);</span><br><span class="line">    <span class="comment">//  ...</span></span><br><span class="line">    <span class="comment">//  1. some check for ackno</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  2. remove acked seg from window</span></span><br><span class="line">    <span class="comment">//  remove acked seg from the send_window  </span></span><br><span class="line">    <span class="keyword">for</span>(<span class="built_in">deque</span>&lt;TCPSegment&gt;::iterator iter = _send_window.begin();iter!=_send_window.end();)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">uint64_t</span> abs_idx = unwrap(iter-&gt;header().seqno,_isn,_next_seqno);</span><br><span class="line">        <span class="keyword">uint64_t</span> len = iter-&gt;length_in_sequence_space();</span><br><span class="line">        <span class="keyword">if</span>(abs_idx + len &lt;=  abs_ackno)     <span class="comment">//  如果对于abs_idx &lt; abs_ackno , abs_idx + len &gt; abs_ackno的情况呢 ? 该如何处理 ?</span></span><br><span class="line">        &#123;</span><br><span class="line">            seg_acked = <span class="literal">true</span>;</span><br><span class="line">            iter = _send_window.erase(iter);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            ++iter;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="comment">//  ...</span></span><br><span class="line">    <span class="comment">//  3.1 上一个计时重传的分组被移除 故 下一个重新计数</span></span><br><span class="line">    _consecutive_retransmissions_cnt = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">//  3.2 如果send_window中还有未发送的分组 则 为send_window新的最左侧分组开启timer</span></span><br><span class="line">    <span class="keyword">if</span>(!_send_window.empty())</span><br><span class="line">    &#123;</span><br><span class="line">        _timer.reset();</span><br><span class="line">        _timer.start(_initial_retransmission_timeout);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  否则关闭老timer</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        _timer.reset();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  4. 因为更新了rwnd 且 bytes_in_flight可能也减少了。 故 接着从next_seqno发送新分组  </span></span><br><span class="line">    fill_window();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="tick"><a href="#tick" class="headerlink" title="tick"></a>tick</h3><ul>
+<li><p><strong>void TCPSender::tick(const size_t milli_secs)</strong></p>
+<ul>
+<li>sender 每过milli_secs 就调用一次tick，代表时间流逝. </li>
+<li><strong>核心逻辑：</strong><ul>
+<li>如果超时<ul>
+<li>a. 重传earliest outstanding segment。</li>
+<li>b. <strong>if receive_window_size != 0 (我目前也不知道为什么必须rwnd!=0)</strong><ul>
+<li>对于rwnd == 0时 不double rwnd 可能是为了</li>
+<li>i. 关注consecutive retransmissions，当重传sth时 ++cnt。<ul>
+<li>你的TCP连接将使用该信息，来决定一条连接是否已经没有希望，需要被放弃.(当重传次数cnt过多时)</li>
+</ul>
+</li>
+<li>ii. RTO *= 2 , 减缓了我们在糟糕的网络上进行重传，以免进一步把事情搞糟</li>
+</ul>
+</li>
+<li>c.  重置timer 并启动timer，使其在RTO之后过期（注意RTO可能翻倍） </li>
+<li>可以看到，在tick函数的具体实现里，基本就是完全照着这abc三步做的<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPSender::tick</span><span class="params">(<span class="keyword">const</span> <span class="keyword">size_t</span> ms_since_last_tick)</span> </span>&#123; </span><br><span class="line">    <span class="keyword">if</span>(!_timer.active())        </span><br><span class="line">        <span class="keyword">return</span> ;</span><br><span class="line">    <span class="keyword">if</span>(_timer.elapse(ms_since_last_tick))</span><br><span class="line">    &#123;</span><br><span class="line">        TCPSegment &amp; oldest_seg = _send_window.front();</span><br><span class="line">        <span class="keyword">uint64_t</span> timeout = _timer.initial_alarm();</span><br><span class="line">        <span class="comment">//  b. </span></span><br><span class="line">        <span class="keyword">if</span>(_receive_window_size &gt; <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            timeout &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">            ++_consecutive_retransmissions_cnt;         </span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//  c. </span></span><br><span class="line">        _timer.reset();</span><br><span class="line">        _timer.start(timeout);</span><br><span class="line">        <span class="comment">//  a. 超时重传</span></span><br><span class="line">        _segments_out.push(oldest_seg);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>超时重传相关FAQ</p>
+<ul>
+<li>如果我发送了三个独立的segment，其payload分别为”a”, “b”, “c”,并且他们还都没被acked，那么稍后当我重传a的时候，我需要将abc三个segment拼接成一个大的segment吗？还是说我需要分别的独立的传输每个segment？<ul>
+<li>TCP Sender可以做到这点，但是就这个类的目的而言，没有必要这么花哨</li>
+<li>只需要独立的关注每个segment即可，并且当timer到期的时候，重传最早的outstanding segment。</li>
+</ul>
+</li>
+<li>我需要在数据结构中存储empty segment，然后在必要的时候重传他们吗 ？ <ul>
+<li>不需要。只有携带了数据(consume some length in sequence space)的segment需要被关注是否重传的</li>
+<li>一个没有占据seqno的segment(no payload, SYN, or FIN),不需要被记录或者重传。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="流量控制-flow-control"><a href="#流量控制-flow-control" class="headerlink" title="流量控制 flow-control"></a>流量控制 flow-control</h3><ul>
+<li><p><strong>一言以蔽之：receiver 通过 将 recv_window （ackno + recv_window_size)发送给 sender , 来告知sender自己可接收的字节下标范围,sender通过receive_window,来获知自己还能发送多少字节</strong>.</p>
+</li>
+<li><p><strong>背景</strong>: 当TCP连接的 receiver 接收到 正确的、按序的字节后，就将数据放入接收缓存（receiver 的 bytestream）。相关联的应用进程会从该缓存中读取数据，但不必是数据刚一到达就立即读取。事实上，接收方应用也许正忙于其他服务，甚至要过很长时间之后才读取该数据。如果某应用程序读取数据时相对缓慢。而sender发送的太快太多，发送的数据会从接受缓存溢出。</p>
+<ul>
+<li>我所实现的<strong>receiver接收缓存溢出</strong> 情况.<ul>
+<li><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-20-52-20.png"></li>
+<li>约定接收缓存 : bytestream(顺序) + recv_window(乱序)</li>
+<li><strong>receiver接收缓存溢出</strong>实现 : bytestream_size + recv_window_size == capacity —&gt; 最终会变成bytestream_size == capacity,(接收缓存中只有bytestream而没有recv_window的空间了)，那么再来的data就会全部落入接收缓存之外(first_unacceptable之外),也即被discarded.<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">receiver_code</span></span><br><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">StreamReassembler::cached_into_receiving_window</span><span class="params">(<span class="keyword">const</span> <span class="built_in">string</span> &amp;data, <span class="keyword">const</span> <span class="keyword">size_t</span> index,<span class="keyword">bool</span> &amp;non)</span></span></span><br><span class="line"><span class="function">    <span class="title">if</span> <span class="params">(index &gt;= first_unacceptable())</span> </span>&#123;</span><br><span class="line">        non = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;  <span class="comment">//  nothing</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>flow-control 流量控制</strong></p>
+<ul>
+<li>TCP为其应用程序提供了流量控制服务，目的：避免Receiver的接收缓存溢出</li>
+<li>也即流量控制 是一个 速度匹配服务 , 通过遏制sender，来让sender和发送速率和receiver的接收速率相匹配</li>
+</ul>
+</li>
+<li><p><strong>流量控制实现途径 : receive_window</strong></p>
+<ul>
+<li>ackno + recv_window_size</li>
+<li>sender通过ack报文维护 (recv_window) recv_window_size</li>
+<li><strong>实现核心：sender 在 整个 TCPConnection 中，始终保证send_window_size &lt;= recv_window_size。</strong> <ul>
+<li><strong>recv_window(recv_window_size + ackno) 即 receiver 可以接收的 字节的 范围</strong></li>
+<li><strong>sender 所能发送的 字节范围 被限制在recv_window中</strong>. </li>
+</ul>
+</li>
+<li><img src="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/2023-01-09-22-03-33.png"><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">fill_window()</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">while</span>(recv_window_size &gt; <span class="number">0</span>)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="comment">//  send segment from _next_seqno</span></span><br><span class="line">    <span class="comment">//  update recv_window_size</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>关于receive_window具体含义 可见 lab2 blog</p>
+</li>
+</ul>
+<h3 id="拥塞控制-Congestion-Control"><a href="#拥塞控制-Congestion-Control" class="headerlink" title="拥塞控制 Congestion Control"></a>拥塞控制 Congestion Control</h3><ul>
+<li><p>可以看到，TCPSender并没有实现TCP拥塞控制算法</p>
+<ul>
+<li>根本就没维护拥塞窗口cwnd变量，只有一个接收窗口rwnd</li>
+<li>那就更没有慢启动,拥塞避免,拥塞控制,快速恢复</li>
+</ul>
+</li>
+<li><p>我们只实现了一种形式受限的拥塞控制</p>
+<ul>
+<li>对于同一报文段 , 每次Timer超时之后 , RTO翻倍</li>
+</ul>
+</li>
+</ul>
+<h2 id="case"><a href="#case" class="headerlink" title="case"></a>case</h2><ul>
+<li><ol>
+<li>fin 占据 receive_window seqno空间</li>
+</ol>
+<ul>
+<li>发送syn</li>
+<li>发送abc</li>
+<li>发送fin<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    TCPConfig cfg;</span><br><span class="line">    <span class="function">WrappingInt32 <span class="title">isn</span><span class="params">(rd())</span></span>;</span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">size_t</span> rto = uniform_int_distribution&lt;<span class="keyword">uint16_t</span>&gt;&#123;<span class="number">30</span>, <span class="number">10000</span>&#125;(rd);</span><br><span class="line">    cfg.fixed_isn = isn;</span><br><span class="line">    cfg.rt_timeout = rto;</span><br><span class="line"></span><br><span class="line">    TCPSenderTestHarness test&#123;<span class="string">&quot;Don&#x27;t add FIN if this would make the segment exceed the receiver&#x27;s window&quot;</span>, cfg&#125;;        </span><br><span class="line">        <span class="comment">//  sender.fill_window(); 发送syn报文 </span></span><br><span class="line">    test.execute(ExpectSegment&#123;&#125;.with_no_flags().with_syn(<span class="literal">true</span>).with_payload_size(<span class="number">0</span>).with_seqno(isn));</span><br><span class="line">        <span class="comment">//  check 刚才发送的报文 : seq(isn) + syn + payload(0)</span></span><br><span class="line">        <span class="comment">//  [0](isn)  1  2  3  4</span></span><br><span class="line">        <span class="comment">//  syn </span></span><br><span class="line">    test.execute(WriteBytes(<span class="string">&quot;abc&quot;</span>).with_end_input(<span class="literal">true</span>));</span><br><span class="line">        <span class="comment">//  sender.stream_in().write(std::move(_bytes));    sender.stream_in().end_input();     sender.fill_window();     </span></span><br><span class="line">        <span class="comment">//  [0]  1  2  3  4</span></span><br><span class="line">        <span class="comment">//  syn  </span></span><br><span class="line">        <span class="comment">//  in stream wait for send : a b c fin   </span></span><br><span class="line">    test.execute(AckReceived&#123;WrappingInt32&#123;isn + <span class="number">1</span>&#125;&#125;.with_win(<span class="number">3</span>));</span><br><span class="line">    test.execute(ExpectState&#123;TCPSenderStateSummary::SYN_ACKED&#125;);</span><br><span class="line">    test.execute(ExpectSegment&#123;&#125;.with_payload_size(<span class="number">3</span>).with_data(<span class="string">&quot;abc&quot;</span>).with_seqno(isn + <span class="number">1</span>).with_no_flags());</span><br><span class="line">        <span class="comment">// sender.ack_received(_ackno, _window_advertisement.value_or(DEFAULT_TEST_WINDOW));</span></span><br><span class="line">        <span class="comment">//  0   [1  2  3]  4</span></span><br><span class="line">        <span class="comment">//  syn  a  b  c</span></span><br><span class="line">        <span class="comment">//  in stream wait for send : fin   </span></span><br><span class="line">    <span class="comment">//  ack for a</span></span><br><span class="line">    test.execute(AckReceived&#123;WrappingInt32&#123;isn + <span class="number">2</span>&#125;&#125;.with_win(<span class="number">2</span>));</span><br><span class="line">    test.execute(ExpectNoSegment&#123;&#125;);</span><br><span class="line">    <span class="comment">//  ack for b</span></span><br><span class="line">    test.execute(AckReceived&#123;WrappingInt32&#123;isn + <span class="number">3</span>&#125;&#125;.with_win(<span class="number">1</span>));</span><br><span class="line">    test.execute(ExpectNoSegment&#123;&#125;);</span><br><span class="line">    <span class="comment">//  ack for c</span></span><br><span class="line">    test.execute(AckReceived&#123;WrappingInt32&#123;isn + <span class="number">4</span>&#125;&#125;.with_win(<span class="number">1</span>));</span><br><span class="line">    test.execute(ExpectSegment&#123;&#125;.with_payload_size(<span class="number">0</span>).with_seqno(isn + <span class="number">4</span>).with_fin(<span class="literal">true</span>));</span><br><span class="line">        <span class="comment">// sender.ack_received(_ackno, _window_advertisement.value_or(DEFAULT_TEST_WINDOW));</span></span><br><span class="line">        <span class="comment">//  0   1  2  3  [4]</span></span><br><span class="line">        <span class="comment">// syn  a  b  c  fin</span></span><br><span class="line">        <span class="comment">//  in stream wait for send</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="FAQ"><a href="#FAQ" class="headerlink" title="FAQ"></a>FAQ</h2><ul>
+<li>FAQ and sepcial cases<ul>
+<li>我该如何既发送segment，又追踪该segment作为outstanding segment，以便我知道稍后将要重传该segment ？ 我是否需要为每个segment做一份拷贝?可那样的话不会很浪费吗？<ul>
+<li>不会。虽然TCPSegment在send_window和segments_out中会有两个副本，但是由TCPSegment实现可知，其payload的实现是Buffer，Buffer中保存的是对string payload的引用。（<code>std::shared_ptr&lt;std::string&gt; _storage&#123;&#125;;</code>）。故不必担心会真实的拷贝一份payload。代价不是太大。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>receiver reassembler 看来 SYN 和 FIN就不占据 recv_window 空间<br>在sender看来 SYN和FIN就占据 recv_window 空间<br>因为reassembler使用的是stream_idx 发送时sender使用的是seqno<br>他们之间通过wrap进行转化 见 lab2</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/01/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab2/" rel="prev" title="计算机网络-CS144-lab2">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/" rel="next" title="计算机网络-传输层-拥塞控制">
+      计算机网络-传输层-拥塞控制 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP-Sender-%E6%A6%82%E8%BF%B0"><span class="nav-number">2.</span> <span class="nav-text">TCP Sender 概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCPSender-%E8%B4%A3%E4%BB%BB"><span class="nav-number">3.</span> <span class="nav-text">TCPSender 责任</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCPSender%E5%A6%82%E4%BD%95%E7%9F%A5%E9%81%93-segment-lost"><span class="nav-number">4.</span> <span class="nav-text">TCPSender如何知道 segment lost</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Retransmission-Timer-RFC"><span class="nav-number">5.</span> <span class="nav-text">Retransmission Timer [RFC]</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#State"><span class="nav-number">6.</span> <span class="nav-text">State</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCPSender-%E5%AE%9E%E7%8E%B0"><span class="nav-number">7.</span> <span class="nav-text">TCPSender 实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8D%E8%A6%81%E6%88%90%E5%91%98"><span class="nav-number">7.1.</span> <span class="nav-text">重要成员</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fill-window"><span class="nav-number">7.2.</span> <span class="nav-text">fill_window</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ack-received"><span class="nav-number">7.3.</span> <span class="nav-text">ack_received</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tick"><span class="nav-number">7.4.</span> <span class="nav-text">tick</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6-flow-control"><span class="nav-number">7.5.</span> <span class="nav-text">流量控制 flow-control</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6-Congestion-Control"><span class="nav-number">7.6.</span> <span class="nav-text">拥塞控制 Congestion Control</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#case"><span class="nav-number">8.</span> <span class="nav-text">case</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FAQ"><span class="nav-number">9.</span> <span class="nav-text">FAQ</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '6de8d4d193876e58c71cc1eef5be0084',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

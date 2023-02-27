@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="part1 : 协程 thread_yield -&gt; thread_schduler   cond_broadcast 唤醒后 没拿到lock的thread还需要再次被cond_broadcast吗 ? 不需要 因为cond将一系列等待该cond的thread（BCD thread）串在了一起，当Athread broadcast广播唤醒该cond时，这一系列thread（BCDthrea">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab7-thread">
+<meta property="og:url" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="part1 : 协程 thread_yield -&gt; thread_schduler   cond_broadcast 唤醒后 没拿到lock的thread还需要再次被cond_broadcast吗 ? 不需要 因为cond将一系列等待该cond的thread（BCD thread）串在了一起，当Athread broadcast广播唤醒该cond时，这一系列thread（BCDthrea">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-27-08-55-15.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-27-08-55-15.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-19-50-00.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-30-46.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-07-26.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-08-41.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-24-07-34-39.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-24-07-34-55.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-02-31.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-05-56.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-02-56.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-08-01.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-39-57.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-20-02.png">
+<meta property="og:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-37-53.png">
+<meta property="article:published_time" content="2022-11-20T06:21:10.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:39.950Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-27-08-55-15.png">
+
+<link rel="canonical" href="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab7-thread | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab7-thread
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-20 14:21:10" itemprop="dateCreated datePublished" datetime="2022-11-20T14:21:10+08:00">2022-11-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:39" itemprop="dateModified" datetime="2023-02-27T23:22:39+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>part1 : 协程<ul>
+<li>thread_yield -&gt; thread_schduler<br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-27-08-55-15.png"></li>
+</ul>
+</li>
+<li>cond_broadcast 唤醒后 没拿到lock的thread还需要再次被cond_broadcast吗 ?<ul>
+<li>不需要</li>
+<li>因为cond将一系列等待该cond的thread（BCD thread）串在了一起，当Athread broadcast广播唤醒该cond时，这一系列thread（BCDthread）都不再受阻于该cond约束。</li>
+<li>之后谁拿到锁谁往下走就行了，与cond无关</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="part1"><a href="#part1" class="headerlink" title="part1"></a>part1</h2><ul>
+<li>这个part实现的就是所谓的<strong>协程</strong><ul>
+<li>这里的uthread完全都是在用户态的。</li>
+<li>也即是一个进程中 多个user thread 对应 一个 kernel thread<ul>
+<li>正常的线程，如pthread，都是一个user thread对应一个kernel thread。kernel scheduler thread 可以对pthread之间执行切换，而无需user thread自己控制切换。</li>
+</ul>
+</li>
+<li>多个user thread 运行在 一个cpu core上</li>
+<li>没有定时器中断来陷入kernel强制执行uthread之间的调度。<ul>
+<li>因为kernel scheduler thread 只能看见 kernel thread。只能对kernel thread进行调度。</li>
+<li>而这里是一个process里面，多个user thread 对应 一个 kernel thread。因此无法对user thread 进行调度。</li>
+<li>需要user thread本身在合适的时候yield让出cpu，并切换到其他user thread上。</li>
+</ul>
+</li>
+<li><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-27-08-55-15.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>写在前面：咱一开始想的不对，一开始以为这里要实现的uthread的切换机制和每个cpu核上的kthread的切换机制差不多，也是有一个scheduler thread。以为这里的main thread 实际上就是 scheduler thread。scheduler一直运行在我们main thread的stack上。。uthread切换到shcheduler thread 再切换到另一个uthread。不过看着看着就发现不是。因为每个uthread都直接调用了thread_scheduler。并且这scheduler也不是个死循环啊。就是一个普通函数。找到runnale uthread就跳出，并swtch到那个uthread。</p>
+</li>
+<li><p>每个uthread都可以自己发出yield出cpu，切换到其他runnable uthread的动作。也即。每个uthread都可以调用thread_scheduler函数。</p>
+</li>
+<li><p>大致逻辑如图，可以看到并没有像kernel thread切换时需要有一个shceduler thread作为中转。而是一个uthread直接scheduler并swtch到别的uthread。<br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-19-50-00.png"></p>
+</li>
+</ul>
+<h3 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h3><ul>
+<li>thread_switch needs to save/restore only the callee-save registers . Why?<ul>
+<li>因为我们是通过thread_swtich以函数调用的形式切换线程，抛去线程相关的寄存器ra、sp需要被保存，剩下的需要保存的，就是可能被 [被调用过程改变的寄存器]，也即 被调用者保存的寄存器.</li>
+<li>因为我们将线程切换包装成了函数调用的形式，正常C code中 A调用B（A函数B函数都是用C代码写的），那么编译器编译之后，会生成如下汇编代码：A调用B之前会自动的保存调用者保存的寄存器，进入B之后，B会自动的保存被调用者保存的寄存器。那么在本节中，B就是swtch函数，可是由于该函数是汇编编写，无需如Ccode一样编译成汇编，也就不会生成：进入B之后，自动的保存被调用者保存的寄存器 的 汇编代码。故这个swtch函数中，保存被调用者保存的寄存器的函数是由我们用汇编编写的。故swtch函数中需要保存 reg sa , sp 以及 被调用者保存寄存器</li>
+<li>而相比之下 trampoline中 就不只是保存 被调用者保存的寄存器；因为user thread 切换成 kernel thread 并不是 C code中调用的函数调用，也即这个上下文切换并不是以函数调用的形式，程序在运行时可能随时会通过trampoline（如定时器中断）进入内核（如在正在执行密集计算指令的时候），并不是C代码通过函数调用进行的切换，属于是在某函数运行的中间突然触发切换，本身该函数的C代码编译后也并没有对这种情况进行处理，故我们在trampoline需要保存大量寄存器，既有caller 也有 callee(被调用者保存)。</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>引申：内核调度器无论是通过时钟中断进入（usertrap），还是线程自己主动放弃 CPU（sleep、exit），最终都会调用到 yield 进一步调用 <strong>swtch</strong>。 <strong>由于上下文切换永远都发生在函数调用的边界（swtch 调用的边界），恢复执行相当于是 swtch 的返回过程，会从堆栈中恢复 caller-saved 的寄存器， 所以用于保存上下文的 context 结构体只需保存 callee-saved 寄存器，以及 返回地址 ra、栈指针 sp 即可。恢复后执行到哪里是通过 ra 寄存器来决定的（swtch 末尾的 ret 转跳到 ra）</strong><br>而 <strong>trapframe 则不同</strong>，<strong>一个中断可能在任何地方发生，不仅仅是函数调用边界，也有可能在函数执行中途，所以恢复的时候需要靠 pc 寄存器来定位。 并且由于切换位置不一定是函数调用边界，所以几乎所有的寄存器都要保存</strong>（<strong>无论 caller-saved 还是 callee-saved），才能保证正确的恢复执行。 这也是内核代码中 struct trapframe 中保存的寄存器比 struct context 多得多的原因</strong>。<br>另外一个，无论是程序主动 sleep，还是时钟中断，都是通过 trampoline 跳转到内核态 usertrap（保存 trapframe），然后再到达 swtch 保存上下文的。 恢复上下文都是恢复到 swtch 返回前（依然是内核态），然后返回跳转回 usertrap，再继续运行直到 usertrapret 跳转到 trampoline 读取 trapframe，并返回用户态。 也就是上下文恢复并不是直接恢复到用户态，而是恢复到内核态 swtch 刚执行完的状态。负责恢复用户态执行流的其实是 trampoline 以及 trapframe。<br><a target="_blank" rel="noopener" href="https://blog.miigon.net/">来自</a></p>
+</blockquote>
+<ul>
+<li><p>uthread程序执行流程：</p>
+<ul>
+<li>main thread : thread_init -&gt; thread_createabc -&gt; thread_scheduler -&gt; thread a/b/c</li>
+<li>thread a/b/c: running func -&gt; yield -&gt; running func</li>
+<li>end: scheduler -&gt; no runnable process -&gt; exit(-1)</li>
+</ul>
+</li>
+<li><p>This sets a breakpoint at line 60 of uthread.c. The breakpoint may (or may not) be triggered before you even run uthread. How could that happen?</p>
+<ul>
+<li><blockquote>
+<p>因为gdb的实现依赖于监视pc寄存器，我们在b some_func的时候实际上是记录的某个地址。如果uthread内的指令地址与内核的指令地址有重复，那么当内核运行到这个地址的时候就会触发本应该在uthread内的断点。此外，很容易验证不同的用户态程序也会干扰。比如在uthread内部的0x3b之类的地址打下个断点，再运行ls或者其他用户态程序，如果在0x3b地址的指令是合法的，那么也会触发本应该在uthread程序内部的断点。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><ul>
+<li><p>我所做的工作：</p>
+</li>
+<li><p><strong>thread_create</strong>：找到free的thread,为其分配task:func ,并初始化好线程任务地址(ra)以及ustack(sp),使其变成runnable。</p>
+<ul>
+<li>t-&gt;ucontext.ra = (uint64)func;:为了scheduler第一次调度到该uthread时知道跳转到哪里。— 跳转到thread 的 task func开始执行。</li>
+<li>这里类似于allocproc。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> </span></span><br><span class="line"><span class="function"><span class="title">thread_create</span><span class="params">(<span class="keyword">void</span> (*func)())</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">thread</span> *<span class="title">t</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (t = all_thread; t &lt; all_thread + MAX_THREAD; t++) &#123;</span><br><span class="line">        <span class="keyword">if</span> (t-&gt;state == FREE) <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    t-&gt;state = RUNNABLE;</span><br><span class="line">    <span class="comment">// YOUR CODE HERE</span></span><br><span class="line">    <span class="built_in">memset</span>(&amp;t-&gt;ucontext,<span class="number">0</span>,<span class="keyword">sizeof</span>(t-&gt;ucontext)); </span><br><span class="line">    <span class="comment">//  初始化scheduler func第一次调度到该uthread时的需要跳转到的地址</span></span><br><span class="line">    <span class="comment">//  也即，记录了该uthread的任务函数的地址</span></span><br><span class="line">    t-&gt;ucontext.ra = (uint64)func;</span><br><span class="line">    <span class="comment">//  设置ustack</span></span><br><span class="line">    t-&gt;ucontext.sp = (uint64) t-&gt;<span class="built_in">stack</span> + STACK_SIZE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>thread_schedule</strong>：找到runnable的uthread，通过swtch进行uthread切换。</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> </span></span><br><span class="line"><span class="function"><span class="title">thread_schedule</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">thread</span> *<span class="title">t</span>, *<span class="title">next_thread</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Find another runnable thread. */</span></span><br><span class="line">next_thread = <span class="number">0</span>;</span><br><span class="line">t = current_thread + <span class="number">1</span>;</span><br><span class="line"><span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; MAX_THREAD; i++)&#123;</span><br><span class="line">    <span class="keyword">if</span>(t &gt;= all_thread + MAX_THREAD)</span><br><span class="line">    t = all_thread;</span><br><span class="line">    <span class="keyword">if</span>(t-&gt;state == RUNNABLE) &#123;</span><br><span class="line">    next_thread = t;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    t = t + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//  整个process 最后会从这里退出</span></span><br><span class="line"><span class="keyword">if</span> (next_thread == <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;thread_schedule: no runnable threads\n&quot;</span>);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (current_thread != next_thread) &#123;         <span class="comment">/* switch threads?  */</span></span><br><span class="line">    next_thread-&gt;state = RUNNING;</span><br><span class="line">    t = current_thread;</span><br><span class="line">    <span class="comment">//  要切换到的uthread</span></span><br><span class="line">    current_thread = next_thread;            </span><br><span class="line">    <span class="comment">/* YOUR CODE HERE</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    thread_switch((uint64)&amp;t-&gt;ucontext,(uint64)&amp;current_thread-&gt;ucontext);</span><br><span class="line">    <span class="comment">//  之后从别的uthread切换回来时，回回到本uthread的这里，继续向下执行，离开shceduled函数</span></span><br><span class="line">&#125; <span class="keyword">else</span></span><br><span class="line">    next_thread = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>thread_switch</strong> : 和kernel的swtch一样。</p>
+<ul>
+<li>记录当前执行到的指令地址，也即本uthread的thread_swtch的下一条，以及本uthread的stack，以及callee save regs，以便之后切换回本uthread；</li>
+<li>将runnable process的context替换进cpu.<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"> 	.text</span><br><span class="line"><span class="meta">#   void swtch(struct context *old, struct context *new);</span></span><br><span class="line">#  将当前cpu上的reg保存在old 上，并将<span class="keyword">new</span> 加载到cpu的reg上</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">   * save the old thread&#x27;s registers,</span></span><br><span class="line"><span class="comment">   * restore the new thread&#x27;s registers.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line">.globl thread_switch</span><br><span class="line">   thread_switch:</span><br><span class="line"><span class="comment">/* YOUR CODE HERE */</span></span><br><span class="line"><span class="meta"># store from old</span></span><br><span class="line">sd ra, <span class="number">0</span>(a0)    <span class="meta"># return addr </span></span><br><span class="line">sd sp, <span class="number">8</span>(a0)    <span class="meta"># kernel thread stack pointer</span></span><br><span class="line">sd s0, <span class="number">16</span>(a0)   # 被调用者保存的寄存器</span><br><span class="line">sd s1, <span class="number">24</span>(a0)</span><br><span class="line">sd s2, <span class="number">32</span>(a0)</span><br><span class="line">sd s3, <span class="number">40</span>(a0)</span><br><span class="line">sd s4, <span class="number">48</span>(a0)</span><br><span class="line">sd s5, <span class="number">56</span>(a0)</span><br><span class="line">sd s6, <span class="number">64</span>(a0)</span><br><span class="line">sd s7, <span class="number">72</span>(a0)</span><br><span class="line">sd s8, <span class="number">80</span>(a0)</span><br><span class="line">sd s9, <span class="number">88</span>(a0)</span><br><span class="line">sd s10, <span class="number">96</span>(a0)</span><br><span class="line">sd s11, <span class="number">104</span>(a0)</span><br><span class="line"></span><br><span class="line"><span class="meta"># load from new</span></span><br><span class="line">ld ra, <span class="number">0</span>(a1)    <span class="meta"># return addr (scheduler 的swtch的下一行)</span></span><br><span class="line">ld sp, <span class="number">8</span>(a1)    <span class="meta"># scheduler thread stack pointer</span></span><br><span class="line">ld s0, <span class="number">16</span>(a1)   # 被调用者保存的寄存器</span><br><span class="line">ld s1, <span class="number">24</span>(a1)</span><br><span class="line">ld s2, <span class="number">32</span>(a1)</span><br><span class="line">ld s3, <span class="number">40</span>(a1)</span><br><span class="line">ld s4, <span class="number">48</span>(a1)</span><br><span class="line">ld s5, <span class="number">56</span>(a1)</span><br><span class="line">ld s6, <span class="number">64</span>(a1)</span><br><span class="line">ld s7, <span class="number">72</span>(a1)</span><br><span class="line">ld s8, <span class="number">80</span>(a1)</span><br><span class="line">ld s9, <span class="number">88</span>(a1)</span><br><span class="line">ld s10, <span class="number">96</span>(a1)</span><br><span class="line">ld s11, <span class="number">104</span>(a1)</span><br><span class="line">ret    <span class="comment">/* return to ra */</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>一遍过，一点儿bug没有。</p>
+</li>
+</ul>
+<h2 id="part2"><a href="#part2" class="headerlink" title="part2"></a>part2</h2><p>这难度应该标成easy<br>把ph.c读一边就好了。</p>
+<ul>
+<li><p>This assignment uses the UNIX pthread threading library. You can find information about it from the manual page, with man pthreads</p>
+</li>
+<li><p>lock API</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">pthread_mutex_t</span> lock;            <span class="comment">// declare a lock</span></span><br><span class="line">pthread_mutex_init(&amp;lock, <span class="literal">NULL</span>); <span class="comment">// initialize the lock</span></span><br><span class="line">pthread_mutex_lock(&amp;lock);       <span class="comment">// acquire lock</span></span><br><span class="line">pthread_mutex_unlock(&amp;lock);     <span class="comment">// release lock</span></span><br></pre></td></tr></table></figure></li>
+<li><p>ph.c : 我们尝试通过多线程对hash table k-v的插入操作进行加速，且不发生data race。</p>
+</li>
+<li><p>主要的两个thread函数</p>
+<ul>
+<li>put_thread<ul>
+<li>如何进行加速：每个thread平摊 NKEYS 100000 / threads 个 put key。(应当可以整除，不整除的话 会漏掉余下的key没put)</li>
+<li>对于multi-thread多线程，在这里会发生data race。因为会改变hash table。</li>
+</ul>
+</li>
+<li>get_thread<ul>
+<li>get_thread func 用于 验证在multi-thread在put时 是否发生了 data race</li>
+<li>multi-thread在运行get_thread时不会发生data race，因为get_thread只读，不会改变hashtable。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>策略：1个hash bucket 1个lock</p>
+<ul>
+<li>由于hash table采用的是挂链法。故我们为每个hash bucket分配1个lock即可。当改变(写)这个bucket对应的list的时候，用lock进行保护。over。</li>
+<li><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-30-46.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>结果<ul>
+<li>put速度随着线程数增大和提高。基本上是2倍了。</li>
+<li>read速度没变化，因为每个thread做的read都是一样的,read也不需要加速，也不需要上锁保护。</li>
+<li><blockquote>
+<p><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-07-26.png"><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-08-41.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>注：<ul>
+<li>尝试着再减小锁的粒度。感觉貌似效果不大，甚至是负优化？<ul>
+<li>query a之后，获得lock之后，还需要再query校正。因为其他uthread可能插入了 a。故查询结果可能不对，故需要重新query。</li>
+<li><blockquote>
+<p><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-24-07-34-39.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-24-07-34-55.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>感觉是因为bucket的链表太长了。毕竟只有5个bucket。而keys总共有10000个。可以看到single thread的时候 就比之前single thread慢不少。<blockquote>
+<p><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-02-31.png"><br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-23-23-05-56.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p>有时间还是看看linux的futex锁。。。</p>
+</blockquote>
+<h2 id="part3"><a href="#part3" class="headerlink" title="part3"></a>part3</h2><ul>
+<li>API<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pthread_cond_wait(&amp;cond, &amp;mutex);  <span class="comment">// go to sleep on cond, releasing lock mutex, acquiring upon wake up</span></span><br><span class="line">pthread_cond_broadcast(&amp;cond);     <span class="comment">// wake up every thread sleeping on cond</span></span><br></pre></td></tr></table></figure></li>
+<li>pthread_cond_wait(&amp;cond,&amp;lock);<ul>
+<li>(1) 释放绑定在当前线程上的lock锁</li>
+<li>(2) 阻塞等待cond变量符合条件。（即等待另一个线程的pthread_cond_signal(&amp;cond))</li>
+<li>(3) 前两个步骤结束后，给当前线程上lock锁，结束阻塞。如果没有得到锁，会阻塞等待。</li>
+<li>拿到锁之后，然后才从block变成runnable状态，受cpu调度，继续执行</li>
+<li>为什么pthread_wait()要对互斥锁先解锁再上锁？因为阻塞期间拿不到资源，所以要解锁。（上个锁也没用，锁啥阿）而被唤醒后（可以）要使用共享数据，所以要解锁。</li>
+</ul>
+</li>
+</ul>
+<h3 id="未解决问题"><a href="#未解决问题" class="headerlink" title="未解决问题"></a>未解决问题</h3><ul>
+<li><strong>疑问</strong><ul>
+<li>关于pthread_cond_broadcast的。假设一个A线程和BCD线程。BCD线程都等待在同一个mutex的cond上，易知当A线程调用pthread_cond_broadcast时，BCD中只有一个B线程拿到锁并成功的被唤醒。那么我的疑问在于，剩余的没拿到锁的CD线程呢？</li>
+<li>对于这些没拿到锁的CD线程，是否需要有再一次的pthread_cond_broadcast来唤醒？</li>
+<li><ol>
+<li>也即，B线程在结束时需要再次调用pthread_cond_broadcast以唤醒剩余的CD线程？</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>还是说，B线程不必再次调用pthread_cond_broadcast，只需要释放mutex即可，最开始A调用pthread_cond_broadcast会负责继续唤醒刚才没获得锁的剩余的CD线程。</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="已解决"><a href="#已解决" class="headerlink" title="已解决"></a>已解决</h3><ul>
+<li><strong>12说法都不对</strong></li>
+<li><strong>结论</strong>：<ul>
+<li><strong>B线程不必再次调用pthread_cond_broadcast，只需要释放mutex即可，剩余的CD线程拿到锁之后就继续向下走。</strong></li>
+</ul>
+</li>
+<li>首先明确wait(cond)流程：1. 释放锁、2. 等待cond唤醒、3. 竞争锁。</li>
+<li><strong>因为cond将一系列等待该cond的thread（BCD thread）串在了一起，当Athread broadcast广播唤醒该cond时，这一系列thread（BCDthread）都不再受阻于该cond约束</strong>。</li>
+<li>cond唤醒后，BCDthread处于第3阶段。谁竞争到lock谁就继续向下走。比如说Bthread竞争到了lock，那么B会继续向下走，CD线程由于没有拿到lock而阻塞等待，当B释放lock之后，剩下的thread(CD thread)谁竞争到锁谁就继续向下走，与cond无关，不需要再度唤醒cond。<ul>
+<li>虽然CD thread还阻塞在wait语句上，但已经不是因为cond了，与cond无关，而是因为卡在了第3步，没有竞争到锁，因而陷入阻塞。</li>
+</ul>
+</li>
+<li>cond：需要别人唤醒。lock：自驱。</li>
+</ul>
+<h3 id="问题-1"><a href="#问题-1" class="headerlink" title="问题"></a>问题</h3><ul>
+<li><p>其实就是hint2，第一次读的时候还没太明白说得是啥</p>
+<ul>
+<li>You have to handle the case in which one thread races around the loop before the others have exited the barrier. In particular, you are re-using the bstate.nthread variable from one round to the next. Make sure that a thread that leaves the barrier and races around the loop doesn’t increase bstate.nthread while a previous round is still using it.</li>
+</ul>
+</li>
+<li><p><strong>逻辑错误</strong>：对于 本轮的 thread还没有全部离开barrier，下一轮的thread就进入barrier，使得将下一轮的thread的数量 计数在 本轮的 nthread中，造成错误。<br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-02-56.png"><br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-08-01.png"><br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-39-57.png"></p>
+</li>
+<li><p>解决措施：添加一个finished_cond条件变量，代表上一轮round已经结束，也即上一轮的thread都已经离开barrier，可以开始本轮的thread计数，也即可以让本轮的thread进入barrier了。</p>
+</li>
+</ul>
+<h3 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h3><ul>
+<li><p>我所做的工作</p>
+</li>
+<li><p>添加个finished_cond 以及 finished 配合 条件变量使用</p>
+<ul>
+<li>finished = 1时，代表上一轮已经结束，当前thread可以进入barrier</li>
+<li>finished = 0时，代表上一轮没结束，正在运行，当前thread不可进入barrier。故 pthread_cond_wait when finished = 0。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">barrier</span> &#123;</span></span><br><span class="line">  <span class="keyword">pthread_mutex_t</span> barrier_mutex;</span><br><span class="line">  <span class="keyword">pthread_cond_t</span> barrier_cond;</span><br><span class="line">  <span class="keyword">int</span> nthread;      <span class="comment">// Number of threads that have reached this round of the barrier</span></span><br><span class="line">  <span class="keyword">int</span> round;     <span class="comment">// Barrier round</span></span><br><span class="line">  <span class="comment">//  上一轮的thread 是否都已经从barrier中离开</span></span><br><span class="line">  <span class="keyword">pthread_cond_t</span> finished_cond;</span><br><span class="line">  <span class="keyword">int</span> finished;</span><br><span class="line">&#125; bstate;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>finished_cond：等待上一轮的所有thread全部离开barrier</p>
+</li>
+<li><p>barrier_cond： 等待本轮的所有thread全部到达barrier<br><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-20-02.png"></p>
+</li>
+<li><p>code</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">barrier</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  pthread_mutex_lock(&amp;bstate.barrier_mutex);</span><br><span class="line">  <span class="comment">//  当上一轮结束了 再来启动下一轮的计数。  </span></span><br><span class="line">  <span class="keyword">while</span>(!(bstate.finished==<span class="number">1</span>))</span><br><span class="line">  &#123;</span><br><span class="line">    pthread_cond_wait(&amp;bstate.finished_cond,&amp;bstate.barrier_mutex);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//  确保上一轮thread都离开barrier之后，本轮thread真正进入barrier，并进行计数。</span></span><br><span class="line">  ++bstate.nthread;</span><br><span class="line">  <span class="comment">//  是否会存在，本轮的thread还没全部离开，下一轮的thread就来了的情况？</span></span><br><span class="line">    <span class="comment">//  我认为显然是会出现的。</span></span><br><span class="line">  <span class="keyword">if</span>(bstate.nthread != nthread)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="comment">//  其他线程等待最后一个线程到达</span></span><br><span class="line">    pthread_cond_wait(&amp;bstate.barrier_cond,&amp;bstate.barrier_mutex);</span><br><span class="line">    --bstate.nthread;</span><br><span class="line">    <span class="comment">//  告诉下一轮来的thread 本轮结束，不必再等，可以进入barrier。</span></span><br><span class="line">    <span class="keyword">if</span>(bstate.nthread == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      bstate.finished = <span class="number">1</span>;            </span><br><span class="line">      pthread_cond_broadcast(&amp;bstate.finished_cond);      </span><br><span class="line">    &#125;</span><br><span class="line">    pthread_mutex_unlock(&amp;bstate.barrier_mutex);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">  <span class="comment">//  最后一个到达的线程</span></span><br><span class="line">    <span class="comment">//  告诉下一轮来的thread 本轮未结束，等着，不可进入barrier。</span></span><br><span class="line">    bstate.finished = <span class="number">0</span>;            </span><br><span class="line">    --bstate.nthread;</span><br><span class="line">    ++bstate.round;</span><br><span class="line">    <span class="comment">//  告诉下一轮来的thread 本轮结束，不必再等，可以进入barrier。</span></span><br><span class="line">    <span class="keyword">if</span>(bstate.nthread == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      bstate.finished = <span class="number">1</span>;            </span><br><span class="line">      pthread_cond_broadcast(&amp;bstate.finished_cond);      </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  唤醒本轮的在barrier中等待的thread，告诉他们可以离开barrier。</span></span><br><span class="line">    pthread_mutex_unlock(&amp;bstate.barrier_mutex);</span><br><span class="line">    pthread_cond_broadcast(&amp;bstate.barrier_cond);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>pass</p>
+<blockquote>
+<p><img src="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/2022-11-26-22-37-53.png"></p>
+</blockquote>
+</li>
+</ul>
+<p>做完lab之后看一下initcode。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/" rel="prev" title="操作系统-xv6-thread">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-thread
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/27/%E8%BD%AE%E5%AD%90-%E6%97%A5%E5%BF%97%E5%BA%93/" rel="next" title="轮子-日志库">
+      轮子-日志库 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#part1"><span class="nav-number">1.</span> <span class="nav-text">part1</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98"><span class="nav-number">1.1.</span> <span class="nav-text">问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#part2"><span class="nav-number">2.</span> <span class="nav-text">part2</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#part3"><span class="nav-number">3.</span> <span class="nav-text">part3</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%AA%E8%A7%A3%E5%86%B3%E9%97%AE%E9%A2%98"><span class="nav-number">3.1.</span> <span class="nav-text">未解决问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E8%A7%A3%E5%86%B3"><span class="nav-number">3.2.</span> <span class="nav-text">已解决</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98-1"><span class="nav-number">3.3.</span> <span class="nav-text">问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0-1"><span class="nav-number">3.4.</span> <span class="nav-text">实现</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'da8432753f87cb8a871e0d65d21f3f90',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

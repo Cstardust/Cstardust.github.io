@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TCP 拥塞控制 : 为了公平性原理(拥塞窗口)、原因、算法算法包括 慢启动 拥塞避免 快速恢复 拥塞发生">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-传输层-拥塞控制">
+<meta property="og:url" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="TCP 拥塞控制 : 为了公平性原理(拥塞窗口)、原因、算法算法包括 慢启动 拥塞避免 快速恢复 拥塞发生">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-50-36.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-22-04-18.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-22-40-38.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-22-34.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-33-55.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-09-43.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-09-57-23.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-16-08.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-19-04.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-39-36.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-38-03.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-40-35.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-43-20.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-58-17.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-59-05.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-13.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-18.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-31.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-44.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-59-59.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-00-48.png">
+<meta property="og:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-00-57.png">
+<meta property="article:published_time" content="2023-01-10T08:59:44.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:24:21.079Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-50-36.png">
+
+<link rel="canonical" href="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-传输层-拥塞控制 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-传输层-拥塞控制
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-10 16:59:44" itemprop="dateCreated datePublished" datetime="2023-01-10T16:59:44+08:00">2023-01-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:24:21" itemprop="dateModified" datetime="2023-02-27T23:24:21+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%BD%91/" itemprop="url" rel="index"><span itemprop="name">计网</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>3.5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>3 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>TCP 拥塞控制 : 为了公平性<br>原理(拥塞窗口)、原因、算法<br>算法包括 慢启动 拥塞避免 快速恢复 拥塞发生</p>
+<span id="more"></span>
+
+<h1 id="拥塞控制"><a href="#拥塞控制" class="headerlink" title="拥塞控制"></a>拥塞控制</h1><h2 id="拥塞控制原理"><a href="#拥塞控制原理" class="headerlink" title="拥塞控制原理"></a>拥塞控制原理</h2><ul>
+<li>拥塞:<ul>
+<li>非正式的定义: “太多的数据需要网络传输，超过了网络的处理能力” </li>
+<li>与流量控制含义不同<ul>
+<li>流量控制 是为了 让发送端的发送速度和接收端的接受速度匹配，避免接收端接收缓存溢出</li>
+<li>拥塞 是指 网络拥塞导致发送端发送的分组在路由器缓存溢出。</li>
+<li>但行为是一致的：都是遏制发送方。</li>
+</ul>
+</li>
+<li>拥塞的表现:<ul>
+<li>分组丢失 (路由器缓冲区溢出)</li>
+<li>分组经历比较长的延迟(在路由器的队列中排队)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>拥塞控制问题<ul>
+<li>与rdt一样，是网络中前十位的问题</li>
+<li>如 ：拥塞控制如何在上层应用得到的服务性能中明确的显露出来？如何可用各种方法来避免网络拥塞或对他作出反应？</li>
+</ul>
+</li>
+</ul>
+<h2 id="拥塞原因与代价"><a href="#拥塞原因与代价" class="headerlink" title="拥塞原因与代价"></a>拥塞原因与代价</h2><ul>
+<li><p>代价</p>
+<ul>
+<li>在分组的到达速率接近链路容量时，分组经历巨大的排队时延</li>
+<li>发送方必须重传以补偿因为缓存溢出而丢失的分组</li>
+<li>发送方在遇到大时延所进行的不必要重传会引起路由器利用其链路带宽转发不必要的分组副本</li>
+<li>当一个分组沿一条路径被丢弃时，每个上游路由器用于转发该分组到丢弃该分组而使用的传输容量最终被浪费掉了</li>
+</ul>
+</li>
+<li><p>场景见补充</p>
+</li>
+</ul>
+<h2 id="拥塞控制方法"><a href="#拥塞控制方法" class="headerlink" title="拥塞控制方法"></a>拥塞控制方法</h2><p>根据网络层是否为运输层拥塞控制提供显示支持</p>
+<ul>
+<li><p>端到端拥塞控制</p>
+<ul>
+<li>没有来自网络的显式反馈，即网络层不为运输层拥塞控制提供显示支持</li>
+<li>端系统根据分组丢失和时延推断是否有拥塞</li>
+<li>TCP采用的方法</li>
+</ul>
+</li>
+<li><p>网络辅助的拥塞控制</p>
+<ul>
+<li>路由器提供给端系统以反馈信息,即网络层为运输层拥塞控制提供显示支持</li>
+<li>单个bit置位，显示拥塞情况 (SNA, DECbit, TCP/IP ECN, ATM)</li>
+<li>显式提供发送端可以采用的速率</li>
+<li>例子：ATM可用比特率 (略)</li>
+</ul>
+</li>
+</ul>
+<h2 id="TCP拥塞控制概述"><a href="#TCP拥塞控制概述" class="headerlink" title="TCP拥塞控制概述"></a>TCP拥塞控制概述</h2><ul>
+<li><strong>一种形式受限的拥塞控制</strong> : <strong>Timer定时器的RTO在每次重传之后呈指数型增长</strong><ul>
+<li>定时器过期很可能是由网络拥塞引起的，即太多的分组到达路径中的路由器队列中，造成分组丢失或较长排队时延。在拥塞时如果持续重传分组，会使得分组更加严重；于是，TCP采用更文雅的方式，每个发送方的分组都是经过越来越长的时间间隔后进行。</li>
+</ul>
+</li>
+<li>下面介绍更复杂的TCP拥塞控制形式。</li>
+</ul>
+<h3 id="拥塞感知"><a href="#拥塞感知" class="headerlink" title="拥塞感知"></a>拥塞感知</h3><p>发送端如何探测到拥塞 ?<br>根据《自顶向下》: 发生丢包<br>先声明：TCP的丢包事件 定义为<br>要么 1. 出现超时<br>要么 2. 收到来自接收方的3个冗余ACK(一般收到三个冗余ack时还没超时 因为RTO设置的相对保守)</p>
+<ul>
+<li><strong>某个segment超时了 : 拥塞</strong><ul>
+<li>超时时间到，某个段的确认没有来 </li>
+<li>原因1：网络拥塞（某个路由器缓冲区没空间了，被丢弃）概率大 </li>
+<li>原因2：出错被丢弃了（各级错误，没有通过校验，被丢弃）概率小 </li>
+<li>一旦超时，就认为拥塞了，有一定误判，但是总体控制方向是对</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-50-36.png"></p>
+<ul>
+<li><strong>有关某个段的3次冗余ACK：轻微拥塞</strong><ul>
+<li>第1个ACK : 正常ACK. ackno = 3460 , 确认绿色segment</li>
+<li>2，3，4次ACK：三次冗余ack. ackno = 3460 , 确认乱序到达的蓝色,橙色,灰色segment</li>
+<li>粉色segment仍然没被确认，其后面的segment却确认了，故粉色segment丢失的可能性很大</li>
+<li>网络这时还能够进行一定程度的传输，拥塞情况轻于第一种</li>
+</ul>
+</li>
+</ul>
+<h3 id="拥塞控制-1"><a href="#拥塞控制-1" class="headerlink" title="拥塞控制"></a>拥塞控制</h3><p>拥塞控制中，TCP如何限制Sender发送segment ? –&gt; 通过维护拥塞窗口</p>
+<ul>
+<li><strong>拥塞窗口 Congestion Window</strong><ul>
+<li><strong>cwnd</strong></li>
+<li>TCPSender 维护一个 <strong>拥塞窗口</strong><ul>
+<li>在整个过程中保证(<strong>流量控制和拥塞控制的联合动作</strong>) <ul>
+<li><strong>send_window(bytes sent but not acked) &lt;= min {cwnd(拥塞控制),rwnd(流量控制)}</strong><ul>
+<li>rwnd : 满足接收方不会缓存溢出</li>
+<li>cwnd : 满足网络可以不拥塞的传输分组</li>
+</ul>
+</li>
+<li>本part关注拥塞控制，故假设接收缓存无限大 -&gt; receive_window_size 无限大<ul>
+<li>故 bytes sent but not acked &lt; cwnd</li>
+<li>Sender 发送速率 为 cwnd / RTT   byte/s</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>从而粗略地控制发送方的往网络中注入的速率</li>
+</ul>
+</li>
+<li><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-22-04-18.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="cwnd变化"><a href="#cwnd变化" class="headerlink" title="cwnd变化"></a>cwnd变化</h3><p>通过调节cwnd来控制发送速率,那么TCPSender该怎样确定应当发送的速率呢 ?</p>
+<ul>
+<li>CongWin是动态的，是感知到的网络拥塞程度的函数<ul>
+<li>超时或者3个重复ack，CongWin↓<ul>
+<li>超时：CongWin降为1MSS,进入SS阶段然后再倍增到 CongWin/2（每个RTT），从而进入CA阶段 </li>
+<li>3个重复ack ：CongWin降为CongWin/2,CA阶段</li>
+</ul>
+</li>
+<li>否则（正常收到Ack，没有发送以上情况）：CongWin跃跃欲试↑<ul>
+<li>SS阶段：加倍增加(每个RTT)</li>
+<li>CA阶段：线性增加(每个RTT)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="TCP拥塞控制算法"><a href="#TCP拥塞控制算法" class="headerlink" title="TCP拥塞控制算法"></a>TCP拥塞控制算法</h2><h3 id="慢启动-slow-start-SS"><a href="#慢启动-slow-start-SS" class="headerlink" title="慢启动 slow-start (SS)"></a>慢启动 slow-start (SS)</h3><ul>
+<li><p>连接刚建立, CongWin = 1 MSS </p>
+<ul>
+<li>如: MSS = 1460bytes &amp; RTT = 200 msec </li>
+<li>初始速率 = 58.4kbps</li>
+<li>可用带宽可能&gt;&gt;MSS/RTT<ul>
+<li>应该尽快加速，到达希望的速率</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>指数性增加CongWin</strong> </p>
+<ul>
+<li>每经过一个RTT， CongWin加倍  &lt;—&gt; 每收到一个ACK时，CongWin加1MSS (这两个概念是一致的) </li>
+<li><strong>慢启动阶段：只要不超时或3个冗余ack 且 cwnd &lt; sstresh，每经过一个RTT，CongWin *= 2</strong></li>
+<li><strong>在丢包之前，当cwnd达到sstresh，进入拥塞避免阶段，cwnd线性增长</strong></li>
+<li>ssthresh : 上次发生超时时的窗口的一半<br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-22-40-38.png"></li>
+</ul>
+</li>
+<li><p><strong>SS总结: 初始速率很慢，但是加速却是指数性的</strong> </p>
+<ul>
+<li><strong>SS时间很短，长期来看可以忽略</strong></li>
+<li>慢启动阶段并不慢</li>
+</ul>
+</li>
+</ul>
+<h3 id="AIMD"><a href="#AIMD" class="headerlink" title="AIMD"></a>AIMD</h3><ul>
+<li><strong>AMID : Additive-Increase , Multiplicative-Decrease</strong><ul>
+<li>TCP拥塞控制常被称为<strong>加性增，乘性减</strong>的拥塞控制方式<br>cwnd窗口大小随时间：锯齿形<br>慢启动阶段忽略不计，因为很快<br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-22-34.png"></li>
+</ul>
+</li>
+</ul>
+<h4 id="加性增"><a href="#加性增" class="headerlink" title="加性增"></a><strong>加性增</strong></h4><h5 id="拥塞避免"><a href="#拥塞避免" class="headerlink" title="拥塞避免"></a>拥塞避免</h5><ul>
+<li>还没发生拥塞</li>
+<li>当cwnd &gt; ssthresh时，进入<strong>拥塞避免</strong><ul>
+<li><strong>一个RTT如没有发生丢失事件 ,将cwnd加1MSS(为了探测)</strong><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-33-55.png"></li>
+</ul>
+</li>
+</ul>
+<h5 id="快速恢复"><a href="#快速恢复" class="headerlink" title="快速恢复"></a>快速恢复</h5><p>不知道该不该放在加性增下面 我觉得应该反正放在这个下面<br>参考小林coding &amp; 自顶向下 &amp; 郑老师</p>
+<ul>
+<li>快速重传的拥塞发生 和 快速恢复算法 搭配使用</li>
+<li>快速恢复算法是认为，你还能收到 3 个重复 ACK 说明网络也不那么糟糕，所以没有必要像 RTO 超时那么强烈。</li>
+<li>如拥塞发生所说<ul>
+<li>cwnd = cwnd/2</li>
+<li>ssthresh = cwnd;</li>
+</ul>
+</li>
+<li>然后，进入快速恢复算法如下<ul>
+<li>cwnd = ssthresh + 3 （ 3 的意思是确认有 3 个数据包被收到了）；</li>
+<li>如果再收到重复的 ACK，那么 cwnd 增加 1；</li>
+<li>如果收到新数据的 ACK 后，把 cwnd 设置为第一步中的 ssthresh 的值<ul>
+<li>原因是该 ACK 确认了新的数据，说明从 duplicated ACK 时的数据都已收到，该恢复过程已经结束，可以回到恢复之前的状态了，也即再次进入拥塞避免状态</li>
+</ul>
+</li>
+<li><blockquote>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-09-43.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="乘性减"><a href="#乘性减" class="headerlink" title="乘性减"></a><strong>乘性减</strong></h4><h5 id="拥塞发生"><a href="#拥塞发生" class="headerlink" title="拥塞发生"></a>拥塞发生</h5><p>发生拥塞时</p>
+<ul>
+<li><p>根据是快速重传还是超时重传区分<strong>拥塞发生算法</strong></p>
+</li>
+<li><ol>
+<li><strong>当收到3个重复的ACKs</strong>: 不进入慢启动阶段</li>
+</ol>
+<ul>
+<li>cwnd /= 2</li>
+<li>ssthresh = cwnd</li>
+<li>进入快速恢复阶段 / 或者仅仅就是cwnd线性增长</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>当<strong>超时事件发生</strong>时: 进入慢启动阶段</li>
+</ol>
+<ul>
+<li>ssthresh = cwnd / 2</li>
+<li>cwnd = 1 MSS，<strong>进入SS阶段</strong><blockquote>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-09-57-23.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li>3个重复的ACK表示网络还有一定的段传输能力<br>超时之前的3个重复的ACK表示“警报” : 即将发生拥塞<br>故收到三个重复ACK并不会使得cwnd = 1</li>
+</ol>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li>当CongWin＜Threshold, 发送端处于<strong>慢启动阶段（slow-start）</strong>, 窗口指数性增长. </li>
+<li>当CongWin &gt; Threshold, 发送端处于<strong>拥塞避免（congestion-avoidance）</strong>, 窗口线性增长. </li>
+<li>当收到三个重复的ACKs (triple duplicate ACK),<ul>
+<li>Threshold设置成 CongWin/2</li>
+<li>进入<strong>快速恢复</strong> , CongWin=Threshold+3. </li>
+</ul>
+</li>
+<li>当超时事件发生时timeout, <ul>
+<li>Threshold=CongWin/2</li>
+<li>CongWin=1 MSS，进入 <strong>SS慢启动阶段</strong></li>
+</ul>
+</li>
+</ul>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-16-08.png"></p>
+<h4 id="状态机"><a href="#状态机" class="headerlink" title="状态机"></a>状态机</h4><p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-19-04.png"></p>
+<h2 id="TCP公平性"><a href="#TCP公平性" class="headerlink" title="TCP公平性"></a>TCP公平性</h2><ul>
+<li>公平性目标: <ul>
+<li>如果 K个TCP会话分享一个链路带宽为R的瓶颈，每一个会话的有效带宽为 R/K<br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-39-36.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>为什么公平 ? <ul>
+<li>因为拥塞控制算法</li>
+<li>2个竞争的TCP会话:<ul>
+<li>加性增加，斜率为1, 吞吐量增加</li>
+<li>乘性减，吞吐量比例减少<br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-38-03.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-40-35.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>公平性和 UDP<ul>
+<li>多媒体应用通常不是用TCP <ul>
+<li>应用发送的数据速率希望不受拥塞控制的节制</li>
+</ul>
+</li>
+<li>使用UDP: <ul>
+<li>音视频应用泵出数据的速率是恒定的, 忽略数据的丢失</li>
+</ul>
+</li>
+<li>研究领域: TCP 友好性</li>
+</ul>
+</li>
+<li>公平性和并行TCP连接<ul>
+<li>2个主机间可以打开多个并行的TCP连接</li>
+<li>例如: <ul>
+<li>带宽为R的链路支持了9个BB’TCP连接;</li>
+<li>AA’建立一条新TCP连接,占据带宽R/10</li>
+<li>那么AA’占据带宽9/10,BB’占据带宽9/10</li>
+<li><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-11-10-43-20.png"></li>
+</ul>
+</li>
+<li>故TCP的公平也只是大致公平<h2 id="补充-拥塞场景"><a href="#补充-拥塞场景" class="headerlink" title="补充 : 拥塞场景"></a>补充 : 拥塞场景</h2>《自顶向下》P172</li>
+</ul>
+</li>
+<li>场景一<ul>
+<li><blockquote>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-58-17.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>场景二<blockquote>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-59-05.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-13.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-18.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-31.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-01-44.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-20-59-59.png"></p>
+</blockquote>
+</li>
+<li>场景三<blockquote>
+<p><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-00-48.png"><br><img src="/2023/01/10/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6/2023-01-10-21-00-57.png"></p>
+</blockquote>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%BD%91/" rel="tag"># 计网</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/04/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab3/" rel="prev" title="计算机网络-CS144-lab3">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab3
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/10/muduo-http/" rel="next" title="muduo-http">
+      muduo-http <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6"><span class="nav-number">1.</span> <span class="nav-text">拥塞控制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E5%8E%9F%E7%90%86"><span class="nav-number">1.1.</span> <span class="nav-text">拥塞控制原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E5%8E%9F%E5%9B%A0%E4%B8%8E%E4%BB%A3%E4%BB%B7"><span class="nav-number">1.2.</span> <span class="nav-text">拥塞原因与代价</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E6%96%B9%E6%B3%95"><span class="nav-number">1.3.</span> <span class="nav-text">拥塞控制方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E6%A6%82%E8%BF%B0"><span class="nav-number">1.4.</span> <span class="nav-text">TCP拥塞控制概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%84%9F%E7%9F%A5"><span class="nav-number">1.4.1.</span> <span class="nav-text">拥塞感知</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6-1"><span class="nav-number">1.4.2.</span> <span class="nav-text">拥塞控制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cwnd%E5%8F%98%E5%8C%96"><span class="nav-number">1.4.3.</span> <span class="nav-text">cwnd变化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6%E7%AE%97%E6%B3%95"><span class="nav-number">1.5.</span> <span class="nav-text">TCP拥塞控制算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%85%A2%E5%90%AF%E5%8A%A8-slow-start-SS"><span class="nav-number">1.5.1.</span> <span class="nav-text">慢启动 slow-start (SS)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AIMD"><span class="nav-number">1.5.2.</span> <span class="nav-text">AIMD</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8A%A0%E6%80%A7%E5%A2%9E"><span class="nav-number">1.5.2.1.</span> <span class="nav-text">加性增</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E9%81%BF%E5%85%8D"><span class="nav-number">1.5.2.1.1.</span> <span class="nav-text">拥塞避免</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E6%81%A2%E5%A4%8D"><span class="nav-number">1.5.2.1.2.</span> <span class="nav-text">快速恢复</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B9%98%E6%80%A7%E5%87%8F"><span class="nav-number">1.5.2.2.</span> <span class="nav-text">乘性减</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%8B%A5%E5%A1%9E%E5%8F%91%E7%94%9F"><span class="nav-number">1.5.2.2.1.</span> <span class="nav-text">拥塞发生</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">1.5.3.</span> <span class="nav-text">总结</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">1.5.3.1.</span> <span class="nav-text">状态机</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP%E5%85%AC%E5%B9%B3%E6%80%A7"><span class="nav-number">1.6.</span> <span class="nav-text">TCP公平性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A1%A5%E5%85%85-%E6%8B%A5%E5%A1%9E%E5%9C%BA%E6%99%AF"><span class="nav-number">1.7.</span> <span class="nav-text">补充 : 拥塞场景</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'd1202159c24111a2cf7dcdb11d5887b0',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

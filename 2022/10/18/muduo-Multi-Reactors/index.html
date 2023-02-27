@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="muduo类图">
+<meta property="og:type" content="article">
+<meta property="og:title" content="muduo-Multi-Reactors">
+<meta property="og:url" content="http://example.com/2022/10/18/muduo-Multi-Reactors/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="muduo类图">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-19-08-57-52.png">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-06-57.png">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-00-19.png">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-00-54.png">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-18-21-24-53.png">
+<meta property="og:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-18-21-24-30.png">
+<meta property="article:published_time" content="2022-10-18T04:45:25.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:19:16.936Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/18/muduo-Multi-Reactors/2022-10-19-08-57-52.png">
+
+<link rel="canonical" href="http://example.com/2022/10/18/muduo-Multi-Reactors/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>muduo-Multi-Reactors | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/18/muduo-Multi-Reactors/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          muduo-Multi-Reactors
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-18 12:45:25" itemprop="dateCreated datePublished" datetime="2022-10-18T12:45:25+08:00">2022-10-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:19:16" itemprop="dateModified" datetime="2023-02-27T23:19:16+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>muduo类图</p>
+<span id="more"></span>
+
+<h1 id="TcpServer-multi-single-Reactor"><a href="#TcpServer-multi-single-Reactor" class="headerlink" title="TcpServer - multi/single-Reactor"></a>TcpServer - multi/single-Reactor</h1><ul>
+<li><p>全图<br><img src="/2022/10/18/muduo-Multi-Reactors/2022-10-19-08-57-52.png"></p>
+</li>
+<li><p>大图</p>
+</li>
+<li><p>建立新连接+分发新连接<br><img src="/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-06-57.png"></p>
+</li>
+<li><p>已连接读写<br><img src="/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-00-19.png"></p>
+</li>
+<li><p>销毁连接<br><img src="/2022/10/18/muduo-Multi-Reactors/2022-10-19-09-00-54.png"></p>
+</li>
+</ul>
+<h2 id="Acceptor"><a href="#Acceptor" class="headerlink" title="Acceptor"></a>Acceptor</h2><ul>
+<li><p><strong>Acceptor</strong>：封装了listening fd 以及 连接event 以及 处理连接事件的callback ： handleConnection</p>
+</li>
+<li><p><strong>重要成员</strong></p>
+<ul>
+<li>acceptSocket_：listening fd</li>
+<li>acceptChannel_：listening fd 以及 监听事件 以及 回调</li>
+<li>EventLoop *loop：listening fd 所属的eventLoop。一般是main thread 的 eventLoop.</li>
+<li>newConnectionCallback_: TcpServer构造函数中将 TcpServer::newConnection 绑定给acceptor。故acceptor接收连接之后 分发client的channel给ioloop。</li>
+</ul>
+</li>
+<li><p><strong>重要函数</strong></p>
+</li>
+<li><p><strong>handleConnection</strong></p>
+<ul>
+<li>当poller epoll wait 监听到连接事件时 会调用该回调<ul>
+<li><ol>
+<li>handleConnection : accept连接 得到新connfd</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>newConnectionCallback(TcpServer绑定的) : 本mainReactor选择一个subReactor 将连接派发。</li>
+</ol>
+</li>
+</ul>
+</li>
+<li>核心逻辑如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> Acceptor :: handleConnection(Timestamp)</span><br><span class="line">&#123;</span><br><span class="line">    InetAddress peerAddr;</span><br><span class="line">    <span class="keyword">int</span> connfd = acceptSocket_.accept(&amp;peerAddr);               <span class="comment">//  accpet</span></span><br><span class="line">    <span class="function">InetAddress <span class="title">localAddr</span><span class="params">(InetAddress::getSockName(connfd))</span></span>;    <span class="comment">// 获取本机信息</span></span><br><span class="line">    newConnectionCallback_(connfd,peerAddr,localAddr);          <span class="comment">//  轮询subloop 唤醒 分发当前新client的channel</span></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>listen</strong></p>
+<ul>
+<li>socket开启listen队列，poller监听连接事件，等待connect。</li>
+</ul>
+</li>
+</ul>
+<h2 id="TcpConnection"><a href="#TcpConnection" class="headerlink" title="TcpConnection"></a>TcpConnection</h2><ul>
+<li><p>与acceptor平级</p>
+<ul>
+<li><strong>acceptor</strong> : <strong>负责listening fd 的accept。</strong><ul>
+<li><strong>mainloop中的 封装listenfd、相关事件及回调.(监听、接受连接、分发连接给subLoop)</strong></li>
+</ul>
+</li>
+<li><strong>tcpconntcion</strong> : <strong>负责一个connfd的通信</strong><ul>
+<li><strong>subloop中的 封装已连接connfd、相关事件及回调.(读消息事件、发送消息事件、连接关闭事件、错误事件等)</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>功能!!!</strong></p>
+<ul>
+<li><strong>1. encapsulate fd into channel</strong></li>
+<li><strong>2. register callback into channel</strong> and keep callback</li>
+<li><strong>3. bind ownerLoop and channel(fd)</strong> : channel enabling -&gt; reigster on the poller. 即所谓的派发连接给subloop，就是将指定subloop的poller监听、处理channel(fd)的event。</li>
+<li><strong>4. keep channel(fd)</strong></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>重要成员</strong><ul>
+<li><strong>socket_</strong> :  connfd</li>
+<li><strong>connectionEstablished:</strong> 连接建立完成后调用<ul>
+<li><strong>将connfd的读事件注册在poller上</strong><ul>
+<li>channel_-&gt;enableReading()</li>
+</ul>
+</li>
+<li><strong>调用user set connectionCallback</strong></li>
+<li>connectionEstablished在TcpServer::newConnection中被调用</li>
+</ul>
+</li>
+<li><strong>connectionDestroyed ：</strong> 销毁连接<ul>
+<li>会调用到user set connectionCallback</li>
+<li>销毁连接时会通过调用TcpServer::removeConnection来销毁连接<ul>
+<li>removeConnection -&gt; removeConnectionInLoop -&gt; connectionDestroyed</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>channel_</strong> : connfd的事件(感兴趣和实际发生)以及回调(读、写、关闭连接等)。<ul>
+<li>这个Channel的<strong>callback</strong>是在TcpConnection对象构造函数中注册的。<ul>
+<li>这些<strong>callback最终都会在loop的handleEvent中被调用</strong></li>
+<li><strong>TcpConnection::handleRead / handleClose / handleError / handleWrite</strong><ul>
+<li>handleRead中会调用user set的messageCallback_</li>
+<li>同理 handleWrite 有 user set 的 writeCompleteCallback_ </li>
+<li>handleCose 有 closeCallback_</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>**loop_**：本TcpConnection所属的subloop</li>
+<li>inputBuffer_：user态的接收缓冲区。</li>
+<li>outputBuffer_：user态的发送缓冲区。</li>
+<li>state_：当前TCP连接的状态（Connected、Connecting、Disconnecting、Disconnected）</li>
+<li><strong>connetionCallback_、messageCallback_、writeCompleteCallback_</strong><ul>
+<li><strong>交给用户自定义</strong>。（这也是用户唯数不多的自由）</li>
+</ul>
+</li>
+<li>closeCallback_ ： <ul>
+<li>muduo TcpServer自己定义的（不交给用户）</li>
+</ul>
+</li>
+<li>用户如何自定义？<ul>
+<li>TcpServer给了用户这样的接口。如setConnectionCallback。之后TcpServer再传给TcpConnection</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>重要函数</strong><ul>
+<li><strong>handleRead()</strong><ul>
+<li>处理读事件，将内容存入inputBuffer</li>
+<li>然后再调用user set的messageCallback_</li>
+<li>核心代码<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  注册给channel 这个函数最终会被ioloop调用</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleRead</span><span class="params">(Timestamp receiveTime)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  将fd中可读的数据 读到inputBuffer中</span></span><br><span class="line">    <span class="keyword">ssize_t</span> n = inputBuffer_.readFd(channel_-&gt;fd(),&amp;savedErrno);</span><br><span class="line">    <span class="keyword">if</span>(n&gt;<span class="number">0</span>)</span><br><span class="line">        messageCallback_(shared_from_this(),&amp;inputBuffer_,receiveTime);</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(n == <span class="number">0</span>)</span><br><span class="line">        handleClose();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        handleError();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><strong>handleWrite()</strong><ul>
+<li>负责处理epoll上注册的Tcp连接的可写事件（即写数据给fd）。视情况与outputBuffer交互。</li>
+<li>写完之后 调用 writeCompleteCallback_<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleWrite</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  outputBuffer中的bytes 写入 fd</span></span><br><span class="line">    <span class="keyword">ssize_t</span> n = outputBuffer_.<span class="built_in">writeFd</span>(channel_-&gt;<span class="built_in">fd</span>(),&amp;savedErrno);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  写完 停止Poller监听</span></span><br><span class="line">    <span class="keyword">if</span>(outputBuffer_.<span class="built_in">readableBytes</span>() == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        channel_-&gt;<span class="built_in">disableWriting</span>();</span><br><span class="line">        <span class="keyword">if</span>(writeCompleteCallback_)</span><br><span class="line">        &#123;</span><br><span class="line">            loop_-&gt;<span class="built_in">queueInLoop</span>(</span><br><span class="line">                std::<span class="built_in">bind</span>(writeCompleteCallback_,<span class="built_in">shared_from_this</span>())</span><br><span class="line">            );</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  没写完 继续监听 稍后处理</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">LOG_INFO</span>(<span class="string">&quot;I&#x27;m going to write more data&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//  如何做到一个事件的处理不长时间占用控制权？措施之一如下</span></span><br><span class="line">    <span class="comment">//  如果一次没写完的话，不会阻塞在这里等待缓冲区空闲然后继续写</span></span><br><span class="line">    <span class="comment">//  而是将控制交还给eventloop。因为写事件还在epoll tree上监听，并且未写的数据存在outputBuffer中</span></span><br><span class="line">    <span class="comment">//  等待下一次循环poller监听到写事件 触发write即可</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>handleClose()</strong><ul>
+<li>负责处理Tcp连接关闭的事件。</li>
+<li>大概的处理逻辑就是<ul>
+<li>将本TCP Connection的fd 的 channel_从poller中移除。</li>
+<li>connectionCallback_ (user set)</li>
+<li>closeCallback_。(muduo set)<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  poller -&gt;  channel::closeCallback -&gt; TcpConnection::handleClose -&gt; TcpServer::removeConnection -&gt; TcpConnection::connectionDestoyed</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleClose</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  改变状态</span></span><br><span class="line">    <span class="built_in">setState</span>(kDisconnected);</span><br><span class="line">    <span class="comment">//  从poller上拿下来</span></span><br><span class="line">    channel_-&gt;<span class="built_in">disableAll</span>();</span><br><span class="line">    <span class="function">TcpConnectionPtr <span class="title">connPtr</span><span class="params">(shared_from_this())</span></span>;</span><br><span class="line">    <span class="comment">//  user设置的</span></span><br><span class="line">    <span class="built_in">connectionCallback_</span>(connPtr);       <span class="comment">//  连接断开和连接的回调</span></span><br><span class="line">    <span class="comment">//  muduo set TcpServer::removeConnection -&gt; TcpConnection::connectionDestroyed</span></span><br><span class="line">    <span class="built_in">closeCallback_</span>(connPtr);            <span class="comment">//  关闭连接的回调  TcpServer::removeConnection</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>send</strong><ul>
+<li>send -&gt; sendInLoop -&gt;注册handleWrite<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::send</span><span class="params">(<span class="keyword">const</span> <span class="built_in">std</span>::<span class="built_in">string</span> &amp;buf)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    sendInLoop(buf.c_str(),buf.size());</span><br><span class="line">    <span class="keyword">or</span> loop_-&gt;runInLoop(<span class="built_in">std</span>::bind(</span><br><span class="line">        &amp;TcpConnection::sendInLoop,</span><br><span class="line">        <span class="keyword">this</span>,</span><br><span class="line">        buf.c_str(),</span><br><span class="line">        buf.size()</span><br><span class="line">    ));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>sendInLoop : 与outputBuffer和Poller交互，执行发送</li>
+</ul>
+<h1 id="TcpServer"><a href="#TcpServer" class="headerlink" title="TcpServer"></a>TcpServer</h1><p><strong>Acceptor ,EventLoopThreadPool ,TcpConnection</strong></p>
+<h2 id="重要成员："><a href="#重要成员：" class="headerlink" title="重要成员："></a>重要成员：</h2><ul>
+<li>unique_ptr&lt;Acceptor.&gt; <strong>acceptor_</strong><ul>
+<li>TcpServer::newConnection 绑定给acceptor</li>
+<li>acceptor接收新连接之后 将该连接分发给threadPool中的subloop(subReactor)</li>
+</ul>
+</li>
+<li>shared_ptr&lt;EventLoopThreadPool.&gt; <strong>threadPool_</strong><ul>
+<li>subReactors pool</li>
+</ul>
+</li>
+</ul>
+<h2 id="重要函数"><a href="#重要函数" class="headerlink" title="重要函数"></a>重要函数</h2><ul>
+<li><p><strong>newConnection</strong> ：accept新连接之后， 会调用acceptor的handleConnection，handleConnection会执行newConnection。</p>
+<ul>
+<li>将新连接派发给subloop，即将新建立连接的connfd的监听和处理都交给一个ioloop<ul>
+<li><strong>如何做到派发？</strong></li>
+<li><strong>通过new TcpConnection</strong>。TcpConnection会负责将subloop和connfd的channel绑定在一起。即将channel注册在subloop的poller上(在TcpConnection::connectionEstablished中执行)。</li>
+</ul>
+</li>
+<li><strong>如何唤醒</strong> 派发到的(subloop)subReactor,使其处理新连接的connectionEstablished ?<ul>
+<li><strong>wakeupFd</strong></li>
+<li>subloop此时应当阻塞在poller wait上。main thread 通过向其监听的wakeupFd写入data，使其从poller wait中离开。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>removeConnection：注册在TcpConnection::handleClose中。</p>
+<ul>
+<li>关闭连接。流程见下文</li>
+</ul>
+</li>
+<li><p><strong>start</strong></p>
+<ul>
+<li>启动EventLoopThreadPool中的subloop</li>
+<li>mainloop 开启listening queue 并注册监听listenfd到mainloop的Poller上。</li>
+</ul>
+</li>
+<li><p>setsubThreadNum</p>
+<ul>
+<li>设置subReactor数量。<ul>
+<li>num = 0. 则只有一个reactor，既负责监听、处理listening fd的新连接建立事件，又负责监听、处理已连接socket connfd的读写事件。<img src="/2022/10/18/muduo-Multi-Reactors/2022-10-18-21-24-53.png"></li>
+<li>num &gt; 0. 则一个mainReactor num个subReacor。<ul>
+<li>mainReactor 的mainloop负责监听处理listeningfd的新连接建立事件。 </li>
+<li>subReactor 的subloop负责监听处理connfd的读写事件<br><img src="/2022/10/18/muduo-Multi-Reactors/2022-10-18-21-24-30.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>可见 blog服务设计范式</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>以及callback之间关系</li>
+</ul>
+<ul>
+<li>还有，muduo中关于callback的使用。即function 和 bind的组合使用。</li>
+<li>有一件大任务，需要分给几个组件来做，或者需要分成不同时期来做<ul>
+<li>上层做不完的事情/不应当在此时调用的事情 ，上层将他自己要做的那一部分事情存入函数。将函数注册给下层。下层执行下层可以做的事情，并适时执行上层注册函数，来完成整个任务。</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/17/muduo-%E5%85%B3%E4%BA%8Eweak-ptr%E7%9A%84%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B/" rel="prev" title="关于weak_ptr的使用">
+      <i class="fa fa-chevron-left"></i> 关于weak_ptr的使用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/18/muduo-Thread-EventLoop/" rel="next" title="muduo-Thread-EventLoop">
+      muduo-Thread-EventLoop <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TcpServer-multi-single-Reactor"><span class="nav-number">1.</span> <span class="nav-text">TcpServer - multi&#x2F;single-Reactor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Acceptor"><span class="nav-number">1.1.</span> <span class="nav-text">Acceptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TcpConnection"><span class="nav-number">1.2.</span> <span class="nav-text">TcpConnection</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TcpServer"><span class="nav-number">2.</span> <span class="nav-text">TcpServer</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%87%8D%E8%A6%81%E6%88%90%E5%91%98%EF%BC%9A"><span class="nav-number">2.1.</span> <span class="nav-text">重要成员：</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%87%8D%E8%A6%81%E5%87%BD%E6%95%B0"><span class="nav-number">2.2.</span> <span class="nav-text">重要函数</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'b9c174c78f1ddf795654ec0543f588e1',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

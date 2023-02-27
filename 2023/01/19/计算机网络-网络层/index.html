@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="网络层-数据平面路由器、IP协议(格式、IP分片、DHCP、NAT)数据平面转发分为两类：基于目的地转发和通用转发. 通用转发涉及SDN二者都是 匹配加动作 原则 参考 《自顶向下》《中科大》">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-网络层">
+<meta property="og:url" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="网络层-数据平面路由器、IP协议(格式、IP分片、DHCP、NAT)数据平面转发分为两类：基于目的地转发和通用转发. 通用转发涉及SDN二者都是 匹配加动作 原则 参考 《自顶向下》《中科大》">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-09-28-07.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-18-44.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-11-05-42.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-12-07-05.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-09-18-22.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-12-52-24.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-14-52-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-45-13.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-02-09-08-23-34.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-02-09-08-24-03.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-50-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-59-04.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-01-20.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-06-04.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-13-34.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-13-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-15-41.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-30-49.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-31-16.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-17-39-49.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-17-52-58.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-01-59.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-12-50.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-57-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-19-16-09-26.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-30-37.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-43-41.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-21-20-29.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-21-52-41.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-40-27.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-08-56-13.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-24-25.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-29-08.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-11-08-29.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-12-41-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-09-18.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-17-20.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-16-15.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-52-02.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-14-35-05.png">
+<meta property="og:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-15-25-31.png">
+<meta property="article:published_time" content="2023-01-19T04:03:30.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:24:20.048Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="计网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-09-28-07.png">
+
+<link rel="canonical" href="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-网络层 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-网络层
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-19 12:03:30" itemprop="dateCreated datePublished" datetime="2023-01-19T12:03:30+08:00">2023-01-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:24:20" itemprop="dateModified" datetime="2023-02-27T23:24:20+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%A1%E7%BD%91/" itemprop="url" rel="index"><span itemprop="name">计网</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>网络层-数据平面<br>路由器、IP协议(格式、IP分片、DHCP、NAT)<br>数据平面转发分为两类：基于目的地转发和通用转发. 通用转发涉及SDN<br>二者都是 匹配加动作 原则</p>
+<p>参考 《自顶向下》《中科大》</p>
+<span id="more"></span>
+
+<h2 id="导论"><a href="#导论" class="headerlink" title="导论"></a>导论</h2><ul>
+<li>网络层的连接和传输层的连接不一样<ul>
+<li>传输层tcp的连接只是体现在端系统,所以称为面向连接</li>
+<li>网络层的连接 不仅在端系统,在中间的路由器上,也维护了通信的状态所以称为有连接</li>
+<li>也即 运输层只存在于网络边缘（端点）（主机）, 网络层存在于网络边缘（每一台主机）和网络中心（路由器）上</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-09-28-07.png"></p>
+<p>注 : </p>
+<ul>
+<li><ol>
+<li>很多人互换的使用 转发 和 交换 这两个术语</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>约定 <strong>分组交换机</strong> 指 通用分组交换设备. 功能：根据分组首部字段的值，将分组从从输入链路接口转移到输出链路接口. </li>
+</ol>
+<ul>
+<li>其中有两种分组交换机<ul>
+<li><strong>链路层交换机</strong>(linker-layer switch)<ul>
+<li>链路层的分组交换机(链路层/第二层设备)</li>
+<li>基于链路层帧中的字段值进行转发</li>
+</ul>
+</li>
+<li><strong>路由器</strong>(router) <ul>
+<li>网络层的分组交换机 (网络层/第三层设备)</li>
+<li>基于网络层数举报的首部字段值进行转发</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>分组交换器 其实应该叫分组路由器<br>交换器是对数据链路层的帧来说的。<br>所以说名字起的不好</p>
+<h3 id="功能"><a href="#功能" class="headerlink" title="功能"></a>功能</h3><ul>
+<li>网络层作用从整体来看为：将分组从一台发送主机移动到另一台接收主机</li>
+<li>为此，网络层实现了两方面的重要功能：数据平面和控制平面</li>
+</ul>
+<p>路由表 是 数据功能和控制功能的粘合剂<br>控制平面的功能体现在最后的结果：路由表<br>路由表交给ip协议<br>ip协议根据路由表对到来的分组做转发，实现数据平面功能</p>
+<h4 id="数据平面"><a href="#数据平面" class="headerlink" title="数据平面"></a>数据平面</h4><p>数据平面</p>
+<ul>
+<li><strong>转发 forwarding</strong><ul>
+<li>是每个路由器本地的功能</li>
+<li>IP协议实现转发功能(局部) : IP协议根据forwarding table 将分组从路由器的输入接口转发到合适的输出接口</li>
+<li><strong>转发方式</strong><ul>
+<li><strong>传统</strong>：基于目标地址+转发表(forwarding table) </li>
+<li><strong>通用转发</strong>：基于多个字段+流表 </li>
+</ul>
+</li>
+<li>转发是在数据平面唯一实现的功能</li>
+<li>转发的时间尺度很短(几ns), 通常用硬件实现</li>
+</ul>
+</li>
+</ul>
+<h4 id="控制平面"><a href="#控制平面" class="headerlink" title="控制平面"></a>控制平面</h4><p>控制平面</p>
+<ul>
+<li><strong>路由选择 routing</strong><ul>
+<li>路由选择协议实现了路由功能(全局)<ul>
+<li>路由选择算法 决定数据报如何在路由器之间路由 ; 决定分组从发送主机到目标接收主机的路径</li>
+</ul>
+</li>
+<li><strong>路由选择算法 routing algorithm</strong><ul>
+<li><strong>传统路由选择算法: 在路由器中实现</strong><ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-18-44.png"><ul>
+<li>数据平面传统转发 &amp;&amp; 控制平面传统路由选择</li>
+</ul>
+</li>
+<li>路由选择算法routing algorithm运行在每台路由器中,<strong>每台路由器中都包含 forwarding转发 和 routing路由选择 两种功能</strong></li>
+<li>一台路由器的routing algorithm路由选择算法与其他路由器中的routing algorithm交互，以计算出其forwarding table的值</li>
+</ul>
+</li>
+<li><strong>Software-Defined Networking SDN : 在远程服务器实现</strong><ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-11-05-42.png"><ul>
+<li>数据平面通用转发 + 控制平面SDN控制</li>
+</ul>
+</li>
+<li>与传统方式不同（各个路由器运行路由选择算法并彼此通信），控制平面或许有其他方来填写数据平面的forwarding table。<ul>
+<li>控制平面将路由选择功能从路由器中分离，由远程服务器负责</li>
+</ul>
+</li>
+<li><strong>远程服务器承担路由选择功能：计算和分发转发表给路由器</strong></li>
+<li><strong>路由器只承担数据平面的转发功能</strong></li>
+<li>路由器和远程控制器交换包含转发表和其他路由选择信息的报文进行通信。</li>
+<li>为什么叫Software-Defined : 因为计算forwarding table进而与router交互的控制器由软件实现。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>路由器采用的 路由转发算法 决定了 forwarding table 的内容(传统和sdn符合这句话?)</li>
+<li>路由选择的时间尺度较长(几s), 通常用软件实现</li>
+</ul>
+</li>
+</ul>
+<h3 id="网络服务模型"><a href="#网络服务模型" class="headerlink" title="网络服务模型"></a>网络服务模型</h3><ul>
+<li><p>从发送方主机到接收方主机传输数据报的“通道” , 网络提供什么样的服务模型？</p>
+<ul>
+<li>感觉就是网络层对运输层做出的保证</li>
+</ul>
+</li>
+<li><p>对于单个数据报的服务</p>
+<ul>
+<li>可靠传送</li>
+<li>延迟保证，如：少于40ms的延迟</li>
+</ul>
+</li>
+<li><p>对于数据报流的服务:</p>
+<ul>
+<li>保序数据报传送</li>
+<li>保证流的最小带宽</li>
+<li>分组之间的延迟</li>
+</ul>
+</li>
+<li><p>连接建立 : 在某些网络架构中是第三个重要的功能</p>
+<ul>
+<li>在分组传输之前，在两个主机之间，在通过一些路由器所构成的路径上建立一个网络层连接<ul>
+<li>涉及到路由器</li>
+</ul>
+</li>
+<li>网络层和传输层连接服务区别:<ul>
+<li>网络层: 在2个主机之间，涉及到路径上的一些路由器</li>
+<li>传输层: 在2个进程之间，只体现在端系统上(TCP连接)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Internet 因特网的网络层提供服务：<strong>best-effort service 尽力而为</strong></p>
+<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-12-07-05.png"></li>
+</ul>
+</li>
+</ul>
+<p>ip网络没有连接建立的功能，有些网络提供了连接建立功能<br>ip网络向上层提供转发功能 ：ip协议（数据功能），路由选择协议（控制功能）</p>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-09-18-22.png"></p>
+<h2 id="路由器"><a href="#路由器" class="headerlink" title="路由器"></a>路由器</h2><ul>
+<li>高层面(非常简化的)通用路由器体系架构<ul>
+<li>路由：运行路由选择算法／协议 (RIP, OSPF, BGP)-生成路由表</li>
+<li>转发：从输入到输出链路交换数据报-根据路由表进行分组的转发</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-12-52-24.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="输入端口处理-基于目的地转发"><a href="#输入端口处理-基于目的地转发" class="headerlink" title="输入端口处理 + 基于目的地转发"></a>输入端口处理 + 基于目的地转发</h3><ul>
+<li><strong>输入端口重要功能</strong>:(look up forwarding table)查找转发表，决定分组的输出端口<ul>
+<li>转发表由路由选择处理器生成<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-14-52-02.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>输入端口缓存</strong><ul>
+<li>当交换机构的速率小于输入端口的汇聚速率时， 在输入端口可能要排队<ul>
+<li><strong>排队延迟以及由于输入缓存溢出会造成丢失!</strong></li>
+</ul>
+</li>
+<li>Head-of-the-Line (HOL) blocking: 排在队头的数据报阻止了队列中其他数据报向前移动<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-45-13.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>匹配加动作</strong></p>
+<ul>
+<li>匹配：输入端口查找目的IP，</li>
+<li>动作：输入端口将分组送入交换结构(差不多就是转发)</li>
+<li>是一种匹配加动作的特定情况</li>
+</ul>
+</li>
+<li><p><strong>routing processor 路由选择处理器</strong></p>
+<ul>
+<li>传统路由器中，routing processor 执行路由选择协议</li>
+<li>SDN路由器中，routing processor 与远程控制器通信</li>
+</ul>
+</li>
+</ul>
+<h4 id="基于目的地转发"><a href="#基于目的地转发" class="headerlink" title="基于目的地转发"></a>基于目的地转发</h4><p><strong>关于转发</strong></p>
+<ul>
+<li><strong>基于目的地转发</strong> : 只依赖IP数据报的目标IP地址这一个因素，来决定分组的输出端口。<ul>
+<li>前缀匹配（且是最长前缀匹配）<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-02-09-08-23-34.png"> -&gt;<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-02-09-08-24-03.png"></li>
+</ul>
+</li>
+</ul>
+<h4 id="通用转发-见后文"><a href="#通用转发-见后文" class="headerlink" title="通用转发 (见后文)"></a>通用转发 (见后文)</h4><ul>
+<li><strong>通用转发</strong></li>
+</ul>
+<h3 id="交换结构"><a href="#交换结构" class="headerlink" title="交换结构"></a>交换结构</h3><ul>
+<li><p>将分组从输入缓冲区传输到合适的输出端口</p>
+</li>
+<li><p>交换速率：分组可以按照该速率从输入传输到输出</p>
+<ul>
+<li>运行速度经常是输入/输出链路速率的若干</li>
+<li>N 个输入端口：交换机构的交换速度是输入线路速度的N倍比较理想，才不会成为瓶颈</li>
+</ul>
+</li>
+<li><p>典型交换结构</p>
+<blockquote>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-50-02.png"></p>
+</blockquote>
+</li>
+<li><p>经内存交换…</p>
+</li>
+<li><p>经总线交换…</p>
+</li>
+<li><p>经互联网交换…</p>
+</li>
+</ul>
+<h3 id="输出端口处理"><a href="#输出端口处理" class="headerlink" title="输出端口处理"></a>输出端口处理</h3><ul>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-15-59-04.png"></p>
+</li>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-01-20.png"></p>
+</li>
+<li><p>当数据报从交换机构的到达速度比传输速率快,就需要输出端口缓存</p>
+</li>
+<li><p>排队带来延迟，由于输出端口缓存<strong>溢出</strong>则<strong>丢弃</strong>数据报</p>
+</li>
+<li><p>由调度规则选择排队的数据报进行传输</p>
+</li>
+<li><p><strong>调度机制</strong></p>
+<ul>
+<li>调度: 选择下一个要通过链路传输的分组</li>
+<li>FIFO (first in first out) scheduling:<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-06-04.png"> </li>
+<li>按照分组到来的次序发送 </li>
+<li>丢弃策略: 如果分组到达一个满的队列，哪个分组将会被抛弃?<ul>
+<li>tail drop: 丢弃刚到达的分组</li>
+<li>priority: 根据优先权丢失/移除分组</li>
+<li>random: 随机地丢弃/移除</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Priority Queuing 优先权调度：<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-13-34.png"></li>
+<li>发送最高优先权的分组</li>
+<li>多类，不同类别有不同的优先权 <ul>
+<li>类别可能依赖于标记或者其他的头部字段, e.g. IP source/dest, port numbers, ds，etc. </li>
+<li>先传高优先级的队列中的分组</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Round Robin Queuing Discipline 循环排队规则<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-13-02.png"></li>
+<li>循环扫描不同类型的队列, 发送完一类的一个分组，再发送下一个类的一个分组，循环所有类</li>
+</ul>
+</li>
+<li>Weighted Fair Queuing (WFQ)<ul>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-15-41.png"></li>
+<li>一般化的Round Robin</li>
+<li>在一段时间内，每个队列得到的服务时间是：Wi/(XIGMA(Wi)) *t，和权重成正比</li>
+<li>每个类在每一个循环中获得不同权重的服务量</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="IP协议"><a href="#IP协议" class="headerlink" title="IP协议"></a>IP协议</h2><ul>
+<li>主机、路由器中的网络层功能<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-30-49.png"></li>
+</ul>
+<h3 id="格式"><a href="#格式" class="headerlink" title="格式"></a>格式</h3><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-16-31-16.png"></p>
+<ul>
+<li><p>length 数据报长度 : IP数据报总长度（首部+数据）。单位字节。</p>
+</li>
+<li><p>identifier 标识 , flags 标志 , fragment offset 片偏移 : 与ip分片有关</p>
+</li>
+<li><p>time to live : 允许经过的路由器数</p>
+</li>
+<li><p>upper layer : 指示数据部分的协议，仅当ip数据报到达最终目的地时才有效</p>
+</li>
+<li><p>check sum 首部检验和 : 帮助路由器检测ip数据报的比特错误</p>
+<ul>
+<li>路由器会丢弃检测出错误的数据报</li>
+<li>为什么tcp/ip在运输层和网络层都进行差错检测 ?<ul>
+<li><ol>
+<li>ip层只对ip首部进行检验，而tcp/udp是对整个tcp/ucp报文进行检测的。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>ip不一定和tcp/udp在同一协议栈上</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>source ip , des ip : ip字段在ip报文首部，port字段在tcp/udp报文首部</p>
+</li>
+<li><p>data : tcp/udp segment , icmp segment</p>
+</li>
+<li><p>IP数据报传输TCP段 由器的列表.时头部有多少?</p>
+<ul>
+<li>20 bytes of TCP +</li>
+<li>20 bytes of IP +</li>
+<li>app layer overhead</li>
+</ul>
+</li>
+</ul>
+<h3 id="IPv4数据报分片-和-重组"><a href="#IPv4数据报分片-和-重组" class="headerlink" title="IPv4数据报分片 和 重组"></a>IPv4数据报分片 和 重组</h3><ul>
+<li><p>路由器进行分片，目的主机进行重组</p>
+</li>
+<li><p>Max Transmission Unit , MTU (最大传输单元) </p>
+<ul>
+<li>链路层帧所携带的最大数据长度 </li>
+<li>不同的链路类型有不同的MTU</li>
+</ul>
+</li>
+<li><p>大的IP数据报在网络上被分片(“fragmented”) </p>
+<ul>
+<li>一个数据报被分割成若干个小的数据报 </li>
+<li>“重组”只在最终的目标主机进行 </li>
+<li>IP头部的信息片偏移被用于标识，排序相关分片 <ul>
+<li>identifier 标识 : 同一数据报的切片具有相同的ID</li>
+<li>flags 标志 : 同一数据报的最后一个切片的flags标志字段置为0</li>
+<li>fragment offset : 代表该切片的ip载荷部分的第一个字节，在整个ip数据报的载荷部分的位置</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>例子<br>  <img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-17-39-49.png"></p>
+</li>
+</ul>
+<h3 id="IPv4编址"><a href="#IPv4编址" class="headerlink" title="IPv4编址"></a>IPv4编址</h3><ul>
+<li>IP地址: 网络设备(包括主机,路由器)和网络的接口的标识<ul>
+<li>一个IP地址和一个接口相关联</li>
+<li>接口: 主机/路由器和物理链路的连接处 <ul>
+<li>路由器通常拥有多个接口(路由器和不同网络的接口 ; 路由器至少有两个ip地址，否则路由器没有办法在网络之间进行分组转发) </li>
+<li>主机也有可能有多个接口(只不过这多个接口很可能都是主机和同一网络的接口)</li>
+<li>IP地址和每一个接口关联</li>
+</ul>
+</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-17-52-58.png"></li>
+</ul>
+</li>
+</ul>
+<p>主机有一个ip地址即可，也可以有多个ip地址。</p>
+<blockquote>
+<p>Q: 这些接口是如何连接的?<br>A: 我们将会在第5，6章学习<br>前：无需担心一个接口是如何<br>接到另外一个接口 (中间没有路由器)</p>
+</blockquote>
+<p>网络内部 ip之间如何进行分组的发送和接收？— 帧 – 交换机 — 数据链路层</p>
+<h4 id="子网-Subnets"><a href="#子网-Subnets" class="headerlink" title="子网 Subnets"></a>子网 Subnets</h4><ul>
+<li>IP地址:<ul>
+<li>子网部分(高位bits)</li>
+<li>主机部分(地位bits) </li>
+</ul>
+</li>
+<li><strong>什么是子网(subnet)</strong> ?<ul>
+<li>一个子网内的节点（主机或者路由器）它们的<strong>IP地址的高位部分相同</strong>，这些节点构成的网络的一部分叫做子网</li>
+<li>子网内<strong>无需路由器介入</strong>，子网内各主机可以在物理上相互直接到达</li>
+<li>一个子网的ip定义并不局限于多台主机到一个路由器接口的以太网段</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>判断子网</strong>:<ul>
+<li>要判断一个子网, 将每一个接口(ip)从主机或者路由器上分开,构成了一个个网络的孤岛</li>
+<li>每一个孤岛（网络）都是一个都可以被称之为subnet.</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-01-59.png"></li>
+<li>223.1.1.0/24 223.1.2.0/24 223.1.3.0/24 223.1.8.0/24 223.1.7.0/24 223.1.9.0/24</li>
+</ul>
+</li>
+</ul>
+<h4 id="IP地址分类"><a href="#IP地址分类" class="headerlink" title="IP地址分类"></a>IP地址分类</h4><p>一种分类编址 classful addressing</p>
+<ul>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-12-50.png"></p>
+<ul>
+<li>A: <ul>
+<li>0.0.0.0 - 127.255.255.255 ; </li>
+<li>126 networks ，16777214 hosts ; </li>
+<li>mask 255.0.0.0</li>
+</ul>
+</li>
+<li>B: <ul>
+<li>128.0.0.0 - 191.255.255.255 ; </li>
+<li>16382networks ，65534 hosts ; </li>
+<li>mask 255.255.0.0</li>
+</ul>
+</li>
+<li>C : <ul>
+<li>192.0.0.0 - 223.255.255.255 ; </li>
+<li>2 million networks ，254 hosts ; </li>
+<li>mask 255.255.255.0</li>
+</ul>
+</li>
+<li>D : <ul>
+<li>224.0.0.0 - 239.255.255.255 ; </li>
+<li>multicast</li>
+</ul>
+</li>
+<li>E : <ul>
+<li>240.0.0.0 - 247.255.255.255 ; </li>
+<li>reserved for future</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>可以看出ABC三类地址分为网络号和主机号</p>
+<ul>
+<li>特殊ip地址<ul>
+<li>主机号全为 1 : 广播地址,该网络下的所有主机</li>
+<li>主机号全为 0 : 指定本主机<ul>
+<li>故计算网络内最大主机数 = 2^(主机号位数) - 2</li>
+</ul>
+</li>
+<li>子网部分全为 0 : 本网络</li>
+<li><blockquote>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-57-02.png"></p>
+</blockquote>
+</li>
+<li><strong>回路地址/测试地址</strong><ul>
+<li>127开头的ip地址为回路地址：127.x.x.x 如常见的127.0.0.1</li>
+<li>目标地址为127.x.x.x的不会发送出网卡，到网络层监测到ip为回环地址后就直接将数据包返回到运输层</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-19-16-09-26.png"></li>
+</ul>
+</li>
+<li>子网内的广播地址 : 255.255.255.255(理论依据呢 ?)</li>
+<li>本机地址 : 0.0.0.0(理论依据呢 ?)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>ABC三类地址中，一部分为专用ip，一部分为公用ip</p>
+<ul>
+<li>内网IP = 专用IP = 私有IP</li>
+<li>私有ip只在局域网中有意义，不会出现在公网中</li>
+<li>路由器不对目标地址是私有ip的分组进行转发</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-20-30-37.png"><ul>
+<li>其中A mask为 255.0.0.0 ；B mask 255.255.0.0 ; C mask 255.255.255.0 </li>
+</ul>
+</li>
+<li>那么易知，我租的服务器的ip为114.132.58.229，显然是A中的公有ip ; 易知虚拟机ifconfig看到的192.168.147.162，显然是C的私有ip ; wsl ifconfig看到的172.17.247.46，显然是B的私有ip</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>而 D 类和 E 类地址是没有主机号的，所以不可用于主机 IP，D 类常被用于多播，E 类是预留的分类，暂时未使用。<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-43-41.png"></li>
+</ul>
+<h4 id="无分类地址-CIDR"><a href="#无分类地址-CIDR" class="headerlink" title="无分类地址 CIDR"></a>无分类地址 CIDR</h4><ul>
+<li>CIDR : Classless InterDomain Routing. 无分类地址 也叫 无类域间路由<ul>
+<li>子网部分和主机部分可以在任意的位置临界</li>
+<li>地址格式 : a.b.c.d/x , x为子网号长度</li>
+<li><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-21-20-29.png"></li>
+<li>因特网的地址分配策略是CIDR</li>
+</ul>
+</li>
+</ul>
+<h4 id="子网掩码-subnet-mask"><a href="#子网掩码-subnet-mask" class="headerlink" title="子网掩码 subnet mask"></a>子网掩码 subnet mask</h4><ul>
+<li>32bits ,0 or 1 in each bit<ul>
+<li><strong>1: bit位置表示子网部分</strong> </li>
+<li><strong>0: bit位置表示主机部分</strong></li>
+</ul>
+</li>
+<li>原始的A、B、C类网络的子网掩码分别是 <ul>
+<li>A：255.0.0.0 ：11111111 00000000 0000000 00000000 </li>
+<li>B：255.255.0.0：11111111 11111111 0000000 00000000 </li>
+<li>C：255.255.255.0：11111111 11111111 11111111 00000000</li>
+</ul>
+</li>
+<li>CIDR下的子网掩码例子：<ul>
+<li>11111111 11111111 11111100 0000000</li>
+</ul>
+</li>
+<li>也可通过/x表示子网掩码<ul>
+<li>如子网掩码为223.1.1.0/24<ul>
+<li>意味着高24bit地址定义了子网地址. 任何其他要求接入223.1.1.0/24 网络的主机都要求具有223.1.1.xxx的形式</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="转发表和转发算法"><a href="#转发表和转发算法" class="headerlink" title="转发表和转发算法"></a>转发表和转发算法</h4><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-27-21-52-41.png"></p>
+<ul>
+<li>已知获得IP数据报的目标地址IP Des addr , 那么对于转发表中的每一个表项<ul>
+<li>如 (IP Des addr) &amp; (mask)== destination, 则按照表项对应的接口转发该数据报</li>
+<li>如果都没有找到,则使用默认表项转发数</li>
+</ul>
+</li>
+</ul>
+<h3 id="如何获得ip地址"><a href="#如何获得ip地址" class="headerlink" title="如何获得ip地址"></a>如何获得ip地址</h3><p>上述学习ipv4编址 那么主机或者子网最初是如何得到他们的地址的 ?</p>
+<ol>
+<li> 组织如何为其设备得到一个ip地址块</li>
+<li> 组织中的设备如何从地址块中获得一个ip地址</li>
+</ol>
+<h4 id="获取一块地址"><a href="#获取一块地址" class="headerlink" title="获取一块地址"></a>获取一块地址</h4><ul>
+<li>组织如何为其设备得到一个地址块 ? 即 如何为子网获取一个ip地址快 即 如何获得一个网络的子网部分（网络号部分 ? ）</li>
+<li>解：从ISP地址块 中 被分配到一个块地址快<br>  <img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-40-27.png"></li>
+<li>ISP如何获得地址块 : ICANN<ul>
+<li>分配地址</li>
+<li>管理DNS</li>
+<li>分配域名，解决</li>
+</ul>
+</li>
+</ul>
+<h4 id="获取主机地址-DHCP"><a href="#获取主机地址-DHCP" class="headerlink" title="获取主机地址 : DHCP"></a>获取主机地址 : DHCP</h4><p>组织中的设备如何从地址块中获得一个ip地址</p>
+<ul>
+<li><p>DHCP : Dynamic Host Configuration Protocol 动态主机配置协议</p>
+<ul>
+<li><p>DHCP基于udp</p>
+</li>
+<li><blockquote>
+<p>路由器的ip和主机的ip都可以手工配置，但更好的方法是采用dhcp. dchp允许主机每次接入网络时能得到一个临时的ip地址, 每次接入网络时得到的地址也许是不同的.</p>
+</blockquote>
+</li>
+<li><p>dhcp实例: 主机频繁的加入和离开网络. 如我们在宿舍和在实验室会发现本机的ip地址不同. 就是两次接入网络时dhcp获取的ip不同</p>
+</li>
+<li><p><strong>目标</strong>: 允许主机在加入网络的时候，动态地从服务器那里获得IP地址： </p>
+<ul>
+<li>可以更新对主机在用IP地址的租用期-租期快到了 </li>
+<li>重新启动时，允许重新使用以前用过的IP地址 </li>
+<li>支持移动用户加入到该网络（短期在网）</li>
+</ul>
+</li>
+<li><p>对于一台新到达的主机，DHCP协议分为4步</p>
+<ul>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-08-56-13.png"></p>
+</li>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-24-25.png"></p>
+</li>
+<li><p><strong>DHCP服务器发现 (寻找DHCP Server)</strong></p>
+<ul>
+<li>为寻找DHCP Server,主机广播 <strong>DHCP发现报文(DHCP discover message)</strong> <ul>
+<li>目的地址 广播 255.255.255.255 </li>
+<li>源地址 本主机0.0.0.0</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>DHCP服务器提供 （DHCPServer 给 client推荐ip）</strong></p>
+<ul>
+<li>DHCPServer 广播 <strong>DHCP提供报文(DHCP offer message)</strong><ul>
+<li>目的地址 广播: 255.255.255.255</li>
+<li>源地址 : DHCP Server IP</li>
+<li><strong>内容</strong>  <ul>
+<li>IP 地址 及 租用期</li>
+<li>第一跳路由器的IP地址（默认网关） </li>
+<li>DNS服务器的域名和IP地址 </li>
+<li>子网掩码 </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>DHCP请求    （client 确认并回显 DHCPServer的推荐）</strong></p>
+<ul>
+<li>主机从多个DHCP服务器中选择一个，并响应。通过发送<strong>DHCP请求报文(DHCP request message)</strong>. 回显配置的参数</li>
+</ul>
+</li>
+<li><p><strong>DHCP ACK （DHCP确认）</strong></p>
+<ul>
+<li>DHCP Server 发送 <strong>DHCP请求确认(DHCP ACK message)</strong> DHCP请求报文</li>
+<li>client收到ack后 交互便完成.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>DHCP 缺陷 :</p>
+<ul>
+<li>每当节点连接到一个新子网，要从DHCP获取一个新的IP地址，当移动节点在子网之间移动时，<strong>不能维持原先的TCP连接</strong>.</li>
+</ul>
+</li>
+<li><blockquote>
+<p>由于dhcp具有将主机连接进一个网络的网络相关方面的自动能力，故被称为即插即用协议(plug-and-play protocol) / 零配置(zeroconf)协议</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-09-29-08.png"></p>
+</li>
+</ul>
+<h3 id="网络地址转换-Network-Address-Translation"><a href="#网络地址转换-Network-Address-Translation" class="headerlink" title="网络地址转换 Network Address Translation"></a>网络地址转换 Network Address Translation</h3><p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-11-08-29.png"><br>NAT 理解: 将内部的专用地址转化成公有唯一地址</p>
+<ul>
+<li><strong>NAT路由器</strong><ul>
+<li>NAT路由器对于外部世界表现得不像一台路由器，而是一台具有单一IP地址的单一设备。<ul>
+<li>本质 : NAT路由器对外界隐藏了子网内的细节</li>
+</ul>
+</li>
+<li>动机: 本地网络只有一个有效IP地址(子网内的设备对外使用同一个ip)<ul>
+<li>不需要从ISP分配一块地址，可用一个IP地址用于所有的（局域网）设备–省钱</li>
+<li>可以在局域网改变设备的地址情况下而无须通知外界</li>
+<li>可以改变ISP（地址变化）而不需要改变内部的设备地址</li>
+<li>局域网内部的设备没有明确的地址，对外是不可见的–安全</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>实现</strong>: NAT 路由器必须:<ul>
+<li>外出数据包：<ul>
+<li>重写源IP和源Port 为NAT IP地址和NAT Port，目标IP和Port不变</li>
+<li>远端的C/S将会用NAT IP地址，新端口号作为目标地址</li>
+</ul>
+</li>
+<li>在NAT转换表中记录对应关系 <ul>
+<li>&lt;NAT IP, NAT Port ; 源IP,源Port &gt;</li>
+<li><strong>NAT转化表 NAT translation table</strong><ul>
+<li>{WAN端IP NATPort} , {LAN端IP SRCPort}</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>进入数据包：<ul>
+<li>重写目标IP和目的Port 为源IP，端口 . (根据NAT table.)<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-12-41-02.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>因为Port为16-bit: <ul>
+<li>故一个局域网内可以至多同时有6万多个同时连接</li>
+</ul>
+</li>
+<li>对NAT是有争议的: <ul>
+<li>路由器只应该对第3层(网络层)做信息处理，而这里对端口号（4层）(应用层作了处理</li>
+<li>违反了end-to-end 原则 <ul>
+<li>端到端原则：复杂性放到网络边缘 <ul>
+<li>使得无需借助中转和变换，就可以直接传送到目标主机 </li>
+</ul>
+</li>
+<li>NAT可能要被一些应用设计者考虑, eg, P2P applications </li>
+<li>外网的机器无法主动连接到内网的机器上(因为) </li>
+</ul>
+</li>
+<li>地址短缺问题可以被IPv6 解决 </li>
+<li>NAT穿越： 如果客户端需要连接在NAT后面的服务器，如何操作 ? </li>
+</ul>
+</li>
+</ul>
+<h4 id="NAT穿越-NAT-traversal"><a href="#NAT穿越-NAT-traversal" class="headerlink" title="NAT穿越 NAT traversal"></a>NAT穿越 NAT traversal</h4><ul>
+<li>问题描述 : client需要连接ip(10.0.0.1)的server(即客户要连接一个位于NAT背后的Server) <ul>
+<li>易知10.0.0.1 为 LAN本地地址 (client不能够使用其作为目标地址) </li>
+<li>整网只有一个外部可见地址: 138.76.29.7<blockquote>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-09-18.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>方案1: 静态配置NAT：转发进来的对服务器特定端口连接请求<ul>
+<li>即在nat translation table上手动配置 {(123.76.29.7, port 25000) , (10.0.0.1 port 25000)} ，使得(123.76.29.7, port 2500) 总是转发到(10.0.0.1 port 25000)</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>方案2: Universal Plug and Play (UPnP) Internet Gateway Device (IGD) 协议. 允许NATted主机可以:<ul>
+<li>获知网络的公共 IP地址(138.76.29.7)</li>
+<li>列举存在的端口映射</li>
+<li>增/删端口映射 (在租用时间内)</li>
+<li>i.e., 自动化静态NAT端口映射配置<blockquote>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-17-20.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>方案 3: 中继 (used in Skype)<ul>
+<li>?? ques 不太理解 中继是怎么和Server连起来的</li>
+<li>NAT后面的服务器建立和中继的连接</li>
+<li>外部的客户端链接到中继</li>
+<li>中继在2个连接之间桥接<blockquote>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-16-15.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="中间盒"><a href="#中间盒" class="headerlink" title="中间盒"></a>中间盒</h2><ul>
+<li>还有其他种类繁多网络设备（中间盒）：<ul>
+<li>中间盒运行在网络层且不执行传统的数据转发</li>
+<li>如<ul>
+<li>NAT : <strong>重写</strong>首部ip和port</li>
+<li>防火墙 : 基于首部字段<strong>阻拦</strong>流量或<strong>重定向</strong>分组</li>
+<li>负载均衡 : 按算法转发给server </li>
+</ul>
+</li>
+<li>未来：不断增加的需求和相应的网络设备</li>
+<li>P227</li>
+<li>需要不同的设备去实现不同的网络功能 <ul>
+<li>每台设备集成了控制平面和数据平面的功能 </li>
+<li>控制平面分布式地实现了各种控制平面功能 </li>
+<li>升级和部署网络设备非常困难</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="通用转发和SDN"><a href="#通用转发和SDN" class="headerlink" title="通用转发和SDN"></a>通用转发和SDN</h2><ul>
+<li><p>路由器的网络层功能：</p>
+<ul>
+<li>IP转发：对于到来的分组按照路由表决定如何转发；属于数据平面</li>
+<li>路由：决定路径，计算路由表；属于控制平面</li>
+</ul>
+</li>
+<li><p>传统方式实现网络功能的问题</p>
+<ul>
+<li>垂直集成&gt;昂贵、不便于创新的生态</li>
+<li>分布式、固化设备功能==网络设备种类繁多<ul>
+<li>无法改变路由等工作逻辑，无法实现流量工程等高级特性</li>
+<li>配置错误影响全网运行；升级和维护会涉及到全网设备：管理困难</li>
+<li>要增加新的网络功能，需要设计、实现以及部署新的特定设备，设备种类繁多</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="SDN-控制平面"><a href="#SDN-控制平面" class="headerlink" title="SDN (控制平面)"></a>SDN (控制平面)</h3><ul>
+<li><p>SDN：逻辑上集中的控制平面</p>
+</li>
+<li><p>一个不同的（通常是远程）控制器和CA交互，控制器决定分组转发的逻辑（可编程），CA所在设备执行逻辑。</p>
+<ul>
+<li><strong>远程控制器计算和分发匹配加动作表</strong></li>
+<li>实现网络设备数据平面和控制平面分离<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-13-52-02.png"></li>
+</ul>
+</li>
+<li><p>见导论功能控制平面</p>
+</li>
+</ul>
+<h3 id="通用转发-数据平面"><a href="#通用转发-数据平面" class="headerlink" title="通用转发 (数据平面)"></a>通用转发 (数据平面)</h3><ul>
+<li>基于目的地转发可分为两步骤<ul>
+<li>匹配 : 查找目的IP地址</li>
+<li>动作 : 将分组发送到有特定输出端口的交换结构</li>
+<li>可以看到这是匹配 + 动作的一种特例<br>下面看一下通用的匹配加动作范式</li>
+</ul>
+</li>
+<li><strong>匹配加动作</strong><ul>
+<li>匹配: 可以对协议栈的多个首部字段进行 匹配 ， 这些首部字段与不同层次的协议关联</li>
+<li>动作: 将分组转发到一个或多个输出端口(像基于目的地转发一样),负责均衡,重写首部值(像NAT一样),阻挡/丢弃分组(像防火墙一样)等等</li>
+</ul>
+</li>
+</ul>
+<hr>
+<p>以下所述都是基于Open Flow<br>OpenFlow : 匹配加动作抽象,控制器,SDN概念 的标准</p>
+<ul>
+<li><p><strong>Flow table 流表</strong></p>
+<ul>
+<li><strong>匹配加动作转发表</strong>在OpenFlow中被称为<strong>流表</strong></li>
+<li>表项包括<ul>
+<li>首部字段值的集合 Rule </li>
+<li>所采取<strong>动作</strong>集合 Action: <strong>转发 / 丢弃 / 重写</strong></li>
+<li>计数器集合 Stats: Packet + byte counters</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>分组交换机 or 路由器 ?</p>
+<ul>
+<li>由于流表 除了网络层之外，还需要链路层的首部字段来做出动作决定，所以不能再叫路由器（网络层）了，当然也不能叫(第二层)交换机，我们将其称为 分组交换机</li>
+</ul>
+</li>
+</ul>
+<p><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-14-35-05.png"></p>
+<h4 id="匹配"><a href="#匹配" class="headerlink" title="匹配"></a>匹配</h4><ul>
+<li>OpenFlow的匹配抽象允许对来自三个层次的协议的首部字段进行匹配</li>
+<li>流表中的表项结构如下<br><img src="/2023/01/19/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E7%BD%91%E7%BB%9C%E5%B1%82/2023-01-28-15-25-31.png"></li>
+</ul>
+<h4 id="动作"><a href="#动作" class="headerlink" title="动作"></a>动作</h4><ul>
+<li>转发 : 分组转发到指定端口 / 广播道所有端口 / 多播 / 发给远程控制器(远程控制器可能安装新的流表)等 </li>
+<li>丢弃 : 流表项中无动作</li>
+<li>修改字段 : 重写分组首部字段(234层)</li>
+</ul>
+<h3 id="匹配加动作-例子"><a href="#匹配加动作-例子" class="headerlink" title="匹配加动作 例子"></a>匹配加动作 例子</h3><p>分组交换机(路由器)匹配加动作操作 充当<br>简单转发<br>负载均衡<br>防火墙<br>这样就不必通过中间盒<br>自顶向下P234</p>
+<h2 id="数据平面data-plane小结"><a href="#数据平面data-plane小结" class="headerlink" title="数据平面data plane小结"></a>数据平面data plane小结</h2><ul>
+<li>网络层的数据平面功能 : <ul>
+<li>即路由器的转发功能<ul>
+<li>决定到达路由器的输入链路之一的分组如何转发到路由器的输出链路</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>数据平面<ul>
+<li>传统转发 -&gt; 通用转发(匹配加动作)</li>
+</ul>
+</li>
+<li>相应的控制平面<ul>
+<li>传统路由 -&gt; SDN</li>
+<li>(控制)SDN和(数据)通用转发搭配</li>
+<li>(控制)传统路由和(数据)传统转发搭配</li>
+</ul>
+</li>
+<li>路由器结构</li>
+<li>除此之外还学习了IP编址 , DHCP协议 , 什么是传说中的NAT(就是通过重写以及转换表 将私有ip转化为公有ip) , 知道了中间盒都是什么，如nat 防火墙等</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%AE%A1%E7%BD%91/" rel="tag"># 计网</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4-%E8%A1%A5%E5%85%85/" rel="prev" title="计算机网络-CS144-lab4-补充">
+      <i class="fa fa-chevron-left"></i> 计算机网络-CS144-lab4-补充
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/20/%E5%88%86%E5%B8%83%E5%BC%8F-%E8%AE%BA%E6%96%87%E5%AD%A6%E4%B9%A0-mapreduce/" rel="next" title="分布式-论文学习-mapreduce">
+      分布式-论文学习-mapreduce <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%BC%E8%AE%BA"><span class="nav-number">1.</span> <span class="nav-text">导论</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8A%9F%E8%83%BD"><span class="nav-number">1.1.</span> <span class="nav-text">功能</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%B9%B3%E9%9D%A2"><span class="nav-number">1.1.1.</span> <span class="nav-text">数据平面</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2"><span class="nav-number">1.1.2.</span> <span class="nav-text">控制平面</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.2.</span> <span class="nav-text">网络服务模型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B7%AF%E7%94%B1%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">路由器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BE%93%E5%85%A5%E7%AB%AF%E5%8F%A3%E5%A4%84%E7%90%86-%E5%9F%BA%E4%BA%8E%E7%9B%AE%E7%9A%84%E5%9C%B0%E8%BD%AC%E5%8F%91"><span class="nav-number">2.1.</span> <span class="nav-text">输入端口处理 + 基于目的地转发</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E7%9B%AE%E7%9A%84%E5%9C%B0%E8%BD%AC%E5%8F%91"><span class="nav-number">2.1.1.</span> <span class="nav-text">基于目的地转发</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E8%BD%AC%E5%8F%91-%E8%A7%81%E5%90%8E%E6%96%87"><span class="nav-number">2.1.2.</span> <span class="nav-text">通用转发 (见后文)</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%A4%E6%8D%A2%E7%BB%93%E6%9E%84"><span class="nav-number">2.2.</span> <span class="nav-text">交换结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BE%93%E5%87%BA%E7%AB%AF%E5%8F%A3%E5%A4%84%E7%90%86"><span class="nav-number">2.3.</span> <span class="nav-text">输出端口处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IP%E5%8D%8F%E8%AE%AE"><span class="nav-number">3.</span> <span class="nav-text">IP协议</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%BC%E5%BC%8F"><span class="nav-number">3.1.</span> <span class="nav-text">格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IPv4%E6%95%B0%E6%8D%AE%E6%8A%A5%E5%88%86%E7%89%87-%E5%92%8C-%E9%87%8D%E7%BB%84"><span class="nav-number">3.2.</span> <span class="nav-text">IPv4数据报分片 和 重组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IPv4%E7%BC%96%E5%9D%80"><span class="nav-number">3.3.</span> <span class="nav-text">IPv4编址</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AD%90%E7%BD%91-Subnets"><span class="nav-number">3.3.1.</span> <span class="nav-text">子网 Subnets</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#IP%E5%9C%B0%E5%9D%80%E5%88%86%E7%B1%BB"><span class="nav-number">3.3.2.</span> <span class="nav-text">IP地址分类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%97%A0%E5%88%86%E7%B1%BB%E5%9C%B0%E5%9D%80-CIDR"><span class="nav-number">3.3.3.</span> <span class="nav-text">无分类地址 CIDR</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AD%90%E7%BD%91%E6%8E%A9%E7%A0%81-subnet-mask"><span class="nav-number">3.3.4.</span> <span class="nav-text">子网掩码 subnet mask</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BD%AC%E5%8F%91%E8%A1%A8%E5%92%8C%E8%BD%AC%E5%8F%91%E7%AE%97%E6%B3%95"><span class="nav-number">3.3.5.</span> <span class="nav-text">转发表和转发算法</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E8%8E%B7%E5%BE%97ip%E5%9C%B0%E5%9D%80"><span class="nav-number">3.4.</span> <span class="nav-text">如何获得ip地址</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E4%B8%80%E5%9D%97%E5%9C%B0%E5%9D%80"><span class="nav-number">3.4.1.</span> <span class="nav-text">获取一块地址</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E4%B8%BB%E6%9C%BA%E5%9C%B0%E5%9D%80-DHCP"><span class="nav-number">3.4.2.</span> <span class="nav-text">获取主机地址 : DHCP</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E5%9C%B0%E5%9D%80%E8%BD%AC%E6%8D%A2-Network-Address-Translation"><span class="nav-number">3.5.</span> <span class="nav-text">网络地址转换 Network Address Translation</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#NAT%E7%A9%BF%E8%B6%8A-NAT-traversal"><span class="nav-number">3.5.1.</span> <span class="nav-text">NAT穿越 NAT traversal</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%AD%E9%97%B4%E7%9B%92"><span class="nav-number">4.</span> <span class="nav-text">中间盒</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E8%BD%AC%E5%8F%91%E5%92%8CSDN"><span class="nav-number">5.</span> <span class="nav-text">通用转发和SDN</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#SDN-%E6%8E%A7%E5%88%B6%E5%B9%B3%E9%9D%A2"><span class="nav-number">5.1.</span> <span class="nav-text">SDN (控制平面)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%9A%E7%94%A8%E8%BD%AC%E5%8F%91-%E6%95%B0%E6%8D%AE%E5%B9%B3%E9%9D%A2"><span class="nav-number">5.2.</span> <span class="nav-text">通用转发 (数据平面)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8C%B9%E9%85%8D"><span class="nav-number">5.2.1.</span> <span class="nav-text">匹配</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%8A%A8%E4%BD%9C"><span class="nav-number">5.2.2.</span> <span class="nav-text">动作</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8C%B9%E9%85%8D%E5%8A%A0%E5%8A%A8%E4%BD%9C-%E4%BE%8B%E5%AD%90"><span class="nav-number">5.3.</span> <span class="nav-text">匹配加动作 例子</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%B9%B3%E9%9D%A2data-plane%E5%B0%8F%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">数据平面data plane小结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'c617ef2aa5422c1c8ec4b377fd0e8d6e',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="bind : 传递值. 会导致shared_ptr的引用计数++muduo中TCPConnectionPtr的生命周期介绍">
+<meta property="og:type" content="article">
+<meta property="og:title" content="bind与shared_ptr">
+<meta property="og:url" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="bind : 传递值. 会导致shared_ptr的引用计数++muduo中TCPConnectionPtr的生命周期介绍">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-19-46-54.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-22-04-50.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-22-20-11.png">
+<meta property="og:image" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-23-20-16.png">
+<meta property="article:published_time" content="2022-10-08T01:08:37.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:57.301Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-19-46-54.png">
+
+<link rel="canonical" href="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>bind与shared_ptr | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          bind与shared_ptr
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-08 09:08:37" itemprop="dateCreated datePublished" datetime="2022-10-08T09:08:37+08:00">2022-10-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:57" itemprop="dateModified" datetime="2023-02-27T23:18:57+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>12k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>11 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>bind : 传递值. 会导致shared_ptr的引用计数++<br>muduo中TCPConnectionPtr的生命周期介绍</p>
+<span id="more"></span>
+
+<h2 id="bind-只传递值-而非-引用"><a href="#bind-只传递值-而非-引用" class="headerlink" title="bind 只传递值 而非 引用"></a>bind 只传递值 而非 引用</h2><ul>
+<li><p>在函数传参时，可能发生shared_ptr的拷贝，造成引用计数++</p>
+<ul>
+<li><strong>pass by value</strong> : <strong>如果传入的是个左值，会发生拷贝构造，引用计数++；如果传入的是个右值(即临时构造的shared_ptr)，那么发生移动构造，引用计数不变</strong></li>
+<li><strong>pass by reference 如const&amp;</strong> : <strong>不拷贝，引用计数不变</strong></li>
+<li>pass by value : 即函数的形参是一个非引用或者指针。pass by reference : 即函数的形参是一个引用&amp;。</li>
+</ul>
+</li>
+<li><p>那么，<strong>bind</strong> class的成员函数时，由于要<strong>传入一个class对象的指针</strong></p>
+<ul>
+<li>这是一个pass by value的过程 </li>
+<li>我们绑定上去的指针可以是shared_ptr/裸指针，但不能是weak_ptr</li>
+<li>如果是以左值传入shared_ptr对象，那么引用计数++</li>
+<li>如果是以右值传入shared_ptr临时量 / 或者传入裸指针，那么引用计数当然不变</li>
+</ul>
+</li>
+<li><p><strong>bind –&gt; tuple</strong></p>
+<ul>
+<li><strong>只能pass by value，而不能pass by reference!!!!</strong></li>
+<li><strong>pass by value : 如果传入的是个左值，会发生拷贝构造 ; 如果传入的是个右值，那么发生移动构造</strong></li>
+<li><strong>哪怕这个函数的形参就是个 引用&amp;，但是我们如果绑定的话，绑定上去的对象也是会进行一个拷贝 然后赋值给形参！！（与直觉不同，因为我们正常形参是引用的话那么传入的也应当是一个引用，但是这里bind绑定的其实是一个值）</strong>（见f6 f7）</li>
+<li><img src="/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-19-46-54.png"></li>
+</ul>
+</li>
+<li><p>testCode.cpp</p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">shared_from_this</span>() 返回的是一个<span class="keyword">this</span>的shared_ptr的临时量</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TestClass</span> :</span> <span class="keyword">public</span> std::enable_shared_from_this&lt;TestClass&gt;</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">using</span> call_back = function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">void</span>)&gt;;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">hello</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;hello&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">testFunc</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;========testFunc start========&quot;</span>&lt;&lt;endl;</span><br><span class="line">        <span class="comment">//  shared_from_this() return a 临时的 shared_ptr，引用计数++。如果不用变量保存下来的话，这条语句过了之后就--。也就是只有这一条语句的use_count变了+1</span></span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;+ shared_from_this() &quot;</span> &lt;&lt; <span class="built_in">shared_from_this</span>().<span class="built_in">use_count</span>() &lt;&lt;endl;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;========testFunc end========&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">testBind</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;=======testBind start==========&quot;</span>&lt;&lt;endl;</span><br><span class="line">        cb_ = std::<span class="built_in">bind</span>(&amp;TestClass::hello,<span class="built_in">shared_from_this</span>());          <span class="comment">//  ++</span></span><br><span class="line">        <span class="built_in">cb_</span>();</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;bind + shared_from_this() = &quot;</span>&lt;&lt;<span class="built_in">shared_from_this</span>().<span class="built_in">use_count</span>()&lt;&lt;endl;         <span class="comment">// ++ --</span></span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;=======testBind end==========&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">testPassAsValue</span><span class="params">(shared_ptr&lt;TestClass&gt; p)</span>                       <span class="comment">// ++</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;============testPassAsValue start============&quot;</span>&lt;&lt;endl;</span><br><span class="line">        cout&lt;&lt;p.<span class="built_in">use_count</span>()&lt;&lt;endl;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;============testPassAsValue end============&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">testPassAsRef</span><span class="params">(<span class="keyword">const</span> shared_ptr&lt;TestClass&gt;&amp; p)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;==========testPassAsRef start==============&quot;</span>&lt;&lt;endl;</span><br><span class="line">        cout&lt;&lt;p.<span class="built_in">use_count</span>()&lt;&lt;endl;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;==========testPassAsRef end================&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~<span class="built_in">TestClass</span>()&#123;</span><br><span class="line">        cout&lt;&lt;<span class="string">&quot;~TestClass()&quot;</span>&lt;&lt;endl;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    call_back cb_;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">std::shared_ptr&lt;TestClass&gt; <span class="title">sp</span><span class="params">(<span class="keyword">new</span> TestClass())</span></span>;</span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;                         <span class="comment">//  1</span></span><br><span class="line">    <span class="function">std::weak_ptr&lt;TestClass&gt; <span class="title">wp</span><span class="params">(sp)</span></span>;</span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;                         <span class="comment">//  1</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line">    <span class="comment">//  bind 绑定指针 是传值 ，会导致引用计数 ++</span></span><br><span class="line">    std::<span class="built_in">bind</span>(&amp;TestClass::testFunc,sp)();             <span class="comment">// 3 = 1(sp) + 1(bind) + 1 (shared_from_this())</span></span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;                         <span class="comment">//  1</span></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">void</span>)&gt; f1 = std::<span class="built_in">bind</span>(&amp;TestClass::testBind,sp);</span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;                         <span class="comment">//  2 = 1(sp) + 1(f1 bind)</span></span><br><span class="line">    <span class="built_in">f1</span>();                                               <span class="comment">//  4 = 1(sp) + 1(bind) + 1(bind) + 1(shared_from_this())</span></span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;                         <span class="comment">//  3 = 1(sp) + 1(f1 bind) + 1(cb_ bind)</span></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(shared_ptr&lt;TestClass&gt;)&gt; f2 = std::<span class="built_in">bind</span>(&amp;TestClass::testPassAsValue,sp,std::placeholders::_1);    <span class="comment">//  4 = 1(sp) + 1(f1 bind) + 1(cb_ bind) + 1(f2 bind)</span></span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;          <span class="comment">//  4</span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">f1</span>();                                <span class="comment">//  5</span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">f2</span>(sp);                         <span class="comment">//  5</span></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line"></span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">const</span> shared_ptr&lt;TestClass&gt;&amp; p)&gt; f3 = std::<span class="built_in">bind</span>(&amp;TestClass::testPassAsRef,sp,std::placeholders::_1);</span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;     <span class="comment">//  5 = 4 + 1(f3 bind)</span></span><br><span class="line">    <span class="built_in">f3</span>(sp);                    <span class="comment">// 5 = 4 + 1(f3 bind)  传引用不是传值 不会导致引用计数++</span></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line"></span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">void</span>)&gt; f4 = std::<span class="built_in">bind</span>(&amp;TestClass::testPassAsValue,sp,sp);</span><br><span class="line">    cout&lt;&lt;sp.<span class="built_in">use_count</span>()&lt;&lt;endl;     <span class="comment">//  7 = 5 + 1(f4 bind) +1(f4 bind)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// pass by value but 传入右值</span></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;********************************&quot;</span>&lt;&lt;endl;</span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">void</span>)&gt; f5 = std::<span class="built_in">bind</span>(&amp;TestClass::testFunc, shared_ptr&lt;TestClass&gt;(<span class="keyword">new</span> <span class="built_in">TestClass</span>()));          <span class="comment">//  移动构造</span></span><br><span class="line">    <span class="built_in">f5</span>();                           <span class="comment">//  2 = bind (临时量移动构造给别人) + shared_from_this()</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;*******************************************&quot;</span>&lt;&lt;endl;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  下面证明了bind只能传递值</span></span><br><span class="line">    **哪怕这个函数的形参就是个 引用&amp;，但是我们如果绑定的话，绑定上去的对象也是会进行一个拷贝 然后赋值给形参！！**</span><br><span class="line">    </span><br><span class="line">    <span class="function">shared_ptr&lt;TestClass&gt; <span class="title">p</span><span class="params">(<span class="keyword">new</span> TestClass())</span></span>;</span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">void</span>)&gt; f6 = std::<span class="built_in">bind</span>(&amp;TestClass::testPassAsRef,p,p);</span><br><span class="line">    cout&lt;&lt;p.<span class="built_in">use_count</span>()&lt;&lt;endl;       <span class="comment">//  3 = 1(define) + 1(bind) + 1(bind  bind只能传值 )</span></span><br><span class="line">    <span class="built_in">f6</span>();                            <span class="comment">//  3</span></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;*******************************************&quot;</span>&lt;&lt;endl;</span><br><span class="line">    <span class="function">shared_ptr&lt;TestClass&gt; <span class="title">p2</span><span class="params">(<span class="keyword">new</span> TestClass())</span></span>;</span><br><span class="line">    function&lt;<span class="built_in"><span class="keyword">void</span></span>(<span class="keyword">const</span> shared_ptr&lt;TestClass&gt; &amp; )&gt; f7 = std::<span class="built_in">bind</span>(&amp;TestClass::testPassAsRef,p2,std::placeholders::_1);</span><br><span class="line">    cout&lt;&lt;p2.<span class="built_in">use_count</span>()&lt;&lt;endl;      <span class="comment">//  2 = 1(define) + 1(bind)</span></span><br><span class="line">    <span class="built_in">f7</span>(p2);                          <span class="comment">//  2 = 1(define) + 1(bind) 与上面的区别在于 bind 只能传值 而 这个形参 我们在调用的时候 是可以直接填引用进去的</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="number">1</span></span><br><span class="line"><span class="number">1</span></span><br><span class="line">********************************</span><br><span class="line">========testFunc start========</span><br><span class="line">+ <span class="built_in">shared_from_this</span>() <span class="number">3</span></span><br><span class="line">========testFunc end========</span><br><span class="line"><span class="number">1</span></span><br><span class="line">********************************</span><br><span class="line"><span class="number">2</span></span><br><span class="line">=======testBind start==========</span><br><span class="line">hello</span><br><span class="line">bind + <span class="built_in">shared_from_this</span>() = <span class="number">4</span></span><br><span class="line">=======testBind end==========</span><br><span class="line"><span class="number">3</span></span><br><span class="line">********************************</span><br><span class="line"><span class="number">4</span></span><br><span class="line">=======testBind start==========</span><br><span class="line">hello</span><br><span class="line">bind + <span class="built_in">shared_from_this</span>() = <span class="number">5</span></span><br><span class="line">=======testBind end==========</span><br><span class="line">============testPassAsValue start============</span><br><span class="line"><span class="number">5</span></span><br><span class="line">============testPassAsValue end============</span><br><span class="line">********************************</span><br><span class="line"><span class="number">5</span></span><br><span class="line">==========testPassAsRef start==============</span><br><span class="line"><span class="number">5</span></span><br><span class="line">==========testPassAsRef end================</span><br><span class="line">********************************</span><br><span class="line"><span class="number">7</span></span><br><span class="line">********************************</span><br><span class="line">========testFunc start========</span><br><span class="line">+ <span class="built_in">shared_from_this</span>() <span class="number">2</span></span><br><span class="line">========testFunc end========</span><br><span class="line">*******************************************</span><br><span class="line"><span class="number">3</span></span><br><span class="line">==========testPassAsRef start==============</span><br><span class="line"><span class="number">3</span></span><br><span class="line">==========testPassAsRef end================</span><br><span class="line">*******************************************</span><br><span class="line"><span class="number">2</span></span><br><span class="line">==========testPassAsRef start==============</span><br><span class="line"><span class="number">2</span></span><br><span class="line">==========testPassAsRef end================</span><br><span class="line">~<span class="built_in">TestClass</span>()</span><br><span class="line">~<span class="built_in">TestClass</span>()</span><br><span class="line">~<span class="built_in">TestClass</span>()</span><br><span class="line"></span><br><span class="line">Process finished with exit code <span class="number">0</span></span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>还有，易知，weak_ptr的复制不会导致shared_ptr的引用计数改变</li>
+</ul>
+<h2 id="TcpConnectionPtr的生命周期"><a href="#TcpConnectionPtr的生命周期" class="headerlink" title="TcpConnectionPtr的生命周期"></a>TcpConnectionPtr的生命周期</h2><ul>
+<li><p><strong>TcpConnection的引用存在于</strong></p>
+<ul>
+<li><strong>TcpServer中的<code>connections_&lt;name,TcpConnectionPtr&gt;</code>。shared_ptr。</strong>引用计数 = 1</li>
+<li><strong>channel 中的weak_ptr 当handleEvent时 会lock为shared_ptr(即TcpConnectionPtr)</strong> 。引用计数++ 保证不在handleEvent时析构TcpConnection</li>
+<li>还有就是在连接断开时的局部变量TcpConnectionPtr 以及 bind参数时候的拷贝TcpConnectionPtr。</li>
+</ul>
+</li>
+<li><p><strong>一个TcpConnection何时析构？</strong></p>
+<ul>
+<li>断开连接后，TcpConnectionPtr = 0</li>
+<li>即整个handleEvent(handleClose)结束之后(最后一个成员函数是connetionDestroyed），TcpConnectionPtr = 0，此时TcpConnection析构（channel也就跟着析构）</li>
+</ul>
+</li>
+<li><p>将一条连接断开都需要做什么操作</p>
+<ul>
+<li>大概来讲 就是<ul>
+<li>取消对该fd的监听 ：channel_-&gt;disableAll()             — TcpConnection内做(因为这是TcpConnection封装的成员)</li>
+<li>执行user设置的callback：connectionCallback_(connPtr); — TcpConnection内做</li>
+<li>将TcpConnection从TcpServer中的记录移除：connections_.erase(conn-&gt;name()); — TcpServer内做（因为这是TcpServer封装的成员）</li>
+<li>channel从poller中删除掉                               — TcpConnection内做</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>TcpConnection析构流程 / 断开连接流程</strong></p>
+</li>
+<li><p><strong>poller -&gt;  channel::closeCallback -&gt; TcpConnection::handleClose -&gt; TcpServer::removeConnection -&gt; TcpConnection::connectionDestoyed</strong></p>
+</li>
+<li><p>在进入handleClose之后，不必担心TcpConnection会在执行完成前就被销毁，因为进入之前 就已经用一个weak_ptr做了lock提升，保证了引用计数至少为1</p>
+</li>
+<li><p><img src="/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-22-04-50.png"></p>
+</li>
+<li><p><img src="/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-22-20-11.png"></p>
+</li>
+<li><p>去掉一块错误注释 其余不变<img src="/2022/10/08/muduo-bind%E4%B8%8Eshared-ptr/2022-10-27-23-20-16.png"></p>
+</li>
+<li><p>相关代码</p>
+  <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  poller -&gt;  channel::closeCallback -&gt; TcpConnection::handleClose -&gt; TcpServer::removeConnection -&gt; TcpConnection::connectionDestoyed</span></span><br><span class="line"><span class="comment">//  之前注册给channel的关于关闭连接的回调操作都已经完成 </span></span><br><span class="line">    <span class="comment">//  且TcpConnection也一直保持着没有析构。</span></span><br><span class="line"><span class="comment">//  该函数结束之后，TcpConnection就会几乎马上被析构!</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::handleClose</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">TcpConnectionPtr <span class="title">connPtr</span><span class="params">(shared_from_this())</span></span>;    </span><br><span class="line"></span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;shared_ptr cnt %ld&quot;</span>,connPtr.<span class="built_in">use_count</span>());</span><br><span class="line">    <span class="comment">//  3  = 1(channel::tie_.lock) + 1(TcpServer::connections_[connName] = conn;) + 1(connPtr)</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  TcpServer::removeConnection</span></span><br><span class="line">    <span class="comment">//  **connections_.erase(TcpConnectionPtr)**</span></span><br><span class="line">    <span class="built_in">closeCallback_</span>(connPtr);            </span><br><span class="line"></span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;shared_ptr cnt %ld tcpconnection %p point to %p&quot;</span>,connPtr.<span class="built_in">use_count</span>(),connPtr.<span class="built_in">get</span>(),<span class="keyword">this</span>);</span><br><span class="line">    <span class="comment">//  2 = 1(channel::tie_.lock) + 1(connPtr)</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">--------------------------------------------------------------</span><br><span class="line"><span class="comment">//  removeConnection -&gt; removeConnectionInLoop</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpServer::removeConnection</span><span class="params">(<span class="keyword">const</span> TcpConnectionPtr &amp;conn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  这里也证明了 即便形参是一个引用 即便正常调用函数传递的是个引用，可是，只要bind了，传递的就是一个值 会拷贝</span></span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;shared_ptr cnt %ld\n&quot;</span>,conn.<span class="built_in">use_count</span>());              <span class="comment">//  3 没变</span></span><br><span class="line">    loop_-&gt;<span class="built_in">runInLoop</span>(</span><br><span class="line">        std::<span class="built_in">bind</span>(&amp;TcpServer::removeConnectionInLoop, <span class="keyword">this</span>, conn));</span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;shared_ptr cnt %ld\n&quot;</span>,conn.<span class="built_in">use_count</span>());              <span class="comment">//  2</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  handleRead n = 0 -&gt; handleClose - &gt;removeConnection -&gt; removeConnectionInLoop -&gt; TcpConnection::connectionDestroyed</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpServer::removeConnectionInLoop</span><span class="params">(<span class="keyword">const</span> TcpConnectionPtr &amp;conn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;shared_ptr cnt %ld&quot;</span>,conn.<span class="built_in">use_count</span>());                <span class="comment">//  4 = 3+1 因为bind是拷贝值 会导致引用计数++</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">//  tcpconnection use count -- : tcpserver 从记录中删除该连接</span></span><br><span class="line">    connections_.<span class="built_in">erase</span>(conn-&gt;<span class="built_in">name</span>());                   </span><br><span class="line"></span><br><span class="line">    <span class="built_in">LOG_INFO</span>(<span class="string">&quot;after erase shared_ptr cnt %ld&quot;</span>,conn.<span class="built_in">use_count</span>());    <span class="comment">//  3 = 1(channel::tie_.lock) + 1(connPtr) + 1(bind拷贝conn)</span></span><br><span class="line"></span><br><span class="line">    (conn-&gt;<span class="built_in">getLoop</span>())-&gt;<span class="built_in">runInLoop</span>(</span><br><span class="line">        std::<span class="built_in">bind</span>(&amp;TcpConnection::connectionDestroyed,conn.<span class="built_in">get</span>())); <span class="comment">//  根据以上分析 传递裸指针也可 反正在这个函数里TcpConnectionPtr的引用计数一定不是0</span></span><br><span class="line"><span class="comment">//  connectionDestroyed : TcpConnection析构前调用的最后一个成员函数</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 连接销毁</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TcpConnection::connectionDestroyed</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    channel_-&gt;<span class="built_in">remove</span>(); <span class="comment">// 把channel从poller中删除掉</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>连接断开时的相关日志如下</p>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">[INFO] 2022-10-27-22-07-43.011788 : /home/shc/Muduo/src/TcpConnection.cpp (135) &lt;handleClose&gt;   TcpConnection::handleClose fd = 6 state = 3</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.011795 : /home/shc/Muduo/src/EpollPoller.cpp (37) &lt;updateChannel&gt;   fd = 6 , events = 0 , index = 1</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.011807 : /home/shc/Muduo/src/EpollPoller.cpp (90) &lt;update&gt;   fd = 6 is to be epolled or deleted <span class="keyword">in</span> loop 0x7ffcce544ab0 on thread 8121</span><br><span class="line">[INFO] 2022-10-27-22-07-43.011833 : /home/shc/Muduo/src/TcpConnection.cpp (146) &lt;handleClose&gt;   shared_ptr cnt 3</span><br><span class="line">[INFO] 2022-10-27-22-07-43.011856 : /home/shc/Muduo/src/TcpConnection.cpp (148) &lt;handleClose&gt;   shared_ptr cnt 3</span><br><span class="line">[INFO] 2022-10-27-22-07-43.011883 : testserver.cpp (40) &lt;onConnection&gt;   connection down : from 127.0.0.1:50216 to 127.0.0.1:6667!</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.011944 : /home/shc/Muduo/src/TcpConnection.cpp (153) &lt;handleClose&gt;   shared_ptr cnt 3</span><br><span class="line">[INFO] 2022-10-27-22-07-43.011981 : /home/shc/Muduo/src/TcpServer.cpp (120) &lt;removeConnection&gt;   shared_ptr cnt 3</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012043 : /home/shc/Muduo/src/EventLoop.cpp (149) &lt;runInLoop&gt;   cb runInLoop <span class="keyword">in</span> loop 0x7ffcce544ab0 on thread 8121</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012071 : /home/shc/Muduo/src/EventLoop.cpp (155) &lt;runInLoop&gt;   直接调用cb on loop 0x7ffcce544ab0 <span class="keyword">in</span> thread 8121</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012101 : /home/shc/Muduo/src/TcpServer.cpp (130) &lt;removeConnectionInLoop&gt;   shared_ptr cnt 4</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012126 : /home/shc/Muduo/src/TcpServer.cpp (131) &lt;removeConnectionInLoop&gt;   TcpServer::removeConnectionInLoop [EchoServer] - connection EchoServer-127.0.0.1:6667<span class="comment">#1</span></span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012169 : /home/shc/Muduo/src/TcpServer.cpp (137) &lt;removeConnectionInLoop&gt;   after erase shared_ptr cnt 3</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012195 : /home/shc/Muduo/src/EventLoop.cpp (149) &lt;runInLoop&gt;   cb runInLoop <span class="keyword">in</span> loop 0x7ffcce544ab0 on thread 8121</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012220 : /home/shc/Muduo/src/EventLoop.cpp (155) &lt;runInLoop&gt;   直接调用cb on loop 0x7ffcce544ab0 <span class="keyword">in</span> thread 8121</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012228 : /home/shc/Muduo/src/TcpConnection.cpp (332) &lt;connectionDestroyed&gt;   state_ = 0</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012252 : /home/shc/Muduo/src/EpollPoller.cpp (109) &lt;removeChannel&gt;   fd = 6 , events = 0 , index = 2 <span class="keyword">in</span> loop 0x7ffcce544ab0 on thread 8121</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012274 : /home/shc/Muduo/src/EpollPoller.cpp (90) &lt;update&gt;   fd = 6 is to be epolled or deleted <span class="keyword">in</span> loop 0x7ffcce544ab0 on thread 8121</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012311 : /home/shc/Muduo/src/TcpServer.cpp (148) &lt;removeConnectionInLoop&gt;   after removeConnectionInLoop</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012344 : /home/shc/Muduo/src/TcpServer.cpp (124) &lt;removeConnection&gt;   shared_ptr cnt 2</span><br><span class="line"></span><br><span class="line">[INFO] 2022-10-27-22-07-43.012376 : /home/shc/Muduo/src/TcpConnection.cpp (160) &lt;handleClose&gt;   shared_ptr cnt 2 tcpconnection 0x56195873ad90 point to 0x56195873ad90</span><br><span class="line">[INFO] 2022-10-27-22-07-43.012405 : /home/shc/Muduo/src/TcpConnection.cpp (45) &lt;~TcpConnection&gt;   TcpConnection::ctor (0x56195873ad90) [EchoServer-127.0.0.1:6667<span class="comment">#1] on socket 6 with state 0</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/08/muduo-buffer/" rel="prev" title="muduo-Buffer">
+      <i class="fa fa-chevron-left"></i> muduo-Buffer
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/09/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-%E4%BC%A0%E8%BE%93%E5%B1%82-%E5%8F%AF%E9%9D%A0%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93-%E6%B5%81%E6%B0%B4%E7%BA%BF/" rel="next" title="计算机网络-传输层-可靠数据传输-流水线">
+      计算机网络-传输层-可靠数据传输-流水线 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#bind-%E5%8F%AA%E4%BC%A0%E9%80%92%E5%80%BC-%E8%80%8C%E9%9D%9E-%E5%BC%95%E7%94%A8"><span class="nav-number">1.</span> <span class="nav-text">bind 只传递值 而非 引用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TcpConnectionPtr%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="nav-number">2.</span> <span class="nav-text">TcpConnectionPtr的生命周期</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '9e86ec0b3b11707b27437d1ebbec34bb',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

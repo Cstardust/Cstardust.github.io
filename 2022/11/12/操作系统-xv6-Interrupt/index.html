@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Interrupt中断概述 驱动(管理设备的代码)架构：Handler + Bottom interrupt Handler : 即 Bottom 例子 : kernel读取用户字符传给shell,并显示在终端上 PLIC路由中断;UART传输字符    Interrupt的并发性 发出Interrupt的设备与cpu并行 中断会停止当前进程(user -&gt; uservec &#x2F; kerne">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-Interrupt">
+<meta property="og:url" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="Interrupt中断概述 驱动(管理设备的代码)架构：Handler + Bottom interrupt Handler : 即 Bottom 例子 : kernel读取用户字符传给shell,并显示在终端上 PLIC路由中断;UART传输字符    Interrupt的并发性 发出Interrupt的设备与cpu并行 中断会停止当前进程(user -&gt; uservec &#x2F; kerne">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-20-52-29.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-22-05-02.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-22-17-18.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-23-12-01.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-04-14.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-09-56-51.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-12-02.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-14-22.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-14-54.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-17-08.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-16-19-08.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-27-39.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-16-18-22.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-20-56-43.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-14-27.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-01-58.png">
+<meta property="og:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-55-15.png">
+<meta property="article:published_time" content="2022-11-12T14:01:34.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:21:41.751Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png">
+
+<link rel="canonical" href="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-Interrupt | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-Interrupt
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-12 22:01:34" itemprop="dateCreated datePublished" datetime="2022-11-12T22:01:34+08:00">2022-11-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:41" itemprop="dateModified" datetime="2023-02-27T23:21:41+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>14k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>13 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>Interrupt中断概述<ul>
+<li>驱动(管理设备的代码)架构：Handler + Bottom</li>
+<li>interrupt Handler : 即 Bottom</li>
+<li>例子 : kernel读取用户字符传给shell,并显示在终端上<ul>
+<li>PLIC路由中断;UART传输字符</li>
+<li><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png"></li>
+</ul>
+</li>
+<li>Interrupt的并发性<ul>
+<li>发出Interrupt的设备与cpu并行</li>
+<li>中断会停止当前进程(user -&gt; uservec / kernel -&gt; kernelvec)</li>
+<li>驱动的top和bottom是并行的.(一个cpu上跑top , 一个cpu上跑bottom)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>本篇有待复习、总结</p>
+<span id="more"></span>
+
+
+<h2 id="问题-及-解释"><a href="#问题-及-解释" class="headerlink" title="问题 及 解释"></a>问题 及 解释</h2><ul>
+<li><p>interrupt是如何保存上下文以及将上下文重新加载的？（Interrupt也会进入uservec/kernelvec吗？会）</p>
+<ul>
+<li>和trap机制一样。都是用uservec或者kernelvec。</li>
+</ul>
+</li>
+<li><p>console显示 $应当是不需要中断，而console上显示用户输入的字符则需要中断？</p>
+<ul>
+<li>console显示$ 就是驱动将$送入了uart，uart送入了console。</li>
+<li>console显示用户输入字符，则是<ul>
+<li>shell 读取 用户输入的字符（这过程中涉及中断），顺带驱动将读入的字符送入uart，再送到console。 <ul>
+<li>所涉及的中断是，键盘键入字符给uart，也即，键盘上有字符输入需要kernel处理，也即键盘需要得到os关注，因此发出个中断。中断经由PLIC路由到os。kernel中的Interrupt Handler对此进行处理，</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>uart到底是个什么？</p>
+<ul>
+<li>应该是个芯片吧。</li>
+<li>我现在理解就是一个字符的转发站。一端是kernel code，一端是设备。在这两方之间进行字符的转发。</li>
+<li>UART硬件可以看作一组映射到内存中的控制寄存器，对硬件的控制可以直接通过load和store特定内存来完成。UART内存映射地址开始于0x10000000或UART0（定义于memlayout.h）。每个控制寄存器的大小为1byte，偏移量定义于uart.c。</li>
+<li>uart和网卡这些东西是什么关系？</li>
+</ul>
+</li>
+<li><p>中断到底指的是什么？停止当前正在运行的进程？然后去处理来的字符？</p>
+<ul>
+<li>中断 是 设备希望得到 os关注时，所采取的手段。即向os发送一个中断，表示“我需要你处理一下”。不一定是设备产生了字符，也可能是其他事件。比如网卡接收了packet。</li>
+</ul>
+</li>
+<li><p>uart和cpu是并行的吗？</p>
+<ul>
+<li>对。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>剩下的问题请 搜索 “未解决问题” 或者 “QUES”</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ul>
+<li>一句话说明：user在键盘上敲下的按键，是怎么使得console上显示出来敲入的字符的？<ul>
+<li>先前shell 调用read … -&gt; sys_read … -&gt; (驱动的top）consoleread（相对于InputBuffer是个Consumer的角色）， 此时 inputBuffer为空，sleep等待。</li>
+<li>user按下按键，键盘发起中断，经PLIC路由达到一个CPU核。cpu核接收中断 保存上下文 跳转到相应的处理代码处，这里比方说是uservec -&gt; usertrap，usertrap根据PLIC(plic_claim)提供的信息，得知是哪个设备发出了中断，进行相应处理。这里是uart中断，故进入(驱动的Bottom)（即Interrupt Handler）（同时相对于inputBuffer来说是一个Producer的角色）uartintr()。uartintr中，调用uartget()从uart的reg中读出字符c，然后调用consoleintr(c)，其中1. 通过consputc(c)（最终到writeReg(c)将字符写入uart寄存器）来讲user键入的字符送入uart，然后uart负责送到console上；2. 将c放入驱动的inputBuffer，并唤醒之前由于inputBuffer为空而睡眠的consoleread。而后结束中断处理。层层返回，返回到usertrap，然后到了usertrapret，然后userretvec，继续shell。</li>
+<li>如图<img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>对于uart来说可以看成有两个驱动。<ul>
+<li>驱动1：一个是top是consolewrite（负责往outputBuffer中放字符） , buffer是outputBuffer , bottom是uartintr中的uartstart()（其实并不是一个Interrupt Handler，而仅仅是一个操作设备的代码，负责outputBuffer中的字符送入uart，uart将字符送入console）</li>
+<li>驱动2：一个top是consoleread（负责从inputBuffer中读） , buffer是 inputBuffer,bottom是uartintr。（是个Interrupt Handler）（负责处理设备发出的中断，具体是读取uart送来的字符，放入inputBuffer，唤醒consoleread，并将字符echo到uart进而到console上）<ul>
+<li>对于该驱动，其top和bottom是可以并行的。</li>
+<li>如一个cpu核在consoleread，另一个cpu核接收了uart发出的中断，故执行uartintr。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>关于我以为的uart,PLIC的作用。正确性未知，反正我这么理解的。有待验证。<br><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-20-52-29.png"></li>
+</ul>
+<h1 id="Interrupt"><a href="#Interrupt" class="headerlink" title="Interrupt"></a>Interrupt</h1><h2 id="Interrup-与-syscall区别"><a href="#Interrup-与-syscall区别" class="headerlink" title="Interrup 与 syscall区别"></a>Interrup 与 syscall区别</h2><ul>
+<li><p><strong>中断场景：硬件希望得到操作系统的关注。</strong></p>
+<ul>
+<li>网卡收到一个packet，网卡会生成一个中断</li>
+<li>用户按下键盘，键盘会产生一个中断。</li>
+</ul>
+</li>
+<li><p>中断发生时，os需要做的是 </p>
+<ul>
+<li>保存当前工作</li>
+<li>处理中断<ul>
+<li>这里的保存和恢复工作，与之前学的系统调用使用的trap很像。</li>
+<li>所以系统调用，page fault，中断，都使用相同的机制。</li>
+</ul>
+</li>
+<li>处理完成后，恢复之前的工作。</li>
+</ul>
+</li>
+<li><p>中断Interrupt 和 系统调用syscall 的<strong>区别</strong></p>
+<ul>
+<li><strong>asynchronous</strong> <ul>
+<li>Interrupt: 硬件发出Interrupt时，os的Interrupt handler与当前在cpu上运行的process没有任何关联。</li>
+<li>syscall: syscall发生在process的上下文中。</li>
+</ul>
+</li>
+<li><strong>concurrency</strong><ul>
+<li>Interrupt: <strong>CPU和产生Interrupt的设备是真正并行的</strong>。我们必须管理这里的并行</li>
+<li>比如网卡自己独立的处理来自网络的packet，然后在某个时间点产生中断，但是同时，CPU也在运行。</li>
+</ul>
+</li>
+<li><strong>program device</strong><ul>
+<li>我们这节课主要关注外部设备，例如网卡，UART，而这些设备需要被编程。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="PLIC-与-CPU"><a href="#PLIC-与-CPU" class="headerlink" title="PLIC 与 CPU"></a>PLIC 与 CPU</h2><ul>
+<li><strong>PLIC</strong> : 是个cpu核旁边的硬件，用于<strong>管理来自于外设的中断</strong><ul>
+<li>CPU是通过<strong>Platform Level Interrupt Control</strong>，简称PLIC来处理设备中断。</li>
+</ul>
+</li>
+<li><strong>PLIC位置</strong>如图：在cpu核旁边<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-22-05-02.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>PLIC具体结构</strong>如下<ul>
+<li>设备发出的中断到达PLIC时，PLIC会将中断路由到某个CPU核。如果所有cpu核都在处理中断，PLIC会保留中断直到有一个CPU核处理中断。</li>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-22-17-18.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>PLIC管理中断流程</strong>：<ul>
+<li>PLIC会向CPU通知当前有一个待处理的中断。</li>
+<li>其中一个CPU核会claim接收中断，这样PLIC就不会把中断发给其他CPU处理。</li>
+<li>CPU核处理完中断后，CPU会通知PLIC。</li>
+<li>PLIC将不再保存中断信息。</li>
+</ul>
+</li>
+</ul>
+<h2 id="驱动"><a href="#驱动" class="headerlink" title="驱动"></a>驱动</h2><h3 id="什么是驱动"><a href="#什么是驱动" class="headerlink" title="什么是驱动"></a>什么是驱动</h3><ul>
+<li><strong>驱动</strong><ul>
+<li><strong>管理设备的代码称为驱动</strong></li>
+<li>所有驱动都在<strong>内核</strong>中</li>
+</ul>
+</li>
+<li>下面介绍<strong>uart</strong>设备的驱动</li>
+</ul>
+<h3 id="典型架构"><a href="#典型架构" class="headerlink" title="典型架构"></a>典型架构</h3><ul>
+<li><p>典型架构：大部分<strong>驱动可分为两部分</strong>：<strong>bottom和top</strong></p>
+</li>
+<li><p><strong>bottom ： Interrupt Handler</strong></p>
+<ul>
+<li>bottom部分通常是Interrupt Handler。</li>
+<li>当PLIC将中断送至CPU，CPU接收该中断，然后CPU会调用相应的Interrupr Handler。</li>
+<li>Interrupt Handler 就是对 设备发出的中断进行响应，也即在操作发出中断的设备或者其他响应设备。它也并不运行在任何特定process的context，只是处理中断。</li>
+</ul>
+</li>
+<li><p><strong>top : 用户进程 / 内核的其他部分调用的接口</strong></p>
+<ul>
+<li>对uart来说，top是read/write接口，这些接口可被更高级代码调用。</li>
+</ul>
+</li>
+<li><p>驱动的典型架构如下</p>
+<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-13-23-12-01.png"></p>
+</blockquote>
+</li>
+<li>通过buffer queue使得并行的cpu和设备解耦。</li>
+<li>QUES1 : 这句话是想说明什么？老师的这句话是在说top部分不能直接从interrupt handler中读取数据，而是要从queue中读取的原因吧？ <ul>
+<li><blockquote>
+<p>通常对于Interrupt handler来说存在一些限制，因为它并没有运行在任何进程的context中，所以进程的page table并不知道该从哪个地址读写数据，也就无法直接从Interrupt handler读写数据。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Interrupt Handler中如何对设备进行操作、如何编程？</p>
+<ul>
+<li><blockquote>
+<p>通常来说，编程是通过memory mapped I/O完成的。在SiFive的手册中，设备地址出现在物理地址的特定区间内，这个区间由主板制造商决定。操作系统需要知道这些设备位于<strong>物理地址空间的具体位置</strong>，然后再<strong>通过普通的load/store指令</strong>对这些地址进行编程。load/store指令实际上的工作就是<strong>读写设备的控制寄存器</strong>。</p>
+</blockquote>
+</li>
+<li><blockquote>
+<p>例如，<strong>对网卡执行store</strong>指令时，<strong>CPU会修改网卡的某个控制寄存器</strong>，进而<strong>导致网卡发送一个packe</strong>t。所以这里的<strong>load/store指令不会读写内存，而是会操作设备</strong>。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="中断开启"><a href="#中断开启" class="headerlink" title="中断开启"></a>中断开启</h2><ul>
+<li>开启中断，也即使得CPU可以接受来自设备的中断。</li>
+<li>我觉着大致可以分为三步<ul>
+<li>令设备可以发出中断</li>
+<li>令PLIC可以接收并路由中断</li>
+<li>令CPU可以接受中断</li>
+</ul>
+</li>
+</ul>
+<h4 id="前置知识"><a href="#前置知识" class="headerlink" title="前置知识"></a>前置知识</h4><ul>
+<li>前置知识：RISCV中 与中断相关的寄存器<ul>
+<li>$SIE (Supervisor Interrupt Enable)<ul>
+<li>有3个bit。<ul>
+<li>bit(E) : 代表UART外部设备的中断。</li>
+<li>bit(S) : 代表软件中断</li>
+<li>bit(T) : 代表定时器中断</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>$SSTATUS (Supervisor Statue)<ul>
+<li>有1个bit 负责 打开、关闭中断。</li>
+<li>$SIE负责单独控制特定的中断；$SSTAUS 负责控制所有中断</li>
+<li>每个CPU核都有独立的$SIE $SSTATUS。</li>
+</ul>
+</li>
+<li>$SIP (Supervisor Interrupt Pending)<ul>
+<li>此时发生的中断类型</li>
+</ul>
+</li>
+<li>$SCAUSE<ul>
+<li>表明当前进入kernel的原因是中断</li>
+</ul>
+</li>
+<li>$STVEC<ul>
+<li>trap / page fault / Interrupt发生时，此时运行的user process的程序计数器。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="系统一开始是如何开启中断的"><a href="#系统一开始是如何开启中断的" class="headerlink" title="系统一开始是如何开启中断的"></a>系统一开始是如何开启中断的</h4><ul>
+<li><p><strong>entry.S -&gt; start.c : void start()</strong></p>
+<ul>
+<li>所有的中断都设置在Supervisor mode</li>
+<li>设置$SIE来接收External，软件和定时器中断</li>
+<li>初始化定时器</li>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-04-14.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>start.C -&gt; main.c : int main(){}</strong></p>
+<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-09-56-51.png"></p>
+</blockquote>
+</li>
+<li><strong>consoleinit</strong>：设置好uart芯片，使其可以产哼中断<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-12-02.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-14-22.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>plicinit,plicinithart</strong> : 使得PLIC可以接受相应中断，并路由到cpu。<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-14-54.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>scheduler -&gt; inrt_on</strong> : 设置$SSTATUS，使得CPU可以接收中断。<ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-10-17-08.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>至此，中断被完全打开，cpu可以接受来自设备的中断。</li>
+</ul>
+</li>
+</ul>
+<h2 id="前置知识：发生中断时如何进入相应C-code"><a href="#前置知识：发生中断时如何进入相应C-code" class="headerlink" title="前置知识：发生中断时如何进入相应C code"></a>前置知识：发生中断时如何进入相应C code</h2><ul>
+<li><strong>发生中断时，进入kernel C Code之前的处理</strong>：（所有都是这样）<ul>
+<li><ol>
+<li><strong>清除$SIE</strong></li>
+</ol>
+<ul>
+<li>防止CPU核被其他中断打扰。CPU核完成当前中断后，再恢复$SIE</li>
+</ul>
+</li>
+<li><ol start="2">
+<li><strong>保存当前PC到$SEPC</strong></li>
+</ol>
+</li>
+<li><ol start="3">
+<li><strong>保存当前mode</strong></li>
+</ol>
+</li>
+<li><ol start="4">
+<li><strong>设置mode为Supervisor mode</strong></li>
+</ol>
+</li>
+<li><ol start="5">
+<li><strong>PC设置为$STVEC。即跳转到相应的处理代码处。</strong></li>
+</ol>
+<ul>
+<li>user态时发生的中断即跳转到uservec，kernel处发生的中断即跳转到kernelvec。</li>
+<li>uservec -&gt; usertrap ; kernelvec -&gt; kerneltrap</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="console如何显示"><a href="#console如何显示" class="headerlink" title="console如何显示 $"></a>console如何显示 $</h2><h3 id="当没发生中断时"><a href="#当没发生中断时" class="headerlink" title="当没发生中断时"></a>当没发生中断时</h3><ul>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-16-19-08.png"></p>
+</blockquote>
+</li>
+<li>打印$流程<ul>
+<li>init.c -&gt; sh.c -&gt; getcmd -&gt; fprintf($) -&gt; write(fd, &amp;c, 1); -&gt; sys_write -&gt; filewrite -&gt;  devsw[CONSOLE].write -&gt; consolewrite -&gt; uartputc(c) -&gt; uartstart()</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>该驱动要将字符传送到uart最后传送到console上，需要有个缓冲区。这里是个循环buffer。我称之为outputBuffer (queue)吧。</p>
+<ul>
+<li>code如下</li>
+<li>uart_tx_r 指向当前要从buffer中读走的字符</li>
+<li>uart_tx_w 指向当前要写入字符到buffer中的位置。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// the transmit output buffer.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">uart_tx_lock</span>;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> UART_TX_BUF_SIZE 32</span></span><br><span class="line"><span class="keyword">char</span> uart_tx_buf[UART_TX_BUF_SIZE];</span><br><span class="line"><span class="keyword">int</span> uart_tx_w; <span class="comment">// write next to uart_tx_buf[uart_tx_w++]</span></span><br><span class="line"><span class="keyword">int</span> uart_tx_r; <span class="comment">// read next from uart_tx_buf[uar_tx_r++]</span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-27-39.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p><strong>TOP</strong> : consolewrite -&gt; void uartputc(int c)</p>
+<ul>
+<li><ol>
+<li>将c写入给buffer queue。</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>从buffer中取出char给uart，通知uart处理char。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// add a character to the output buffer and tell the</span></span><br><span class="line"><span class="comment">// UART to start sending if it isn&#x27;t already.</span></span><br><span class="line"><span class="comment">// blocks if the output buffer is full.</span></span><br><span class="line"><span class="comment">// because it may block, it can&#x27;t be called</span></span><br><span class="line"><span class="comment">// from interrupts; it&#x27;s only suitable for use</span></span><br><span class="line"><span class="comment">// by write().</span></span><br><span class="line"><span class="comment">//  将字符C写入驱动的buffer queue中。</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">uartputc</span><span class="params">(<span class="keyword">int</span> c)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    acquire(&amp;uart_tx_lock);</span><br><span class="line">    <span class="keyword">if</span>(panicked)&#123;</span><br><span class="line">        <span class="keyword">for</span>(;;)</span><br><span class="line">        ;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="comment">//  循环buffer已经满了 则sleep，将CPU让给其他进程。</span></span><br><span class="line">        <span class="keyword">if</span>(((uart_tx_w + <span class="number">1</span>) % UART_TX_BUF_SIZE) == uart_tx_r)&#123;</span><br><span class="line">            <span class="comment">// buffer is full.</span></span><br><span class="line">            <span class="comment">// wait for uartstart() to open up space in the buffer.</span></span><br><span class="line">            sleep(&amp;uart_tx_r, &amp;uart_tx_lock);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//  将char c 写入buffer，更新w指针。</span></span><br><span class="line">            uart_tx_buf[uart_tx_w] = c;</span><br><span class="line">            uart_tx_w = (uart_tx_w + <span class="number">1</span>) % UART_TX_BUF_SIZE;</span><br><span class="line">        <span class="comment">//  通知uart进行操作</span></span><br><span class="line">            uartstart();</span><br><span class="line">            release(&amp;uart_tx_lock);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+</li>
+</ul>
+</li>
+<li><p><strong>BOTTOM</strong> : uartintr -&gt; consoleintr ,uartstart()</p>
+</li>
+<li><p>这里直接调用了其BOTTOM中的一部分:uartstart，并不是为了相应设备发出的中断，只是为了操作下设备。</p>
+<ul>
+<li><ol>
+<li>从uart_tx_buf中取出一个char</li>
+</ol>
+<ul>
+<li>int c = uart_tx_buf[uart_tx_r++];</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>将该char送入uart.</li>
+</ol>
+<ul>
+<li>WriteReg(THR, c);</li>
+<li>也即，告诉uart，我这里有一个字节需要你来发送。</li>
+</ul>
+</li>
+<li><ol start="3">
+<li>数据送到uart后，系统调用即返回，user shell继续执行.</li>
+</ol>
+</li>
+<li><ol start="4">
+<li>与此同时，uart将数据送出，送到指定设备（console？）。</li>
+</ol>
+</li>
+<li><p><strong>如果没发生中断的话，这里就是正常输出了$吧</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// if the UART is idle, and a character is waiting</span></span><br><span class="line"><span class="comment">// in the transmit buffer, send it.</span></span><br><span class="line"><span class="comment">// caller must hold uart_tx_lock.</span></span><br><span class="line"><span class="comment">// called from both the top- and bottom-half.</span></span><br><span class="line"><span class="comment">//  通知设备执行操作</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">uartstart</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="keyword">if</span>(uart_tx_w == uart_tx_r)&#123;</span><br><span class="line">            <span class="comment">// transmit buffer is empty.</span></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">if</span>((ReadReg(LSR) &amp; LSR_TX_IDLE) == <span class="number">0</span>)&#123;</span><br><span class="line">            <span class="comment">// the UART transmit holding register is full,</span></span><br><span class="line">            <span class="comment">// so we cannot give it another byte.</span></span><br><span class="line">            <span class="comment">// it will interrupt when it&#x27;s ready for a new byte.</span></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//  从uart_tx_buf中取出一个char,将该char送入uart</span></span><br><span class="line">        <span class="keyword">int</span> c = uart_tx_buf[uart_tx_r];</span><br><span class="line">        uart_tx_r = (uart_tx_r + <span class="number">1</span>) % UART_TX_BUF_SIZE;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  maybe uartputc() is waiting for space in the buffer. </span></span><br><span class="line">        <span class="comment">//  唤醒等待空闲空间的uartputc()函数</span></span><br><span class="line">        wakeup(&amp;uart_tx_r);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  将char写入uart的寄存器中</span></span><br><span class="line">        <span class="comment">//  也即，告诉uart，我这里有一个字节需要你来发送。</span></span><br><span class="line">        <span class="comment">//  数据送到uart后，系统调用即返回，user shell继续执行</span></span><br><span class="line">        <span class="comment">//  与此同时，uart将数据送出，送到指定设备(应该是console)。</span></span><br><span class="line">        WriteReg(THR, c);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="当发生中断时"><a href="#当发生中断时" class="headerlink" title="当发生中断时"></a>当发生中断时</h3><ul>
+<li><p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-16-18-22.png"></p>
+</li>
+<li><p><strong>发生中断时，进入kernel C Code之前的处理</strong>：（所有都是这样）</p>
+<ul>
+<li>如上所述。</li>
+</ul>
+</li>
+<li><p><strong>发生中断时，进入kernel C Code之后的流程</strong></p>
+<ul>
+<li>举例 ，当在我们向Console输出字符时，发生中断。</li>
+<li>shell运行在user态,故跳转到usertrap。</li>
+<li><strong>usertrap -&gt; devintr -&gt; uartintr -&gt; consoleintr , uartstart</strong> </li>
+<li>usertrap<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>()&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;<span class="keyword">else</span> <span class="keyword">if</span>((which_dev = devintr()) != <span class="number">0</span>)&#123;</span><br><span class="line"><span class="comment">// ok</span></span><br><span class="line">&#125;<span class="keyword">else</span>&#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>int devintr()<ul>
+<li>获取中断号 : int irq = plic_claim();</li>
+<li>根据中断号判断是哪个设备的中断，进行相应处理。我们的例子中会进入uartintr()<ul>
+<li>if(irq == UART0_IRQ) uartintr();</li>
+<li>if(irq == VIRTIO0_IRQ) virtio_disk_intr();</li>
+<li>if(irq) printf(“unexpected interrupt irq=%d\n”, irq);<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// check if it&#x27;s an external interrupt or software interrupt,</span></span><br><span class="line"><span class="comment">// and handle it.</span></span><br><span class="line"><span class="comment">// returns 2 if timer interrupt,</span></span><br><span class="line"><span class="comment">// 1 if other device,</span></span><br><span class="line"><span class="comment">// 0 if not recognized.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">devintr</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    uint64 scause = r_scause();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>((scause &amp; <span class="number">0x8000000000000000</span>L) &amp;&amp;</span><br><span class="line">        (scause &amp; <span class="number">0xff</span>) == <span class="number">9</span>)&#123;</span><br><span class="line">        <span class="comment">// this is a supervisor external interrupt, via PLIC.</span></span><br><span class="line">        <span class="comment">// irq indicates which device interrupted.</span></span><br><span class="line">        <span class="comment">//  获取中断号</span></span><br><span class="line">        <span class="keyword">int</span> irq = plic_claim();</span><br><span class="line">        <span class="comment">//  鉴定为uart发出中断</span></span><br><span class="line">        <span class="keyword">if</span>(irq == UART0_IRQ)&#123;</span><br><span class="line">            uartintr();</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span>(irq == VIRTIO0_IRQ)&#123;</span><br><span class="line">            virtio_disk_intr();</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span>(irq)&#123;</span><br><span class="line">            <span class="built_in">printf</span>(<span class="string">&quot;unexpected interrupt irq=%d\n&quot;</span>, irq);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// the PLIC allows each device to raise at most one</span></span><br><span class="line">        <span class="comment">// interrupt at a time; tell the PLIC the device is</span></span><br><span class="line">        <span class="comment">// now allowed to interrupt again.</span></span><br><span class="line">        <span class="keyword">if</span>(irq)</span><br><span class="line">            plic_complete(irq);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span>(scause == <span class="number">0x8000000000000001</span>L)&#123;</span><br><span class="line">        <span class="comment">// software interrupt from a machine-mode timer interrupt,</span></span><br><span class="line">        <span class="comment">// forwarded by timervec in kernelvec.S.</span></span><br><span class="line">        <span class="keyword">if</span>(cpuid() == <span class="number">0</span>)&#123;</span><br><span class="line">            clockintr();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// acknowledge the software interrupt by clearing</span></span><br><span class="line">        <span class="comment">// the SSIP bit in sip.</span></span><br><span class="line">        w_sip(r_sip() &amp; ~<span class="number">2</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>驱动的BOTTOM Interrupt Handler: void uartintr()</strong><ul>
+<li>consoleintr()</li>
+<li>uartstart()<ul>
+<li>将shell存储在驱动中的buffer queue中的字符取出，送到uart的寄存器<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// handle a uart interrupt, raised because input has</span></span><br><span class="line"><span class="comment">// arrived, or the uart is ready for more output, or</span></span><br><span class="line"><span class="comment">// both. called from trap.c.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">uartintr</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// read and process incoming characters.</span></span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="keyword">int</span> c = uartgetc();</span><br><span class="line">        <span class="keyword">if</span>(c == <span class="number">-1</span>)         <span class="comment">//  中断没字符 不读</span></span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        consoleintr(c);     <span class="comment">//  读取终端输入的字符 </span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// send buffered characters.</span></span><br><span class="line">    acquire(&amp;uart_tx_lock);</span><br><span class="line">    uartstart();            <span class="comment">//  将buffer queue中的char送入uart的寄存器。uart将char送到console</span></span><br><span class="line">    release(&amp;uart_tx_lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>实际上在提示符“$”之后，Shell还会输出一个空格字符，write系统调用可以在UART发送提示符“$”的同时，并发的将空格字符写入到buffer中。所以UART的发送中断触发时，可以发现在buffer中还有一个空格字符，之后会将这个空格字符送出。？？还不太理解。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>由上述可见，驱动的top部分和bottom部分解耦开。</strong>(通过buffer queue)<ul>
+<li>top : consolewrite-&gt;uartput(c)</li>
+<li>bottom :  void uartintr() : consoleintr() , uartstart()</li>
+</ul>
+</li>
+</ul>
+<h2 id="shell-如何-读取用户键入的-字符-并-传给shell程序-并-显示在终端上"><a href="#shell-如何-读取用户键入的-字符-并-传给shell程序-并-显示在终端上" class="headerlink" title="shell 如何 读取用户键入的 字符 并 传给shell程序 / 并 显示在终端上"></a>shell 如何 读取用户键入的 字符 并 传给shell程序 / 并 显示在终端上</h2><ul>
+<li>类似于上面的驱动要将字符传送到uart最后传送到console上。那个驱动结构中有一个循环缓冲区。我就称之为outputBuffer queue吧。</li>
+<li>同理，这里要将keyboard传给uart上的字符读到驱动中，驱动中也有一个循环缓冲区。我就称之为inputBuffer queue吧<ul>
+<li>code如下，原理和那个outputBuffer一样。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// input</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INPUT_BUF 128</span></span><br><span class="line"><span class="keyword">char</span> buf[INPUT_BUF];</span><br><span class="line">uint r;  <span class="comment">// Read index</span></span><br><span class="line">uint w;  <span class="comment">// Write index</span></span><br><span class="line">uint e;  <span class="comment">// Edit index</span></span><br><span class="line">&#125; cons;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>如图<img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-02-42.png"></li>
+</ul>
+<h3 id="shell-从console中读取用户输入"><a href="#shell-从console中读取用户输入" class="headerlink" title="shell 从console中读取用户输入"></a>shell 从console中读取用户输入</h3><ul>
+<li>这一部分还没发生中断。</li>
+<li><strong>函数流程</strong>: (sh.c)gets -&gt; read -&gt; fileread -&gt; devsw[f-&gt;major].read -&gt; consoleread(int user_dst, uint64 dst, int n) -&gt;阻塞的读完指定bytes</li>
+<li><strong>TOP : consoleread 核心逻辑</strong>如下：<ul>
+<li>是驱动架构中的<strong>TOP</strong></li>
+<li>读取buffer queue中的字符，遇到’\n’或者读完n bytes之后就返回到用户sh.c</li>
+<li>当buffer queue中没有字符时，sleep等待。等待被唤醒。即等待bottom的InterruptHandler处理键盘的中断，将字符放入buffer queue。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// user read()s from the console go here.</span></span><br><span class="line"><span class="comment">// copy (up to) a whole input line to dst.</span></span><br><span class="line"><span class="comment">// user_dist indicates whether dst is a user</span></span><br><span class="line"><span class="comment">// or kernel address.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">consoleread</span><span class="params">(<span class="keyword">int</span> user_dst, uint64 dst, <span class="keyword">int</span> n)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    acquire(&amp;cons.lock);</span><br><span class="line">    <span class="keyword">while</span>(n &gt; <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// wait until interrupt handler has put some input into cons.buffer.</span></span><br><span class="line">        <span class="comment">//  这不就是条件变量配合锁使用。</span></span><br><span class="line">        <span class="keyword">while</span>(cons.r == cons.w)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  等待buffer中有可读数据</span></span><br><span class="line">            sleep(&amp;cons.r, &amp;cons.lock);</span><br><span class="line">        &#125;</span><br><span class="line">        c = cons.buf[cons.r++ % INPUT_BUF];</span><br><span class="line">        <span class="comment">// copy the input byte to the user-space buffer.</span></span><br><span class="line">        cbuf = c;</span><br><span class="line">        <span class="comment">//  将字符c传给user层地址空间</span></span><br><span class="line">        either_copyout(user_dst, dst, &amp;cbuf, <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">        dst++;--n;</span><br><span class="line">        <span class="keyword">if</span>(c == <span class="string">&#x27;\n&#x27;</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// a whole line has arrived, return to</span></span><br><span class="line">            <span class="comment">// the user-level read().</span></span><br><span class="line">            <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    release(&amp;cons.lock);</span><br><span class="line">    <span class="keyword">return</span> target - n;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="用户键入键盘-触发中断"><a href="#用户键入键盘-触发中断" class="headerlink" title="用户键入键盘,触发中断"></a>用户键入键盘,触发中断</h3><ul>
+<li>用户键入键盘,触发中断,kernel的uartintr作为InterrupHandler进行处理。</li>
+</ul>
+<ul>
+<li>usertrap -&gt; devintr -&gt; <strong>BOTTOM : uartintr</strong> -&gt; <strong>uartgetc , consoleintr , uartstart。</strong></li>
+<li><strong>BOTTOM Interrupt Handler: uartintr</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// handle a uart interrupt, raised because input has</span></span><br><span class="line"><span class="comment">// arrived, or the uart is ready for more output, or</span></span><br><span class="line"><span class="comment">// both. called from trap.c.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">uartintr</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 其实我觉着这read 和 send两部分可以分成两个函数吧。。。。</span></span><br><span class="line">    <span class="comment">// read and process incoming characters.</span></span><br><span class="line">        <span class="comment">//  这里操作的buffer是inputBuffer(对于shell来说) 是一个为了从uart读入字符给上层的buffer</span></span><br><span class="line">    <span class="keyword">while</span>(<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="keyword">int</span> c = uartgetc();</span><br><span class="line">        <span class="keyword">if</span>(c == <span class="number">-1</span>)</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">        consoleintr(c);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// send buffered characters.</span></span><br><span class="line">        <span class="comment">//  这里操作的buffer是outputBuffer(对于shell来说) 是一个为了从将字符从上层送入uart的buffer。</span></span><br><span class="line">    acquire(&amp;uart_tx_lock);</span><br><span class="line">    uartstart();</span><br><span class="line">    release(&amp;uart_tx_lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>uartgetc : 从uart中读取1个字符</li>
+<li>consoleintr : 将从uart读取的字符填充到buffer queue中，并唤醒consoleread。可以看出consoleintr是个producer的角色。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">consoleintr</span><span class="params">(<span class="keyword">int</span> c)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    acquire(&amp;cons.lock);</span><br><span class="line">    <span class="keyword">switch</span>(c)&#123;</span><br><span class="line">        <span class="comment">// ....</span></span><br><span class="line">    <span class="keyword">default</span>:</span><br><span class="line">        <span class="keyword">if</span>(c != <span class="number">0</span> &amp;&amp; cons.e-cons.r &lt; INPUT_BUF)&#123;</span><br><span class="line">            c = (c == <span class="string">&#x27;\r&#x27;</span>) ? <span class="string">&#x27;\n&#x27;</span> : c;</span><br><span class="line">            <span class="comment">// echo back to the user.</span></span><br><span class="line">            consputc(c);</span><br><span class="line">            <span class="comment">// store for consumption by consoleread().</span></span><br><span class="line">            cons.buf[cons.e++ % INPUT_BUF] = c;</span><br><span class="line">            <span class="comment">//  读取了一行 / 全部读取完了。</span></span><br><span class="line">            <span class="comment">//  那么 唤醒等待条件变量cons.r的consoleread</span></span><br><span class="line">            <span class="keyword">if</span>(c == <span class="string">&#x27;\n&#x27;</span> || c == C(<span class="string">&#x27;D&#x27;</span>) || cons.e == cons.r+INPUT_BUF)&#123;</span><br><span class="line">                <span class="comment">// wake up consoleread() if a whole line (or end-of-file)</span></span><br><span class="line">                <span class="comment">// has arrived.</span></span><br><span class="line">                cons.w = cons.e;</span><br><span class="line">                wakeup(&amp;cons.r);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>uartstart() : 感觉在这里没啥用处。或者说跟上面读取的键盘的字符没啥关系。因为uartstart把output buffer queue中的字符给uart。让其送到console。和我们上述读取键盘的字符时所用的buf不是一个buf。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>之后Consumer consoleread被唤醒。从input buffer queue 中读取字符到user态。返回到user层。</li>
+</ul>
+<h2 id="Inetrrupt的并发"><a href="#Inetrrupt的并发" class="headerlink" title="Inetrrupt的并发"></a>Inetrrupt的并发</h2><ul>
+<li><p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-20-56-43.png"></p>
+</li>
+<li><p><strong>设备与CPU是并行运行的</strong></p>
+<ul>
+<li>如CPU将字符送入UART的reg之后就会返回Shell，而与此同时，UART正在并行的将字符传送给Console。此时Shell可能正在并行的调用write，向buffer queue中加入字符。</li>
+</ul>
+</li>
+<li><p><strong>中断会停止当前运行的程序</strong></p>
+<ul>
+<li>对于user代码，无妨，因为中断会导致跳转到uservec trampoline，进行和syscall trap时一样的对用户上下文的保存。</li>
+<li>QUES2：对于kernel，不成？<img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-14-27.png">我不理解。不是也有kernelvec吗</li>
+</ul>
+</li>
+<li><p><strong>驱动的top和bottom部分是并行运行的</strong></p>
+<ul>
+<li>例如，Shell会在传输完提示符“$”之后再调用write系统调用传输空格字符，代码会走到UART驱动的top部分（注，uartputc函数），将空格写入到buffer中；但是同时在另一个CPU核，可能会收到来自于UART的中断，进而执行UART驱动的bottom部分，查看相同的buffer。如图<ul>
+<li><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-17-01-58.png"></li>
+</ul>
+</li>
+<li>所以一个驱动的top和bottom部分可以并行的在不同的CPU上运行。这里我们通过lock来管理并行。因为这里有共享的数据，我们想要buffer在一个时间只被一个CPU核所操作<ul>
+<li>input/outputbuffer queue存在于内存中，并且只有一份，所以，所有的CPU核都并行的与这一份数据交互。所以我们才需要lock。</li>
+<li><blockquote>
+<p><img src="/2022/11/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-Interrupt/2022-11-14-13-55-15.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Interrupt的演进"><a href="#Interrupt的演进" class="headerlink" title="Interrupt的演进"></a>Interrupt的演进</h2><ul>
+<li>直接摘mit</li>
+</ul>
+<p>概括<br>由于发生中断时，cpu要经过多步才能处理中断数据。因此，如果设备高速的产生中断，那么cpu将很难及时处理。因此，现在产生中断之前，硬件会执行大量操作以减轻cpu负担。因此硬件现在更复杂。</p>
+<blockquote>
+<p>最后我想介绍一下Interrupt在最近几十年的演进。当Unix刚被开发出来的时候，Interrupt处理还是很快的。这使得硬件可以很简单，当外设有数据需要处理时，硬件可以中断CPU的执行，并让CPU处理硬件的数据。<br>而现在，中断相对处理器来说变慢了。从前面的介绍可以看出来这一点，需要很多步骤才能真正的处理中断数据。如果一个设备在高速的产生中断，处理器将会很难跟上。？所以如果查看现在的设备，可以发现，现在的设备相比之前做了更多的工作。所以在产生中断之前，设备上会执行大量的操作，这样可以减轻CPU的处理负担。所以现在硬件变得更加复杂。</p>
+</blockquote>
+<p>概括<br>对于高性能设备，会很高速的产生中断，cpu不能即使处理。<br>因此，引入polling。通过轮询设备来获取数据（可以经常拿到数据），节省了中断的代价，而不是只通过interrupt。<br>对于高性能网卡，如果大量包传入，那么会使用polling，而非interrupt。</p>
+<blockquote>
+<p>如果你有一个高性能的设备，例如你有一个千兆网卡，这个网卡收到了大量的小包，网卡每秒可以生成1.5Mpps，这意味着每一个微秒，CPU都需要处理一个中断，这就超过了CPU的处理能力。那么当网卡收到大量包，并且处理器不能处理这么多中断**的时候该怎么办呢？<br>这里的解决方法就是使用polling。除了依赖Interrupt，CPU可以一直读取外设的控制寄存器，来检查是否有数据。对于UART来说，我们可以一直读取RHR寄存器，来检查是否有数据。现在，CPU不停的在轮询设备，直到设备有了数据。<br>这种方法浪费了CPU cycles，当我们在使用CPU不停的检查寄存器的内容时，我们并没有用CPU来运行任何程序。在我们之前的例子中，如果没有数据，内核会让Shell进程sleep，这样可以运行另一个进程。<br>所以，对于一个慢设备，你肯定不想一直轮询它来得到数据。我们会在没有数据的时候切换出来运行一些其他程序。但是如果是一个快设备，那么Interrupt的overhead也会很高，那么我们在polling设备的时候，是经常能拿到数据的，这样可以节省进出中断的代价。<br>所以对于一个高性能的网卡，如果有大量的包要传入，那么应该用polling。对于一些精心设计的驱动，它们会在polling和Interrupt之间动态切换（注，也就是网卡的NAPI）。</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/" rel="prev" title="操作系统-xv6-lab5-lazy_allocation">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-lab5-lazy_allocation
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/" rel="next" title="操作系统-xv6-lab6-cow">
+      操作系统-xv6-lab6-cow <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98-%E5%8F%8A-%E8%A7%A3%E9%87%8A"><span class="nav-number">1.</span> <span class="nav-text">问题 及 解释</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">2.</span> <span class="nav-text">总结</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Interrupt"><span class="nav-number"></span> <span class="nav-text">Interrupt</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Interrup-%E4%B8%8E-syscall%E5%8C%BA%E5%88%AB"><span class="nav-number">1.</span> <span class="nav-text">Interrup 与 syscall区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PLIC-%E4%B8%8E-CPU"><span class="nav-number">2.</span> <span class="nav-text">PLIC 与 CPU</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A9%B1%E5%8A%A8"><span class="nav-number">3.</span> <span class="nav-text">驱动</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E9%A9%B1%E5%8A%A8"><span class="nav-number">3.1.</span> <span class="nav-text">什么是驱动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E6%9E%B6%E6%9E%84"><span class="nav-number">3.2.</span> <span class="nav-text">典型架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%AD%E6%96%AD%E5%BC%80%E5%90%AF"><span class="nav-number">4.</span> <span class="nav-text">中断开启</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-number">4.0.1.</span> <span class="nav-text">前置知识</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E4%B8%80%E5%BC%80%E5%A7%8B%E6%98%AF%E5%A6%82%E4%BD%95%E5%BC%80%E5%90%AF%E4%B8%AD%E6%96%AD%E7%9A%84"><span class="nav-number">4.0.2.</span> <span class="nav-text">系统一开始是如何开启中断的</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86%EF%BC%9A%E5%8F%91%E7%94%9F%E4%B8%AD%E6%96%AD%E6%97%B6%E5%A6%82%E4%BD%95%E8%BF%9B%E5%85%A5%E7%9B%B8%E5%BA%94C-code"><span class="nav-number">5.</span> <span class="nav-text">前置知识：发生中断时如何进入相应C code</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#console%E5%A6%82%E4%BD%95%E6%98%BE%E7%A4%BA"><span class="nav-number">6.</span> <span class="nav-text">console如何显示 $</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BD%93%E6%B2%A1%E5%8F%91%E7%94%9F%E4%B8%AD%E6%96%AD%E6%97%B6"><span class="nav-number">6.1.</span> <span class="nav-text">当没发生中断时</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BD%93%E5%8F%91%E7%94%9F%E4%B8%AD%E6%96%AD%E6%97%B6"><span class="nav-number">6.2.</span> <span class="nav-text">当发生中断时</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#shell-%E5%A6%82%E4%BD%95-%E8%AF%BB%E5%8F%96%E7%94%A8%E6%88%B7%E9%94%AE%E5%85%A5%E7%9A%84-%E5%AD%97%E7%AC%A6-%E5%B9%B6-%E4%BC%A0%E7%BB%99shell%E7%A8%8B%E5%BA%8F-%E5%B9%B6-%E6%98%BE%E7%A4%BA%E5%9C%A8%E7%BB%88%E7%AB%AF%E4%B8%8A"><span class="nav-number">7.</span> <span class="nav-text">shell 如何 读取用户键入的 字符 并 传给shell程序 &#x2F; 并 显示在终端上</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#shell-%E4%BB%8Econsole%E4%B8%AD%E8%AF%BB%E5%8F%96%E7%94%A8%E6%88%B7%E8%BE%93%E5%85%A5"><span class="nav-number">7.1.</span> <span class="nav-text">shell 从console中读取用户输入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%A8%E6%88%B7%E9%94%AE%E5%85%A5%E9%94%AE%E7%9B%98-%E8%A7%A6%E5%8F%91%E4%B8%AD%E6%96%AD"><span class="nav-number">7.2.</span> <span class="nav-text">用户键入键盘,触发中断</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Inetrrupt%E7%9A%84%E5%B9%B6%E5%8F%91"><span class="nav-number">8.</span> <span class="nav-text">Inetrrupt的并发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Interrupt%E7%9A%84%E6%BC%94%E8%BF%9B"><span class="nav-number">9.</span> <span class="nav-text">Interrupt的演进</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '530d91fc3d4fdfa621b8fca5fb07121d',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

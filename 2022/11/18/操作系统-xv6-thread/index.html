@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="线程调度流程 : user thread A -&gt; kernel thread A -&gt; scheduler thread -&gt; kernel thread B -&gt; user thread B  xv6和OS的线程调度策略 : pre-emptive scheduling(定时器中断) + voluntary scheduling(kernel thread主动swtc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-thread">
+<meta property="og:url" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="线程调度流程 : user thread A -&gt; kernel thread A -&gt; scheduler thread -&gt; kernel thread B -&gt; user thread B  xv6和OS的线程调度策略 : pre-emptive scheduling(定时器中断) + voluntary scheduling(kernel thread主动swtc">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-19-12-06.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-19-12-06.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-12-02-06.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-12-01-47.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-09-09.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-13-02-18.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-32-13.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-16-29.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-18-51.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-36-18.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-35-00.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-15-38-54.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-16-33-44.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-18-13-08.png">
+<meta property="og:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-20-43-33.png">
+<meta property="article:published_time" content="2022-11-18T14:41:46.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:37.311Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-19-12-06.png">
+
+<link rel="canonical" href="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-thread | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-thread
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-18 22:41:46" itemprop="dateCreated datePublished" datetime="2022-11-18T22:41:46+08:00">2022-11-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:37" itemprop="dateModified" datetime="2023-02-27T23:22:37+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li><p>线程调度流程 : user thread A -&gt; kernel thread A -&gt; scheduler thread -&gt; kernel thread B -&gt; user thread B<br><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-19-12-06.png"></p>
+</li>
+<li><p>xv6和OS的线程调度策略 : pre-emptive scheduling(定时器中断) + voluntary scheduling(kernel thread主动swtch)</p>
+</li>
+<li><p>xv6的3个thread  </p>
+<ul>
+<li>user process的user thread (上下文在trapframe)</li>
+<li>user process的kernel thread (上下文在trapframe和context)</li>
+<li>每个cpu核 的 scheduler thread (上下文在cpu.context)</li>
+</ul>
+</li>
+<li><p>thread切换核心 : swtch</p>
+<ul>
+<li>用于实现 kernel thread 和 scheduler thread的切换</li>
+<li>切换return addr , kernel stack pointer , callee saved regs</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="thread"><a href="#thread" class="headerlink" title="thread"></a>thread</h1><h2 id="待完成问题"><a href="#待完成问题" class="headerlink" title="待完成问题"></a>待完成问题</h2><ul>
+<li><p><strong>线程是什么？</strong></p>
+<ul>
+<li>从几个角度来说吧应该。</li>
+<li>先列下来。</li>
+<li>从构成的角度来说<ul>
+<li>。。。与progress对比一下。</li>
+<li>thread是process中的一条指令流，使用process的地址空间及其他context。每个thread都应当有自己的stack。thread之间应当是共享process的地址空间的。</li>
+<li>os应当支持一个用户进程的一个用户线程对应一个内核线程。xv6中内核线程和用户线程不是共享地址空间的。一个是user pagetable，一个是kernel pagetable。正常linux来说，也即在我们做完实验3page table之后的页表机制，user thread和kernel thread用的都是同一个pagetable。</li>
+<li>感觉说的有待完善。。。。</li>
+</ul>
+</li>
+<li>从编程的角度来说<ul>
+<li>是os提供的一种执行多任务的抽象机制。</li>
+<li>类似于event-driven progarmming中的reactor模型等。都是执行多个任务的逻辑流。</li>
+<li>在所有的支持多任务的方法中，线程技术并不是非常有效的方法，但是线程通常是最方便，对程序员最友好的，并且可以用来支持大量不同任务的方法。</li>
+<li>感觉可以再多说一点reactor模型相关的。。太累了。。改天复习reactor模型。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>switch的ret什么时候执行？当再次切换回来的时候执行？</p>
+<ul>
+<li>不对，是顺序执行的。只不过由于$ra被改变，ret的时候会ret到另一处对swtch的调用处</li>
+</ul>
+</li>
+<li><p>switch ret之前cpu使用的就变成了另一个线程的栈？可是pc也没有改变呀？如何做到的？</p>
+<ul>
+<li>pc不含有效信息，指示栈的就是$sp</li>
+</ul>
+</li>
+<li><p>xv6进程和线程的关系？</p>
+<ul>
+<li><strong>process由2个thread组成</strong>  <ul>
+<li>user thread</li>
+<li>kernel thread</li>
+</ul>
+</li>
+<li>且存在限制，一个进程要么是其user thread 在运行，要么是在kernel thread运行(系统调用/响应中断)，要么不运行。永远不会2个thread同时运行。</li>
+</ul>
+</li>
+<li><p>所以说kernel的那个proc结构体 实际上是kenrel thread的结构体是吗？</p>
+<ul>
+<li>不只是。<strong>proc是整个process的结构体</strong>。</li>
+<li>其中记录了<ul>
+<li><strong>process本身的状态信息</strong>，如pid , state , parent process , name等</li>
+<li>和process中的<strong>user thread</strong>的所用的user pagetable , user的heap大小 , user的trapframe等</li>
+<li>以及process中的<strong>kernel thread 的context</strong>等。(用于kernel thread 在swtch保存前一刻kernel thread的状态)</li>
+</ul>
+</li>
+<li>所以，通过mycpu()，我们可以获得当前正在运行的线程所属的process。不过从逻辑上来讲，我们也就不应当在scheduler thread中调用mycpu()。因为scheduler不属于任何process。是单独的一个线程。</li>
+</ul>
+</li>
+<li><p>说说kernel thread到底是个啥</p>
+<ul>
+<li>感觉就是进入kernel的C code之后，调用kernel的C code，所形成的函数栈帧。</li>
+</ul>
+</li>
+<li><p>intena记录在acquire之前的中断状态</p>
+</li>
+<li><p>一个进程让出之后，会不会又运行这个进程？</p>
+</li>
+<li><p>struct proc proc[NPROC = 64];</p>
+<ul>
+<li>至多有64个process，故至多有64个user thread 和64个kernel thread(64个kstack) + 每个cpu核上一个scheduler thread+带的kstack。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>xv6里一个进程的用户线程和内核线程</strong>也不是共享地址空间的啊。页表都不一样。为啥教授还说是一个进程里的用户线程和内核线程？ </p>
+<ul>
+<li>在xv6中，这两个线程比较特殊，确实不是共享地址空间。</li>
+<li>但是对于主流的linux系统，其pagetable的机制就和我们在page table实验所完成的一样。user thread 和 kernel thread使用的是同一个page table。</li>
+</ul>
+</li>
+<li><p>切换地址空间了是不是就是代表一定切换进程了？那么从user到kernel是否应当叫做切换了进程？用户进程切换到内核进程。</p>
+<ul>
+<li>不应当。都是一个进程里的。原因见上。</li>
+</ul>
+</li>
+<li><p>linux进程的线程的pagetable是不是分开的？是么？不是吧？</p>
+<ul>
+<li>我觉得一个进程的多个线程共用同一个的pagetable。没验证。。。改天验证。。。太累了。。。仅仅是觉得。。。。</li>
+</ul>
+</li>
+</ul>
+<h2 id="thread-概述"><a href="#thread-概述" class="headerlink" title="thread 概述"></a>thread 概述</h2><ul>
+<li><p><strong>线程的作用</strong> / 为什么计算机需要多线程？</p>
+<ul>
+<li><strong>首先</strong>，我们可能会要求计算机<strong>分时复用</strong>的执行任务，而不是在一段时间里只执行一个任务</li>
+<li><strong>其次</strong>，多线程可以让程序的<strong>结构</strong>变得<strong>简单</strong>。</li>
+<li><strong>最后</strong>，使用多线程可以<strong>利用多核cpu</strong>以获得更快的速度。<ul>
+<li>常见的做法是将程序进程拆分，分给多个线程运行，运行在不同的cpu核上。</li>
+</ul>
+</li>
+<li>线程可以认为是一种在有<strong>多个任务</strong>时，用于<strong>简化编程的一种抽象机制</strong>。<ul>
+<li>感觉也是一种<strong>event-driven programming</strong> 编程模型。</li>
+<li>event-driven programming或者state machine，这些是在一台计算机上<strong>不使用线程但又能运行多个任务</strong>的技术。</li>
+<li>在所有的支持多任务的方法中，线程技术并不是非常有效的方法，但是线程通常是最方便，对程序员最友好的，并且可以用来支持大量不同任务的方法。<ul>
+<li>所以那些事务驱动模型，如单线程的reactor 实际上不也是个并发的程序？也是个执行多任务的编程方法。只不过不是os自己提供的抽象出来的线程，而是用户自己通过代码实现的。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>线程的状态</strong></p>
+<ul>
+<li>程序计数器PC: 当前线程执行的指令位置</li>
+<li>保存变量的寄存器reg。</li>
+<li>程序栈stack: 每个线程都有自己的stack，stack记录了函数调用过程，并反应了当前线程的执行点。</li>
+<li>变量</li>
+<li>堆</li>
+<li>….</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>如何管理多个线程</strong>运行？两种策略结合</p>
+<ul>
+<li><ol>
+<li>利用<strong>多核cpu</strong>，每个cpu上运行一个thread</li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>一个cpu在多个thread</strong>之间来回切换。</li>
+</ol>
+</li>
+</ul>
+</li>
+<li><p>xv6的thread<strong>是否共享内存</strong></p>
+<ul>
+<li><strong>内核线程 kernel thread</strong><ul>
+<li>所有kernel thread共享内核内存。</li>
+<li>每一个用户进程都有个kernel thread执行来自用户线程的syscall</li>
+</ul>
+</li>
+<li><strong>用户线程 user thread</strong><ul>
+<li>用户线程之间没有共享内存。</li>
+<li>每个用户进程都有独立的地址空间，并且包含了一个user thread，user thread控制了user process code的执行。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Linux中</p>
+<ul>
+<li>实现了一个用户进程中包含多个线程（xv6没有实现，xv6中一个进程只有一个用户线程）</li>
+<li>一个进程的多个线程共享地址空间。</li>
+</ul>
+</li>
+</ul>
+<h2 id="thread切换流程"><a href="#thread切换流程" class="headerlink" title="thread切换流程"></a>thread切换流程</h2><ul>
+<li>流程图镇楼<ul>
+<li><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-19-12-06.png"></li>
+<li>当进入kernel的C code之后，运行的就是process 的 kernel thread了。</li>
+</ul>
+</li>
+</ul>
+<p>如何实现thread切换？：scheduler调度器<br>如何保存线程状态并恢复？：那些是需要保存的、保存在哪里<br>如何处理计算密集型线程？：对于长时间的计算任务，线程不会自愿的让出cpu给其他线程运行，所以需要一种机制，能夺走计算密集型线程对cpu的控制，之后再运行。</p>
+<ul>
+<li><p>下面是<strong>如何处理计算密集型任务</strong>。</p>
+<h3 id="定时器机制"><a href="#定时器机制" class="headerlink" title="定时器机制"></a>定时器机制</h3></li>
+<li><p>机制：<strong>利用定时器中断</strong></p>
+<ul>
+<li>内核利用定时器中断将对cpu的控制从计算密集型线程的手中夺走</li>
+<li>每个cpu核上，都存在一个硬件设备，会定时产生中断。xv6与其他os一样，将这个中断传输到了kernel中。中断打断并处理如下<blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-12-02-06.png"><br><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-12-01-47.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="流程概述-pre-emptive-voluntary-scheduling"><a href="#流程概述-pre-emptive-voluntary-scheduling" class="headerlink" title="流程概述 pre-emptive / voluntary scheduling"></a>流程概述 pre-emptive / voluntary scheduling</h3><ul>
+<li><p><strong>pre-emptive scheduling 抢占式调度：</strong></p>
+<ul>
+<li>用户代码本身不想让出cpu，但是timer interrupt会导致cpu的控制权被拿走，yield给scheduler thread，<ul>
+<li>例如中断处理的流程。</li>
+</ul>
+</li>
+<li>相反的是<strong>voluntary scheduling 非抢占式调度</strong></li>
+</ul>
+</li>
+<li><p><strong>在xv6和其他os中，线程调度这样实现</strong></p>
+<ul>
+<li><strong>pre-emptive 和 voluntary的结合</strong></li>
+<li><strong>定时器中断 会强制的将cpu控制权从user process(的user thread)传递到kernel (user process的kernel thread)，之后kernel会代表user process 进行 voluntary scheduling。</strong><ul>
+<li><strong>pre-emptive</strong>：中断的强制，哪怕这些用户进程一直占用cpu不愿让开，通过中断，kernel也可以从user process夺得cpu控制权。</li>
+<li><strong>voluntary</strong>：kernel如何代表user process使用voluntary scheduling ? <ul>
+<li><strong>kernel thread</strong>内核线程 的 timer interrupt handler 会将 cpu 让<strong>s(yield)给 scheduler thread调度器线程</strong>。<strong>通过swtch</strong><ul>
+<li>这就是kernel 代表 user process 进行 voluntary的让出了cpu</li>
+<li>如何yield：保存当前cpu上正在运行的内核线程。,将scheduler thread的上下文替换到当前cpu上.</li>
+</ul>
+</li>
+<li>然后<strong>scheduler thread 会选择一个runnable的kernel thread 并swtch到cpu上</strong>。<ul>
+<li>这也就是 kernel 代表 user process 进行 voluntary的 将 控制 传递给了 另一个 user process</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>尽管我们这节课主要是基于定时器中断来讨论，但是实际上XV6切换线程的绝大部分场景都不是因为定时器中断，比如说一些系统调用在等待一些事件并决定让出CPU。exit系统调用会做各种操作然后调用yield函数来出让CPU，这里的出让并不依赖定时器中断</p>
+</li>
+<li><p>相关的进程状态</p>
+<ul>
+<li>RUNNING：线程正在当前cpu上运行<ul>
+<li>PC和reg在cpu中，正在被使用</li>
+</ul>
+</li>
+<li>RUNNABLE：线程还没有在某个cpu上运行，一旦有空闲的cpu就可以运行<ul>
+<li>PC和reg被保存在内存中某处。</li>
+</ul>
+</li>
+<li>SLEEPING：线程在等待一些IO事件，只会在IO事件发生了以后运行。</li>
+<li>线程调度就是将当前的running process 变成 runnable process</li>
+</ul>
+</li>
+</ul>
+<h3 id="一些需要注意的东西"><a href="#一些需要注意的东西" class="headerlink" title="一些需要注意的东西"></a>一些需要注意的东西</h3><ul>
+<li><p><strong>xv6中总共有3种thread</strong></p>
+<ul>
+<li><strong>user process的user thread</strong><ul>
+<li>在不运行时，其线程状态会保存在trapframe中</li>
+<li>有自己的用户栈</li>
+</ul>
+</li>
+<li><strong>user process的kernel thread</strong><ul>
+<li>在不运行时，其线程状态会保存在proc.context中</li>
+<li>有自己的内核栈</li>
+</ul>
+</li>
+<li><strong>每个cpu核 的 scheduler thread</strong><ul>
+<li>在不运行时，其线程状态会保存在cpu.context中</li>
+<li>每个scheduler thread都有自己独立的栈。scheduler thread的所有内容，都和user thread不一样。是在系统启动时设计好的。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>进程 process</strong></p>
+<ul>
+<li><strong>process由2个thread组成</strong><ul>
+<li>user thread</li>
+<li>kernel thread</li>
+</ul>
+</li>
+<li>且存在限制，一个进程要么是其user thread 在运行，要么是在kernel thread运行(系统调用/响应中断)，要么不运行。永远不会2个thread同时运行。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>xv6并没有实现用户线程直接让出cpu，<strong>内核会在如下场景下让出cpu</strong></p>
+<ul>
+<li>定时器触发<ul>
+<li>内核总是会让当前进程yield出cpu，因为我们需要交织执行所有可执行的线程。</li>
+</ul>
+</li>
+<li>调用系统调用并等待I/O<ul>
+<li>如进程调用syscall read进入kernel，read会等待磁盘IO，此时read syscall code-&gt;sleep()-&gt;sched()-&gt;swtch()</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>所谓的<strong>context switching</strong></p>
+<ul>
+<li>一个 thread 切换到 另一个 thread</li>
+<li>一个 user process 切换到 另一个 user process的完整过程。</li>
+<li>用户空间和内核空间的切换</li>
+<li>内核线程kernel thread和调度器线程scheduler thread的切换</li>
+</ul>
+</li>
+<li><p><strong>小结</strong></p>
+<ul>
+<li>一个cpu核在同一时间只会做一件事情，也即只会运行一个线程，线程切换造成了多个线程同时运行在一个cpu核上的假象。<ul>
+<li>user process的user thread</li>
+<li>user process的kernel thread</li>
+<li>cpu核 的 scheduler thread</li>
+</ul>
+</li>
+<li>一个thread不会同时运行在多个cpu核上<ul>
+<li>要么运行在一个cpu核上</li>
+<li>要么状态被保存在context(kernel thread)/ trapframe(user thread)中，没有被运行</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="thread切换核心-swtch"><a href="#thread切换核心-swtch" class="headerlink" title="thread切换核心 : swtch"></a>thread切换核心 : swtch</h3><ul>
+<li><p><strong>thread切换的核心</strong></p>
+</li>
+<li><p><strong>swtch</strong></p>
+<ul>
+<li>void swtch(struct context *old, struct context *new);</li>
+<li>Save current registers in old. Load from new.    </li>
+<li>将当前cpu上的reg保存在old中，并将new加载到cpu的reg上</li>
+<li>这也就是 实现了 所谓的 context switching的函数，用于在kernel thread 和 scheduler thread之间进行上下文切换。</li>
+<li>调用情况如下：<ul>
+<li>p-&gt;context 是 kernel thread的上下文。mycpu()-&gt;context 是该cpu核的scheduler thread 上下文。</li>
+<li>sched中：swtch(&amp;p-&gt;context, &amp;mycpu()-&gt;context);<ul>
+<li><code>cpu reg ----store into---&gt; kernel thread.context (mem)</code></li>
+<li><code>scheduler context (mem) ----load into---&gt; cpu reg</code> </li>
+</ul>
+</li>
+<li>scheduler：swtch(&amp;c-&gt;context, &amp;p-&gt;context);<ul>
+<li><code>cpu reg ----store into---&gt; scheduler context (mem)</code> </li>
+<li><code>kernel thread.context (mem) ----load into---&gt; cpu reg</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>所谓的保存到mem和加载到reg的<strong>context</strong>是<ul>
+<li><strong>$ra</strong> : ret的返回地址</li>
+<li><strong>$sp</strong> : thread对应的stack pointer</li>
+<li><strong>s[1,11]</strong> : 被调用者保存的寄存器</li>
+<li>并没有保存PC，因为PC并不是有效信息，随着code执行，PC会一直改变，没意义。我们关心的应当是swtch之后，thread应道跳到哪行code继续执行，以及其函数栈帧。那么，所要关注的寄存器就是ra和sp</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>code如下：kernel thread -&gt; scheduler thread</strong></p>
+<ul>
+<li>kernel thread 由 usertrap -&gt; yield -&gt; sched -&gt; swtch</li>
+<li>在swtch中 保存kernel thread context 并加载 scheduler thread context<ul>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-09-09.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-13-02-18.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>可以看到，在将scheduler的ra以及sp加载cpu reg之后，ret的返回地址以及函数调用栈帧bt都变成了scheduler thread的。</li>
+<li>swtch —ret–&gt; scheduler thread<ul>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-32-13.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-16-29.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-18-51.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><strong>同理：scheduler thread -&gt; kernel thread</strong><ul>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-36-18.png"></p>
+</blockquote>
+</li>
+<li><blockquote>
+<p><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-14-35-00.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>注意：<strong>scheduler thread 调用了swtch函数，但是我们从swtch函数返回时，实际上是返回到了对于switch的另一个调用处：kenrel thread 对swtch的调用处</strong>，而不是scheduler thread的调用。</p>
+<ul>
+<li>通过改变ra来达成此种效果，也就达成了切换线程的效果。</li>
+<li>也即，比如kernel thread a调用swtch，由于在swtch对ra以及其他context进行了替换，故这个swtch函数结束后，ret就跳转到了另一处代码。非本次swtch调用处，而是scheduler 对 swtch的调用处。</li>
+</ul>
+</li>
+<li><p>thread切换过程中，<strong>cpu上的reg是唯一不稳定的状态，需要保存并恢复</strong>，因为我们想在新的线程中也使用相同的一组寄存器；而所有其他在内存中的数据（如heap、stack）会保存在内存中不被改变，所以不用特意保存并恢复。</p>
+</li>
+</ul>
+<h3 id="scheduler-thread"><a href="#scheduler-thread" class="headerlink" title="scheduler thread"></a>scheduler thread</h3><ul>
+<li><strong>下面是scheduler函数</strong><ul>
+<li>选择一个runnable的进程，将其context替换进cpu，然后运行。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Per-CPU process scheduler.</span></span><br><span class="line"><span class="comment">// Each CPU calls scheduler() after setting itself up.</span></span><br><span class="line"><span class="comment">// Scheduler never returns.  It loops, doing:</span></span><br><span class="line"><span class="comment">//  - choose a process to run.</span></span><br><span class="line"><span class="comment">//  - swtch to start running that process.</span></span><br><span class="line"><span class="comment">//  - eventually that process transfers control</span></span><br><span class="line"><span class="comment">//    via swtch back to the scheduler.</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">scheduler</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span>;</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cpu</span> *<span class="title">c</span> =</span> mycpu();</span><br><span class="line">c-&gt;proc = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span>(;;)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// Avoid deadlock by ensuring that devices can interrupt.</span></span><br><span class="line">    intr_on();</span><br><span class="line">    <span class="keyword">int</span> nproc = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span>(p = proc; p &lt; &amp;proc[NPROC]; p++) </span><br><span class="line">    &#123;</span><br><span class="line">    acquire(&amp;p-&gt;lock);</span><br><span class="line">    <span class="keyword">if</span>(p-&gt;state != UNUSED) </span><br><span class="line">    &#123;</span><br><span class="line">        nproc++;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(p-&gt;state == RUNNABLE) </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// Switch to chosen process.  It is the process&#x27;s job</span></span><br><span class="line">        <span class="comment">// to release its lock and then reacquire it</span></span><br><span class="line">        <span class="comment">// before jumping back to us.</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  令cpu运行kernel thread p</span></span><br><span class="line">        <span class="comment">//  即将运行p，故先设置状态为RUNNING</span></span><br><span class="line">        p-&gt;state = RUNNING;   </span><br><span class="line">        <span class="comment">//  即将运行p，故先设置cpu上正在运行的proc为p</span></span><br><span class="line">        c-&gt;proc = p;          </span><br><span class="line">        <span class="comment">//  context switching , 切换到kernel thread p。之后cpu run kernel thread</span></span><br><span class="line">        swtch(&amp;c-&gt;context, &amp;p-&gt;context);  </span><br><span class="line">        <span class="comment">//  after a while</span></span><br><span class="line">        <span class="comment">//  从swtch返回。</span></span><br><span class="line">        <span class="comment">//  kernel thread p 切换回 scheduler thread</span></span><br><span class="line">        <span class="comment">//  此时cpu上没有任何正在运行的kernel thread 和 user thread。只有scheduler thread</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// Process is done running for now.</span></span><br><span class="line">        <span class="comment">// It should have changed its p-&gt;state before coming back.</span></span><br><span class="line">        c-&gt;proc = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    release(&amp;p-&gt;lock);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(nproc &lt;= <span class="number">2</span>) </span><br><span class="line">    &#123;   <span class="comment">// only init and sh exist</span></span><br><span class="line">    intr_on();</span><br><span class="line">    <span class="function"><span class="keyword">asm</span> <span class="title">volatile</span><span class="params">(<span class="string">&quot;wfi&quot;</span>)</span></span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h4 id="关于lock"><a href="#关于lock" class="headerlink" title="关于lock"></a>关于lock</h4><ul>
+<li><p><strong>关于锁p-&gt;lock的使用</strong></p>
+</li>
+<li><p>acquire(p-&gt;lock) release(p-&gt;lock)<strong>流程</strong>如下</p>
+<ul>
+<li>从kernel thread -&gt; scheduler<ul>
+<li>kernel thread yield 上的锁 由 切换到 scheduler的swtch之后 释放 </li>
+</ul>
+</li>
+<li>从scheduler -&gt; kernel thread<ul>
+<li>scheduler 上的锁 由 切换到 kernel thread的swtch之后 释放。</li>
+</ul>
+</li>
+<li><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-15-38-54.png"></li>
+</ul>
+</li>
+<li><p><strong>p-&gt;lock作用</strong></p>
+<ul>
+<li>在以下两个场景中，都是为了<strong>线程切换的原子性</strong>。<ul>
+<li>防止在我们这个线程切换还没完成的时候，另一个cpu核上的scheduler thread看到并使用该线程。</li>
+</ul>
+</li>
+<li><strong>线程切换步骤概述：设置p-&gt;state，保存当前thread context，替换成要切换的thread的context</strong></li>
+<li><strong>1. kernel thread -&gt; schedulers</strong><ul>
+<li><ol>
+<li>p-&gt;state = RUNNABLE;</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>swtch(&amp;p-&gt;context, &amp;mycpu()-&gt;context);</li>
+</ol>
+<ul>
+<li>2.1 将当前kernel thread的context保存($ra,$sp,regs)</li>
+<li>2.2 cpu上的reg替换成scheduler thread的context。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>2. scheduler -&gt; kernel thread</strong><ul>
+<li><ol>
+<li>p-&gt;state = RUNNING</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>swtch(&amp;c-&gt;context, &amp;p-&gt;context);  </li>
+</ol>
+<ul>
+<li>2.1 将当前scheduler thread的context保存($ra,$sp,regs)</li>
+<li>2.2 cpu上的reg替换成kernel thread的context。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="对每个proc的第一次swtch"><a href="#对每个proc的第一次swtch" class="headerlink" title="对每个proc的第一次swtch"></a>对每个proc的第一次swtch</h2><ul>
+<li><p>allocproc中为什么要设置context？为了scheduler对被分配的proc的第一次swtch。</p>
+<ul>
+<li>刚变成runnable的proc还没有被放在cpu上运行。其变成running需要由scheduler thread调度。scheduler通过swtch将runnable thread.context替换到cpu上。</li>
+<li>一般情况下，runnable thread.context 是该thread对应的proc的kernel thread在sched的时候，通过swtch将自身context保存起来，以待下次scheduler调度到该thread时替换进来。</li>
+<li>可是，对于该proc第一次由runnable变成running，被scheduler调度，其context则不是由上次swtch保存好的，而是由allocproc中，对$ra和$sp进行的初始化。ra初始化成forkret-&gt;usertrapret。$sp自然就是本kernel thread的ktsack。</li>
+</ul>
+</li>
+<li><p>allocproc 会被 启动时的userinit和系统调用fork调用</p>
+</li>
+<li><p>fork调用allocproc</p>
+<ul>
+<li><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-16-33-44.png"></li>
+</ul>
+</li>
+<li><p>allocproc</p>
+<ul>
+<li><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-18-13-08.png"></li>
+</ul>
+</li>
+<li><p><strong>一个process刚被fork出来的时候，一直处于内核态kernel thread ，且没有被运行。直到scheduler之后，才会swtch到该process。由于一开始刚fork出来时设置的ra为forkret，因此回swtch到process的forkret，然后usertrapret 经由trampoline到process的user thread，开始运行。</strong></p>
+</li>
+</ul>
+<h2 id="Linux-如何区分进程和线程"><a href="#Linux-如何区分进程和线程" class="headerlink" title="Linux 如何区分进程和线程"></a>Linux 如何区分进程和线程</h2><ul>
+<li>process 和 thread在 linux kernel中都是通过task_struct表述，那么linux kernel如何区分一个task_struct 代表的是process还是thread ？ <ul>
+<li>通过比较tgid和pid。相等，则为进程；不等，则为线程。</li>
+<li><img src="/2022/11/18/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-thread/2022-11-22-20-43-33.png"></li>
+</ul>
+</li>
+<li>tgid : thread group ID<ul>
+<li>任何一个process，如果只有一个main thread，那么，tgid = pid（即为process A.pid）。</li>
+<li>但是，如果一个process A创建了其他线程a1。那么thread a1有自己的pid，而thread a1.tgid = main thread.pid（即为process A.pid）。<ul>
+<li>一个thread group中的所有thread使用和该thread group leader相同的PID，并被存放在tgid成员中。</li>
+<li>只有leader的pid设置为=tgid。</li>
+</ul>
+</li>
+<li>getpid()系统调用返回的是当前thread的tgid值而不是pid值。</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/16/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab6-cow/" rel="prev" title="操作系统-xv6-lab6-cow">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-lab6-cow
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/20/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab7-thread/" rel="next" title="操作系统-xv6-lab7-thread">
+      操作系统-xv6-lab7-thread <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#thread"><span class="nav-number">1.</span> <span class="nav-text">thread</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BE%85%E5%AE%8C%E6%88%90%E9%97%AE%E9%A2%98"><span class="nav-number">1.1.</span> <span class="nav-text">待完成问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#thread-%E6%A6%82%E8%BF%B0"><span class="nav-number">1.2.</span> <span class="nav-text">thread 概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#thread%E5%88%87%E6%8D%A2%E6%B5%81%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">thread切换流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E6%97%B6%E5%99%A8%E6%9C%BA%E5%88%B6"><span class="nav-number">1.3.1.</span> <span class="nav-text">定时器机制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B%E6%A6%82%E8%BF%B0-pre-emptive-voluntary-scheduling"><span class="nav-number">1.3.2.</span> <span class="nav-text">流程概述 pre-emptive &#x2F; voluntary scheduling</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E4%B8%9C%E8%A5%BF"><span class="nav-number">1.3.3.</span> <span class="nav-text">一些需要注意的东西</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#thread%E5%88%87%E6%8D%A2%E6%A0%B8%E5%BF%83-swtch"><span class="nav-number">1.3.4.</span> <span class="nav-text">thread切换核心 : swtch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scheduler-thread"><span class="nav-number">1.3.5.</span> <span class="nav-text">scheduler thread</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%B3%E4%BA%8Elock"><span class="nav-number">1.3.5.1.</span> <span class="nav-text">关于lock</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9%E6%AF%8F%E4%B8%AAproc%E7%9A%84%E7%AC%AC%E4%B8%80%E6%AC%A1swtch"><span class="nav-number">1.4.</span> <span class="nav-text">对每个proc的第一次swtch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux-%E5%A6%82%E4%BD%95%E5%8C%BA%E5%88%86%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B"><span class="nav-number">1.5.</span> <span class="nav-text">Linux 如何区分进程和线程</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '1cf2f556698338f8412ec93e317740f1',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

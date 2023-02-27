@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="服务器模型介绍 学习自硬核课堂">
+<meta property="og:type" content="article">
+<meta property="og:title" content="服务器设计范式">
+<meta property="og:url" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="服务器模型介绍 学习自硬核课堂">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-31-12.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-33-35.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-36-44.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-50-27.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-06-58.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-18-01.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-38-41.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-22-38-52.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-19-02-04.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-59-54.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-51-54.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-53-34.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-22-17.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-17-39-27.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-17-54-42.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-05-22-54-53.png">
+<meta property="og:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-17-21-18-50.png">
+<meta property="article:published_time" content="2022-09-05T13:14:13.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:19:27.655Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="Muduo">
+<meta property="article:tag" content="源码分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-31-12.png">
+
+<link rel="canonical" href="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>服务器设计范式 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          服务器设计范式
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-05 21:14:13" itemprop="dateCreated datePublished" datetime="2022-09-05T21:14:13+08:00">2022-09-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:19:27" itemprop="dateModified" datetime="2023-02-27T23:19:27+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>服务器模型介绍 学习自硬核课堂</p>
+<span id="more"></span>
+
+<h1 id="服务器设计范式"><a href="#服务器设计范式" class="headerlink" title="服务器设计范式"></a>服务器设计范式</h1><h2 id="基本组件"><a href="#基本组件" class="headerlink" title="基本组件"></a>基本组件</h2><ul>
+<li>无论服务端设计什么样的模型，但其基本组件是不变的，不同的在于如何进行巧妙、高效的组合。<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-31-12.png"></li>
+</ul>
+<h2 id="迭代式"><a href="#迭代式" class="headerlink" title="迭代式"></a>迭代式</h2><ul>
+<li>client在server端进行排队被server接收，因此并不适合繁忙Server。<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-33-35.png"></li>
+</ul>
+<h2 id="每个用户一个进程"><a href="#每个用户一个进程" class="headerlink" title="每个用户一个进程"></a>每个用户一个进程</h2><ul>
+<li><p>main负责accept，child proces负责业务</p>
+<ul>
+<li>main 每当 accept一个conn时，就fork出一个子进程。子进程负责处理这个conn的业务逻辑。</li>
+</ul>
+</li>
+<li><p>缺点：用户量大时，非常消耗资源。<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-36-44.png"></p>
+</li>
+<li><p>核心逻辑</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> ( ; ; ) </span><br><span class="line">&#123;</span><br><span class="line">      clilen = addrlen; <span class="comment">//把客户地址结构体大小复制一份</span></span><br><span class="line">      <span class="keyword">if</span> ( (connfd = <span class="built_in">accept</span>(listenfd, cliaddr, &amp;clilen)) &lt; <span class="number">0</span>) &#123; <span class="comment">//响应客户端请求,返回连接到客户端的套接字</span></span><br><span class="line">              <span class="keyword">if</span> (errno == EINTR) <span class="comment">//被信号打断则继续</span></span><br><span class="line">                      <span class="keyword">continue</span>;                <span class="comment">/* back to for() */</span></span><br><span class="line">              <span class="keyword">else</span></span><br><span class="line">                      <span class="built_in">err_sys</span>(<span class="string">&quot;accept error&quot;</span>); <span class="comment">//其他错误无法忍受</span></span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">//创建一个子进程</span></span><br><span class="line">      <span class="keyword">if</span> ( (childpid = <span class="built_in">Fork</span>()) == <span class="number">0</span>) &#123;        <span class="comment">/* child process 在子进程中 */</span></span><br><span class="line">              <span class="built_in">Close</span>(listenfd);        <span class="comment">/* close listening socket 关闭监听套接字 */</span></span><br><span class="line">              <span class="built_in">web_child</span>(connfd);        <span class="comment">/* process request 在这个函数中响应客户的请求*/</span></span><br><span class="line">              <span class="built_in">exit</span>(<span class="number">0</span>); <span class="comment">//退出子进程</span></span><br><span class="line">      &#125;</span><br><span class="line">      <span class="built_in">Close</span>(connfd);                        <span class="comment">/* parent closes connected socket 父进程中关闭连接到客户端的套接字,继续监听等待客户端的连接 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="每个用户一个进程-提前创建好进程池-prefork模型"><a href="#每个用户一个进程-提前创建好进程池-prefork模型" class="headerlink" title="每个用户一个进程 + 提前创建好进程池 (prefork模型)"></a>每个用户一个进程 + 提前创建好进程池 (prefork模型)</h2><ul>
+<li><p>main只负责fork，子进程负责accept和业务</p>
+<ul>
+<li>main提前fork出n个子进程，在每一个child process里面accept一个新来的IO连接conn， 并在该child process中处理该conn的业务逻辑。<ul>
+<li>也即，accept接收连接 和 wechild业务处理 都是在child process中进行的。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>所以当新来一个连接时，在多个子进程都可以accept，但最终只能有一个子进程接收该connection，accept处会存在竞争，所以需要lock。<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-19-50-27.png"></p>
+</li>
+<li><p>引入(进程池)池技术，有效的避免了在用户到来时进程执行fork的开销，然而需要在启动阶段预估判断多少个子进程，而且由于是多进程，耗费资源比较大，因此并发有限。</p>
+</li>
+<li><p>核心逻辑</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  1. main提前fork出n个子进程</span></span><br><span class="line">  <span class="comment">//  每个子进程负责一个 connection 的 accept 和 业务处理(webchild)</span></span><br><span class="line">  <span class="built_in">my_lock_init</span>(<span class="string">&quot;/tmp/lock.XXXXXX&quot;</span>);</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; nchildren; i++) <span class="comment">//用循环创建子进程池</span></span><br><span class="line">          pids[i] = <span class="built_in">child_make</span>(i, listenfd, addrlen);        <span class="comment">/* parent returns */</span></span><br><span class="line">      </span><br><span class="line">      <span class="comment">//  fork</span></span><br><span class="line">        <span class="comment">//  parent 返回</span></span><br><span class="line">        <span class="comment">//  child 运行child_main() [accept() and webchild()]</span></span><br><span class="line">      <span class="function"><span class="keyword">pid_t</span></span></span><br><span class="line"><span class="function">      <span class="title">child_make</span><span class="params">(<span class="keyword">int</span> i, <span class="keyword">int</span> listenfd, <span class="keyword">int</span> addrlen)</span></span></span><br><span class="line"><span class="function">      </span>&#123;</span><br><span class="line">              <span class="keyword">pid_t</span>        pid;</span><br><span class="line">              <span class="function"><span class="keyword">void</span>        <span class="title">child_main</span><span class="params">(<span class="keyword">int</span>, <span class="keyword">int</span>, <span class="keyword">int</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">              <span class="keyword">if</span> ( (pid = <span class="built_in">Fork</span>()) &gt; <span class="number">0</span>) <span class="comment">//创建子进程(并且在父进程中)</span></span><br><span class="line">                      <span class="keyword">return</span>(pid);                <span class="comment">/* parent 在父进程中,向本函数调用者返回子进程的pid */</span></span><br><span class="line">              <span class="comment">//  传递listenfd给child process</span></span><br><span class="line">              <span class="built_in">child_main</span>(i, listenfd, addrlen);        <span class="comment">/* never returns 在子进程中,调用这个函数进行处理 */</span></span><br><span class="line">      &#125;</span><br><span class="line">      <span class="comment">/* end child_make */</span></span><br><span class="line"><span class="comment">//  2. child thread runs accept接受连接 and webchild业务逻辑</span></span><br><span class="line"><span class="comment">/* include child_main */</span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">child_main</span><span class="params">(<span class="keyword">int</span> i, <span class="keyword">int</span> listenfd, <span class="keyword">int</span> addrlen)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span>                                connfd;</span><br><span class="line">        <span class="function"><span class="keyword">void</span>                        <span class="title">web_child</span><span class="params">(<span class="keyword">int</span>)</span></span>;</span><br><span class="line">        <span class="keyword">socklen_t</span>                clilen;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr</span>        *<span class="title">cliaddr</span>;</span></span><br><span class="line">        <span class="function"><span class="keyword">void</span>            <span class="title">my_lock_wait</span><span class="params">()</span></span>;</span><br><span class="line">        <span class="function"><span class="keyword">void</span>            <span class="title">my_lock_release</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">        cliaddr = <span class="built_in">Malloc</span>(addrlen); <span class="comment">//分配存放客户地址的地址结构体空间</span></span><br><span class="line"></span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;child %ld starting\n&quot;</span>, (<span class="keyword">long</span>) <span class="built_in">getpid</span>());</span><br><span class="line">        <span class="keyword">for</span> ( ; ; ) &#123;</span><br><span class="line">                clilen = addrlen;</span><br><span class="line">                <span class="comment">//  上锁 防止惊群</span></span><br><span class="line">                <span class="built_in">my_lock_wait</span>();</span><br><span class="line">                connfd = <span class="built_in">Accept</span>(listenfd, cliaddr, &amp;clilen); <span class="comment">//产生连接到客户的套接字</span></span><br><span class="line">                <span class="built_in">my_lock_release</span>();</span><br><span class="line"></span><br><span class="line">                <span class="built_in">web_child</span>(connfd);                <span class="comment">/* process the request 响应客户的请求*/</span></span><br><span class="line">                <span class="built_in">Close</span>(connfd); <span class="comment">//关闭连接到客户的套接字</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="每个用户一个线程"><a href="#每个用户一个线程" class="headerlink" title="每个用户一个线程"></a>每个用户一个线程</h2><ul>
+<li>相比于多进程模型，如果服务器主机提供支持线程，我们可以改用线程以取代进程。</li>
+<li>main 每当accept一个conn时，就pthread_create,将新接收的连接(fd)交由subthread进行业务处理。<ul>
+<li>main处理accept连接，subthread处理webchild业务<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-06-58.png"></li>
+</ul>
+</li>
+<li>线程相比于进程的优势节省资源，一般场景够用了。但是如果一个web服务器并发量过万，可能同时会创建1w个线程，此时看看你的服务器支不支持的住哟。</li>
+<li>核心逻辑<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> ( ; ; ) </span><br><span class="line">&#123;</span><br><span class="line">    clilen = addrlen;</span><br><span class="line">    iptr = <span class="built_in">Malloc</span>(<span class="built_in"><span class="keyword">sizeof</span></span>(<span class="keyword">int</span>));   <span class="comment">//  分配一个int大小的空间(存放文件描述符),每次循环分配一个新的空间</span></span><br><span class="line">    *iptr = <span class="built_in">Accept</span>(listenfd, cliaddr, &amp;clilen);   <span class="comment">//  响应客户请求,返回连接到客户端的套接字</span></span><br><span class="line">      <span class="comment">//  创建一个线程来处理客户的请求,线程属性为默认,把连接到客户端的套接字当参数传递给线程</span></span><br><span class="line">    <span class="built_in">Pthread_create</span>(&amp;tid, <span class="literal">NULL</span>, &amp;doit, (<span class="keyword">void</span> *) iptr); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="每个用户一个线程-提前创建好线程池"><a href="#每个用户一个线程-提前创建好线程池" class="headerlink" title="每个用户一个线程 + 提前创建好线程池"></a>每个用户一个线程 + 提前创建好线程池</h2><ul>
+<li>与prefork模型类似，只不过是把进程换成了线程。<ul>
+<li>子线程负责accept和webchild。accept处存在竞争,需要上锁。<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-18-01.png"></li>
+</ul>
+</li>
+<li>核心逻辑<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  main创建线程池</span></span><br><span class="line">  <span class="comment">//  每个subthread 负责 accept连接 和 webchild业务处理</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; nthreads; i++) <span class="comment">//创建规定数目的线程并做相应的操作</span></span><br><span class="line">                <span class="built_in">thread_make</span>(i);                        <span class="comment">/* only main thread returns */</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function">  <span class="title">thread_make</span><span class="params">(<span class="keyword">int</span> i)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">          <span class="function"><span class="keyword">void</span>        *<span class="title">thread_main</span><span class="params">(<span class="keyword">void</span> *)</span></span>;</span><br><span class="line">          <span class="keyword">int</span>     *val;</span><br><span class="line">          val = <span class="built_in">Malloc</span>(<span class="built_in"><span class="keyword">sizeof</span></span>(<span class="keyword">int</span>));</span><br><span class="line">          *val = i;</span><br><span class="line">          <span class="comment">//  创建线程,线程属性为null,线程id填写到线程结构体中,索引i按参数传递给线程</span></span><br><span class="line">          <span class="built_in">Pthread_create</span>(&amp;tptr[i].thread_tid, <span class="literal">NULL</span>, &amp;thread_main, (<span class="keyword">void</span> *) val); </span><br><span class="line">          <span class="keyword">return</span>;                <span class="comment">/* main thread returns */</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> *</span></span><br><span class="line"><span class="function"><span class="title">thread_main</span><span class="params">(<span class="keyword">void</span> *arg)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">        <span class="keyword">int</span>                                connfd;</span><br><span class="line">        <span class="function"><span class="keyword">void</span>                        <span class="title">web_child</span><span class="params">(<span class="keyword">int</span>)</span></span>;</span><br><span class="line">        <span class="keyword">socklen_t</span>                clilen;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr</span>        *<span class="title">cliaddr</span>;</span></span><br><span class="line"></span><br><span class="line">        cliaddr = <span class="built_in">Malloc</span>(addrlen); <span class="comment">//分配客户端地址结构体空间</span></span><br><span class="line"></span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;thread %d starting\n&quot;</span>, *((<span class="keyword">int</span>*)arg));</span><br><span class="line">        <span class="built_in">free</span>(arg);</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">for</span> ( ; ; ) &#123;</span><br><span class="line">                clilen = addrlen;</span><br><span class="line">                <span class="built_in">Pthread_mutex_lock</span>(&amp;mlock);   <span class="comment">//  防止惊群</span></span><br><span class="line">                connfd = <span class="built_in">Accept</span>(listenfd, cliaddr, &amp;clilen); <span class="comment">//在互斥锁的保护下accept</span></span><br><span class="line">                <span class="built_in">Pthread_mutex_unlock</span>(&amp;mlock);</span><br><span class="line">                tptr[(<span class="keyword">int</span>) arg].thread_count++; <span class="comment">//这个线程处理的客户数目递增1</span></span><br><span class="line"></span><br><span class="line">                <span class="built_in">web_child</span>(connfd);                <span class="comment">/* process request 在此函数中响应客户的请求 */</span></span><br><span class="line">                <span class="built_in">Close</span>(connfd); <span class="comment">//关闭连接到客户的套接字</span></span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="主线程统一accept-提前创建好线程池"><a href="#主线程统一accept-提前创建好线程池" class="headerlink" title="主线程统一accept + 提前创建好线程池"></a>主线程统一accept + 提前创建好线程池</h2><ul>
+<li><p>主线程统一accept所有conn,每个subthread负责处理一个fd的业务逻辑</p>
+<ul>
+<li>main负责accept所有conn，每accept一个conn，就从先前创建好的线程池中唤醒一个线程，将fd传入给该subthread</li>
+<li>不用对accept上锁，又避免了多线程accept的惊群效应<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-20-38-41.png"></li>
+</ul>
+</li>
+<li><p>核心逻辑</p>
+<ul>
+<li>main线程accept连接之后，通过条件变量唤醒subthread来取走这个建立的conn的fd。subthread负责处理fd的业务。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 4create all the threads */</span></span><br><span class="line"><span class="comment">//  提前创建好线程池</span></span><br><span class="line">  <span class="comment">//  通过条件变量使得每个thread阻塞</span></span><br><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; nthreads; i++) <span class="comment">//在thread_make函数中循环创建线程并做相应处理</span></span><br><span class="line">        <span class="built_in">thread_make</span>(i);                <span class="comment">/* only main thread returns */</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">Signal</span>(SIGINT, sig_int); <span class="comment">//捕捉ctrl+c信号</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> ( ; ; ) &#123;</span><br><span class="line">        clilen = addrlen;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  主线程统一accept</span></span><br><span class="line">        connfd = <span class="built_in">Accept</span>(listenfd, cliaddr, &amp;clilen); <span class="comment">//响应客户请求,并返回连接到客户的套接字</span></span><br><span class="line"></span><br><span class="line">        <span class="built_in">Pthread_mutex_lock</span>(&amp;clifd_mutex); <span class="comment">//给全局变量(线程信息结构体的数组)加锁</span></span><br><span class="line">        clifd[iput] = connfd; <span class="comment">//把描述符存入</span></span><br><span class="line">        <span class="keyword">if</span> (++iput == MAXNCLI) <span class="comment">//如果下标已经到达最大值,则回绕</span></span><br><span class="line">                iput = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//如下条件成立说明主线程已经往数组中放入了过多的描述符,而仍没有线程去取出(一下子有太多的客户连接,线程忙不过来)</span></span><br><span class="line">        <span class="keyword">if</span> (iput == iget) <span class="comment">//如果线程取出描述符的下标和主线程放入描述符的下标相等,则出错</span></span><br><span class="line">                <span class="built_in">err_quit</span>(<span class="string">&quot;iput = iget = %d&quot;</span>, iput);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//  唤醒负责处理fd的业务逻辑的subthread</span></span><br><span class="line"></span><br><span class="line">        <span class="built_in">Pthread_cond_signal</span>(&amp;clifd_cond);   <span class="comment">//  给条件变量发消息</span></span><br><span class="line">        <span class="built_in">Pthread_mutex_unlock</span>(&amp;clifd_mutex); <span class="comment">//  解锁互斥锁</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="事件驱动-event-based（只讨论reactor）"><a href="#事件驱动-event-based（只讨论reactor）" class="headerlink" title="事件驱动 event-based（只讨论reactor）"></a>事件驱动 event-based（只讨论reactor）</h2><ul>
+<li><p><strong>核心：利用IO复用接口</strong></p>
+</li>
+<li><p>反应器设计模式指的是由一个或多个客户机并发地传递给应用程序的服务请求。一个应用程序中的每个服务可以由几个方法组成，并由一个单独的事件处理程序表示，该处理程序负责调度特定于服务的请求。事件处理程序的调度由管理已注册事件处理程序的启动调度程序执行。服务请求的解复用由同步事件解复用器执行。也称为调度程序、通知程序。其核心是os的IO复用(epoll_开头的相关)接口。</p>
+</li>
+<li><p><strong>基本思路：</strong></p>
+<ul>
+<li>主线程往epoll内核事件表注册socket上的读事件。</li>
+<li>主线程调用epoll_wait等待socket上数据可读。</li>
+<li>当socket可读时，epoll_wait通知主线程，主线程则将socket可读事件放入请求队列。</li>
+<li>睡眠在请求队列上的某个工作线程被唤醒，他从socket读取数据，并处理用户请求，然后再往epoll内核时间表中注册socket写就绪事件。</li>
+<li>主线程epoll_wait等待socket可写。</li>
+<li>当socket可写时，epoll_wait通知主线程。主线程将socket可写事件放入请求队列。</li>
+<li>睡眠在请求队列中的某个线程被唤醒，他往socket上写入服务器处理客户请求的结果。</li>
+<li><strong>对比一下muduo，没有请求队列，而是通过eventfd?</strong></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>优点<ul>
+<li>响应快，不必为单个同步操作所阻塞，也不用考虑fd跨线程问题.</li>
+<li>可扩展性，可以很方便的通过增加reactor实例（如multireactor）个数来利用CPU资源；</li>
+<li>可复用性，reactor本身与具体事件处理逻辑无关，便于复用。</li>
+</ul>
+</li>
+<li>缺点<ul>
+<li>共享同一个reactor时，若出现较长时间的读写，会影响该reactor的响应时间，此时可以考虑thread-per-connection。（即每一个连接给一个线程）</li>
+</ul>
+</li>
+</ul>
+<h3 id="reactor-单线程模型"><a href="#reactor-单线程模型" class="headerlink" title="reactor 单线程模型"></a>reactor 单线程模型</h3><ul>
+<li><p>The reactor design pattern is an event handling pattern for handling service requests delivered concurrently to a service handler by one or more inputs. The service handler then demultiplexes the incoming requests and dispatches them synchronously to the associated request handler</p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://blog.csdn.net/Rong_Toa/article/details/108923615">参考</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://hardcore.feishu.cn/docs/doccnvF0IxXFmA9DOZzuAMvP8Kg#">参考</a></p>
+</li>
+<li><p><a target="_blank" rel="noopener" href="https://github.com/Cstardust/Server-Programming-Model/commit/5bbe8e7e6c762d2bc6cdff01d7d67c9316e1af7e">源码</a></p>
+</li>
+<li><p>reactor 单线程模型 从 accept接收连接 到 connfd业务逻辑 都是在一个线程上处理的</p>
+<ul>
+<li>重要组件：<ul>
+<li><strong>Reactor：负责epoll_wait</strong> </li>
+<li><strong>dispatch：负责根据wait到的Event派发相应handler</strong></li>
+<li><strong>handler：</strong><ul>
+<li><strong>acceptor：负责连接的建立</strong></li>
+<li><strong>read/write handler：业务处理</strong><br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-25-22-38-52.png"><br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-19-02-04.png"></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>reactor单线程的另一种更通用的理解方式：</p>
+<ul>
+<li><strong>重要组件：</strong><ul>
+<li><strong>Event事件：绑定了fd，events 以及handler</strong></li>
+<li><strong>Reactor反应堆：存储了event的集合</strong></li>
+<li><strong>Demultiplex事件分发器：基于IO复用 如epoll</strong></li>
+<li><strong>EventHandler事件处理器：handler</strong></li>
+</ul>
+</li>
+<li>和上面的图大同小异<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-59-54.png"><br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-51-54.png"><br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-53-34.png"></li>
+</ul>
+</li>
+<li><p>消息处理流程：</p>
+<ul>
+<li>Reactor对象通过select监控连接事件，收到事件后通过dispatch进行转发。</li>
+<li>如果是新来的connection，则由acceptor接受连接，并创建handler处理后续事件。</li>
+<li>如果是connfd的读写事件，则Reactor会分发调用Handler来响应。<ul>
+<li>按顺序逐个调用handler</li>
+<li>一个服务端可以同时处理多个客户端，是指的一个服务端可以监听多个客户端的连接、读写事件，真正做业务处理还是“一夫当关，万夫莫开”的效果。(即只有处理完一个event，才能继续处理下一个event)</li>
+</ul>
+</li>
+<li>handler会完成read-&gt;业务处理-&gt;send的完整业务流程。</li>
+</ul>
+</li>
+<li><p>得益于epoll的高性能，一般场景够用了。我们的Redis就是使用的是单线程版的reactor。</p>
+</li>
+<li><p>单Reactor单线程模型只是在代码上进行了组件的区分，但是整体操作还是单线程，但是不能发挥出多核CPU的优势。handler业务处理部分没有异步。</p>
+</li>
+</ul>
+<h3 id="单reactor-工作线程池"><a href="#单reactor-工作线程池" class="headerlink" title="单reactor + 工作线程池"></a>单reactor + 工作线程池</h3><ul>
+<li>单线程的reactor，业务处理也在IO线程中，此时如果有耗时操作，会影响并发。因此我们使用工作线程池来异步耗时的操作。<br> <img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-18-22-17.png"></li>
+</ul>
+<h3 id="multi-reactor-版本1"><a href="#multi-reactor-版本1" class="headerlink" title="multi-reactor 版本1"></a>multi-reactor 版本1</h3><ul>
+<li><p>在上文分析中，我们发现单线程的reactor太忙了，</p>
+<ul>
+<li>既当爹 ：监听listenfd的连接事件。</li>
+<li>又当妈的：监听connfd的读写事件。</li>
+<li>那我们干脆直接把他在拆开不就行了吗？这样的话，是不是能响应更多的并发了？</li>
+</ul>
+</li>
+<li><p>图</p>
+<ul>
+<li><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-17-39-27.png"></li>
+</ul>
+</li>
+<li><p>简化版</p>
+<ul>
+<li><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-26-17-54-42.png"></li>
+</ul>
+</li>
+<li><p>不一定需要工作线程池。muduo就没有。muduo是个每个subthread上跑一个loop。也即每个subthread就是一个reactor single process（这就是subReactor）。每个loop上用一个thread负责监听和处理若干connfd的连接。而main线程 也即主reactor上跑的loop 是用来监听listenfd的。并把新建立的connfd派送给subReactor去监听。</p>
+</li>
+<li><p>muduo也没有task queue这个缓冲队列。而是通过eventfd唤醒相应subthread，去处理该subthread上的事件。</p>
+</li>
+<li><p>muduo的subthread = 0时，也即没有subreactor时，muduo实际上只跑了一个mainReactor。这个Reactor就是reactor single process。这个单线程 既监听并处理listenfd，又监听并处理connfd</p>
+</li>
+</ul>
+<h4 id="Muduo-multiple-Reactor"><a href="#Muduo-multiple-Reactor" class="headerlink" title="Muduo multiple Reactor"></a>Muduo multiple Reactor</h4><ul>
+<li>muduo库的Multiple Reactors模型<br><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-05-22-54-53.png"></li>
+</ul>
+<p><img src="/2022/09/05/muduo-%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1/2022-09-17-21-18-50.png"></p>
+<h3 id="multi-reactor版本2"><a href="#multi-reactor版本2" class="headerlink" title="multi-reactor版本2"></a>multi-reactor版本2</h3><ul>
+<li>其实这个版本是没有啥意思的，因为他出现前提是main reactor(即负责处理监听套接字的线程响应不过来)，天了噜，这个得多大的并发？我估计也就tomcat那种可能会用到，因此这个不具体给出。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Muduo/" rel="tag"># Muduo</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/" rel="tag"># 源码分析</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/" rel="prev" title="Linux IO模型">
+      <i class="fa fa-chevron-left"></i> Linux IO模型
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/" rel="next" title="CPU调度策略">
+      CPU调度策略 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E8%AE%BE%E8%AE%A1%E8%8C%83%E5%BC%8F"><span class="nav-number">1.</span> <span class="nav-text">服务器设计范式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E7%BB%84%E4%BB%B6"><span class="nav-number">1.1.</span> <span class="nav-text">基本组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%AD%E4%BB%A3%E5%BC%8F"><span class="nav-number">1.2.</span> <span class="nav-text">迭代式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%8F%E4%B8%AA%E7%94%A8%E6%88%B7%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B"><span class="nav-number">1.3.</span> <span class="nav-text">每个用户一个进程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%8F%E4%B8%AA%E7%94%A8%E6%88%B7%E4%B8%80%E4%B8%AA%E8%BF%9B%E7%A8%8B-%E6%8F%90%E5%89%8D%E5%88%9B%E5%BB%BA%E5%A5%BD%E8%BF%9B%E7%A8%8B%E6%B1%A0-prefork%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.4.</span> <span class="nav-text">每个用户一个进程 + 提前创建好进程池 (prefork模型)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%8F%E4%B8%AA%E7%94%A8%E6%88%B7%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B"><span class="nav-number">1.5.</span> <span class="nav-text">每个用户一个线程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%8F%E4%B8%AA%E7%94%A8%E6%88%B7%E4%B8%80%E4%B8%AA%E7%BA%BF%E7%A8%8B-%E6%8F%90%E5%89%8D%E5%88%9B%E5%BB%BA%E5%A5%BD%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-number">1.6.</span> <span class="nav-text">每个用户一个线程 + 提前创建好线程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BB%E7%BA%BF%E7%A8%8B%E7%BB%9F%E4%B8%80accept-%E6%8F%90%E5%89%8D%E5%88%9B%E5%BB%BA%E5%A5%BD%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-number">1.7.</span> <span class="nav-text">主线程统一accept + 提前创建好线程池</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8-event-based%EF%BC%88%E5%8F%AA%E8%AE%A8%E8%AE%BAreactor%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">事件驱动 event-based（只讨论reactor）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#reactor-%E5%8D%95%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.8.1.</span> <span class="nav-text">reactor 单线程模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95reactor-%E5%B7%A5%E4%BD%9C%E7%BA%BF%E7%A8%8B%E6%B1%A0"><span class="nav-number">1.8.2.</span> <span class="nav-text">单reactor + 工作线程池</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#multi-reactor-%E7%89%88%E6%9C%AC1"><span class="nav-number">1.8.3.</span> <span class="nav-text">multi-reactor 版本1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Muduo-multiple-Reactor"><span class="nav-number">1.8.3.1.</span> <span class="nav-text">Muduo multiple Reactor</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#multi-reactor%E7%89%88%E6%9C%AC2"><span class="nav-number">1.8.4.</span> <span class="nav-text">multi-reactor版本2</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '20f8dc588701722ecf06a83acd22fd0d',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

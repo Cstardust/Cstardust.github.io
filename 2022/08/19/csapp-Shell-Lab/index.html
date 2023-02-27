@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="实现简易Shell">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shell-Lab">
+<meta property="og:url" content="http://example.com/2022/08/19/csapp-Shell-Lab/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="实现简易Shell">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/08/19/csapp-Shell-Lab/2022-08-23-19-37-48.png">
+<meta property="og:image" content="http://example.com/2022/08/19/csapp-Shell-Lab/2022-08-23-20-48-23.png">
+<meta property="article:published_time" content="2022-08-19T00:54:18.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:18:32.488Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CSAPP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/08/19/csapp-Shell-Lab/2022-08-23-19-37-48.png">
+
+<link rel="canonical" href="http://example.com/2022/08/19/csapp-Shell-Lab/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Shell-Lab | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/08/19/csapp-Shell-Lab/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Shell-Lab
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-08-19 08:54:18" itemprop="dateCreated datePublished" datetime="2022-08-19T08:54:18+08:00">2022-08-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:32" itemprop="dateModified" datetime="2023-02-27T23:18:32+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>实现简易Shell</p>
+<span id="more"></span>
+
+<h2 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h2><ul>
+<li><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/qingergege/p/5914218.html">getopt</a></p>
+</li>
+<li><p>shell执行一系列的读/求值步骤，然后终止</p>
+<ul>
+<li><ol>
+<li>读步骤       读取来自用户的一个命令行     fgets</li>
+</ol>
+</li>
+<li><ol start="2">
+<li> 求值步骤     解析命令行，并代表用户运行   eval</li>
+</ol>
+<ul>
+<li>2.1     前台 or 后台                                     parseline</li>
+<li>2.2     whether shell内置命令 or executable可执行文件     builtin_command </li>
+<li>2.3     not builtin_command  — execve / builtin_command — execute immediately</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>tsh原理流程图（不严谨画的，但意思是那个意思）<br><img src="/2022/08/19/csapp-Shell-Lab/2022-08-23-19-37-48.png"><br><img src="/2022/08/19/csapp-Shell-Lab/2022-08-23-20-48-23.png"></p>
+</li>
+</ul>
+<h2 id="几个值得注意的地方。"><a href="#几个值得注意的地方。" class="headerlink" title="几个值得注意的地方。"></a>几个值得注意的地方。</h2><ul>
+<li>由tsh fork出的子进程所在的进程组所执行的job 通过job list : jobs 管理。每个job结构体记录job的pid(进程组组长的，也即该job的），jid，state，cmdline。</li>
+</ul>
+<ul>
+<li><p>tsh的前台进程组就是占据了tsh输入的进程组</p>
+</li>
+<li><p><strong>waitfg做的事情就是占据终端。</strong></p>
+<ul>
+<li><strong>通过busy loop实现，一直spin自旋。</strong></li>
+<li><strong>直到检测到前台进程组组长改变。</strong></li>
+</ul>
+</li>
+<li><p>脚本运行bug：解释器错误: 没有那个文件或目录</p>
+<ul>
+<li>windows下，每一行的结尾是\n\r，而在linux下文件的结尾是\n，那么你在windows下编辑过的文件在linux下打开看的时候每一行的结尾就会多出来一个字符\r,用cat -A yourfile时你可以看到这个\r字符被显示为^M，这时候只需要删除这个字符就可以了。</li>
+<li>ssh连接linux<ul>
+<li>但是还是编辑在windows下的vscode下</li>
+<li><strong>记得去掉trace(不然参数传递的个数会与预期不符）和sdriver.pl中多余的回车符号 \r(ASCII13)</strong></li>
+</ul>
+</li>
+<li><strong><code>sed -i &#39;s/\r$//&#39; yourfile</code></strong></li>
+</ul>
+</li>
+<li><p>限制比较字符个数也可通过n<a target="_blank" rel="noopener" href="https://stackoom.com/question/1eBSS">strncmp</a></p>
+</li>
+</ul>
+<h3 id="信号处理"><a href="#信号处理" class="headerlink" title="信号处理"></a>信号处理</h3><ul>
+<li><p>main(parent)</p>
+<ul>
+<li>对于终端键入的SIGINT以及SIGTSTP信号，tsh的<strong>main</strong>(parent)负责对其进行<strong>forward</strong>转发，转发给<strong>foreground</strong>（通过sigint_handler和sigtstp_handler）</li>
+<li>对于CHILD死亡后产生的SIGCHLD信号，tsh的main(parent)负责wait、回收。（通过sigchld_handler）</li>
+</ul>
+</li>
+<li><p>child</p>
+<ul>
+<li>根据以下 <strong>child会继承parent的handler，但是由于execve</strong>，因此，不必手动恢复默认，child对SIGINT，SIGTSTP，SIGCHLD的信号都是默认的或由child execve的prog自己决定。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  没必要手动恢复</span></span><br><span class="line">Signal(SIGINT, SIG_DFL);  <span class="comment">//  change to default (so child progess would terminated instead of forwarding the signal)</span></span><br><span class="line">Signal(SIGTSTP, SIG_DFL); <span class="comment">//  change to default (so child progess would stopped instead of forwarding the signal) </span></span><br></pre></td></tr></table></figure></li>
+<li>A  child created via <strong>fork</strong>(2) <strong>inherits</strong> a copy of its parent’s signal <strong>dispositions</strong>.  </li>
+<li>During an <strong>execve</strong>(2), the dispositions of handled signals are reset to the <strong>default</strong>; the dispositions of ignored signals are left unchanged.</li>
+</ul>
+</li>
+<li><p>Why parent should forward SIGINT and SIGTSTP ？ </p>
+<ul>
+<li>信号机制中 信号由前台进程组的所有信号接收</li>
+<li>fork出的子进程，默认和其父进程同属一个进程组，而我们的tsh是运行在Linux shell的foreground中，因此tsh以及其fork出的child都是Linux shell的foreground</li>
+<li>所以，如果键入一个信号，将发送给我们tsh fork出的所有子进程，并且也包括tsh的main</li>
+<li>所以我们的tsh fork出的每个子进程，在execve之前，都要独立成一个进程组(setpgid(0,0))</li>
+<li>这样保证Linux shell的前台进程组只有我们的tsh</li>
+<li>当键入信号时，shell可以将信号正确转发给应当接收信号的进程组</li>
+<li>This ensures that there will be only one process, your shell, in the foreground process group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forward it to the appropriate foreground job (or more precisely, the process group that contains the foreground) </li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>return value of waitpid <ul>
+<li>on success, returns the process ID of the child whose state has changed; </li>
+<li>if WNOHANG was specified and one or more child(ren) specified by pid exist, but  have not yet changed state, then 0 is returned.  </li>
+<li>On error, -1 is returned.</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>waitpid(-1, &amp;status, 0)</p>
+<ul>
+<li>block等待parent的所有child死亡。</li>
+<li>return -1 &amp;&amp; errno = echild 代表子进程已经全部回收。</li>
+</ul>
+</li>
+<li><p>waitpid(-1, &amp;status, WNOHANG)</p>
+<ul>
+<li>不block等待parent的child死亡</li>
+<li>return 0 if progess of set is not terminated(change state)</li>
+</ul>
+</li>
+<li><p>waitpid(-1, &amp;status, WNOHANG | WUNTRACED)</p>
+<ul>
+<li>不block等待set中的progess terminated or stopped</li>
+<li>WUNTRACED 与默认不同。默认等待terminated发出的SIGCHLD，WUNTRACED等待STOPPED发出的SIGCHLD</li>
+<li>== 0 剩余的子进程都没terminate/stop</li>
+<li>== -1 error</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>好难找</strong>：这条只能在之前的waitpid是block的时候用！（检验是否还有剩余的子进程（正在运行的、停止的、僵尸的都算剩余的(exits)）。因为如果是WNOHANG，此时出while后，set中仍然有unwaited-for child，打印errno是success，不是ECHILD<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ECHILD : The calling process does <span class="keyword">not</span> have any unwaited-<span class="keyword">for</span> children.</span><br><span class="line"><span class="keyword">if</span>(errno! = ECHILD)&#123;</span><br><span class="line">  unix_error</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li><strong>关于SIGCHLD信号应当由waitfg还是sigchld_handler来wait ANSWER FROM HINT</strong><ul>
+<li>One of the tricky parts of the assignment is deciding on the allocation of work between the waitfg and sigchld handler functions. We recommend the following approach:<br>– In waitfg, use a busy loop around the sleep function.<br>– In sigchld handler, use exactly one call to waitpid</li>
+<li>While other solutions are possible, such as calling waitpid in both waitfg and sigchld handler, these can be very confusing. It is simpler to do all reaping in the handler.（qs，之前没看hint，直接写，大多数情况SIGCHLD是被sigchld handler接收了）</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>父进程死了，子进程在之前被停止，那么子进程不会死。如下，子进程被stopped，tsh死了之后，子进程仍然是stopped</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">    2  53179      0      0 ?            -1 I        0   0:00 [kworker/u256:2-]</span><br><span class="line">    1  53235  53234  40687 ?            -1 R     1000   1:38 ./tsh -p</span><br><span class="line">**53235  53239  53239  40687 ?            -1 T     1000   0:00 ./myspin 5**</span><br><span class="line">  4522  53604   4522   4522 ?            -1 S     1000   0:00 sleep 180</span><br></pre></td></tr></table></figure></li>
+<li><p>在操作全局的data structure :jobs时，建议<del>上锁</del>，block所有信号，以防止信号打断触发的handler里面对jobs进行modify。</p>
+<ul>
+<li>在tsh中，和 main 为并发关系，且可以操作jobs的，就是main注册handler。他们均有可能操作jobs structure ，因此要先将所有信号阻塞 防止打断 ，再操作jobs。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>关于main的addjob和child 的 data race</p>
+<ul>
+<li>不能假设addjob在child的excve之前<ul>
+<li>如果child先exit，那么就会deletejob一个没记录的job，又会addjob一个不存在的job。</li>
+</ul>
+</li>
+<li>所以应当先为parent block掉SIGCHLD（子进程不block）</li>
+<li>当addjob之后，parent再unblock掉SIGCHLD</li>
+</ul>
+</li>
+<li><p>Linux Shell bg和fg的原理是通过SIGCONT信号</p>
+<ul>
+<li>用bg或fg命令会发SIGCONT, 也可以用kill -SIGCONT PID</li>
+<li>fg比起bg就是多了一个占据输入（调用waitfg）（用spin锁 busy loop）</li>
+</ul>
+</li>
+</ul>
+<h2 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h2><ul>
+<li>举几个trace<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-virtual-machine:~/Shared_ln/csapp/shlab$ ./sdriver.pl -t trace03.txt -s ./tsh -a <span class="string">&quot;-p&quot;</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># trace03.txt - Run a foreground job.</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">tsh&gt; quit</span><br><span class="line">shc@shc-virtual-machine:~/Shared_ln/csapp/shlab$ ./sdriver.pl -t trace04.txt -s ./tsh -a <span class="string">&quot;-p&quot;</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># trace04.txt - Run a background job.</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">tsh&gt; ./myspin 1 &amp;</span><br><span class="line">[1] (66506) ./myspin 1 &amp;</span><br><span class="line">shc@shc-virtual-machine:~/Shared_ln/csapp/shlab$ ./sdriver.pl -t trace05.txt -s ./tsh -a <span class="string">&quot;-p&quot;</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># trace05.txt - Process jobs builtin command.</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">tsh&gt; ./myspin 2 &amp;</span><br><span class="line">[1] (66540) ./myspin 2 &amp;</span><br><span class="line">tsh&gt; ./myspin 3 &amp;</span><br><span class="line">[2] (66542) ./myspin 3 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">jobs</span></span><br><span class="line">[1] (66540) Running ./myspin 2 &amp;</span><br><span class="line">[2] (66542) Running ./myspin 3 &amp;</span><br><span class="line">shc@shc-virtual-machine:~/Shared_ln/csapp/shlab$ ./sdriver.pl -t trace15.txt -s ./tsh -a <span class="string">&quot;-p&quot;</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># trace15.txt - Putting it all together</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">tsh&gt; ./bogus</span><br><span class="line">./bogus: Command not found</span><br><span class="line">tsh&gt; ./myspin 10</span><br><span class="line">Job [0] (0) killed by signal 2</span><br><span class="line">tsh&gt; ./myspin 3 &amp;</span><br><span class="line">[1] (66596) ./myspin 3 &amp;</span><br><span class="line">tsh&gt; ./myspin 4 &amp;</span><br><span class="line">[2] (66598) ./myspin 4 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">jobs</span></span><br><span class="line">[1] (66596) Running ./myspin 3 &amp;</span><br><span class="line">[2] (66598) Running ./myspin 4 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">fg</span> %1</span><br><span class="line">Job [1] (66596) stopped by signal 20</span><br><span class="line">tsh&gt; <span class="built_in">jobs</span></span><br><span class="line">[1] (66596) Stopped ./myspin 3 &amp;</span><br><span class="line">[2] (66598) Running ./myspin 4 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">bg</span> %3</span><br><span class="line">%3: No such job</span><br><span class="line">tsh&gt; <span class="built_in">bg</span> %1</span><br><span class="line">[1] (66596) ./myspin 3 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">jobs</span></span><br><span class="line">[1] (66596) Running ./myspin 3 &amp;</span><br><span class="line">[2] (66598) Running ./myspin 4 &amp;</span><br><span class="line">tsh&gt; <span class="built_in">fg</span> %1</span><br><span class="line">tsh&gt; quit</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CSAPP/" rel="tag"># CSAPP</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/07/27/csapp-8-%E5%BC%82%E5%B8%B8%E6%8E%A7%E5%88%B6%E6%B5%812/" rel="prev" title="csapp-8-异常控制流2">
+      <i class="fa fa-chevron-left"></i> csapp-8-异常控制流2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/08/26/csapp-Cache-Lab/" rel="next" title="Cache-Lab">
+      Cache-Lab <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%A0%E4%B8%AA%E5%80%BC%E5%BE%97%E6%B3%A8%E6%84%8F%E7%9A%84%E5%9C%B0%E6%96%B9%E3%80%82"><span class="nav-number">2.</span> <span class="nav-text">几个值得注意的地方。</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86"><span class="nav-number">2.1.</span> <span class="nav-text">信号处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E6%9E%9C"><span class="nav-number">3.</span> <span class="nav-text">结果</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : 'c38265886360c24795cae77b0280e6ae',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

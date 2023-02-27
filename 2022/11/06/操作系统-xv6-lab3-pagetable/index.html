@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="地址映射关系 即 va -&gt; pa 的 映射  在做本实验之前，xv6的虚拟内存机制如下  对于kernel , 内核只有一张全局的kernel pagetable. 所有kernel thread 共用这一张pagetable. 通过MMU使用. 对于user , 每个user process的user thread 有一张user pagetable. user通过MMU使用. 但对于u">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab3-pagetable">
+<meta property="og:url" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="地址映射关系 即 va -&gt; pa 的 映射  在做本实验之前，xv6的虚拟内存机制如下  对于kernel , 内核只有一张全局的kernel pagetable. 所有kernel thread 共用这一张pagetable. 通过MMU使用. 对于user , 每个user process的user thread 有一张user pagetable. user通过MMU使用. 但对于u">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-41-06.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-25-21-41-55.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-25-21-42-05.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-55-40.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-19-45-40.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-42-52.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-09-30.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-41-06.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-49-05.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-26-16-03-44.png">
+<meta property="og:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-09-30.png">
+<meta property="article:published_time" content="2022-11-06T10:27:27.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:41.942Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-41-06.png">
+
+<link rel="canonical" href="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab3-pagetable | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab3-pagetable
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-11-06 18:27:27" itemprop="dateCreated datePublished" datetime="2022-11-06T18:27:27+08:00">2022-11-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:41" itemprop="dateModified" datetime="2023-02-27T23:22:41+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>17k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>16 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>地址映射关系 即 va -&gt; pa 的 映射</p>
+<ul>
+<li><p>在做<strong>本实验之前</strong>，xv6的虚拟内存机制如下</p>
+<ul>
+<li>对于kernel , 内核只有一张<strong>全局的kernel pagetable</strong>. 所有kernel thread 共用这一张pagetable. 通过MMU使用.</li>
+<li>对于user , 每个user process的user thread 有一张<strong>user pagetable</strong>. user通过MMU使用.</li>
+<li>但对于user传入kernel的va,kernel该如何使用user pgtbl来进行寻址呢 ? kernel 通过<strong>软件模拟</strong>(walkaddr)来查询user pgtbl 来进行user va的寻址.<ul>
+<li>很显然，效率很低 不如硬件. 现代操作系统采用的也并非是这种机制.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>本实验</strong> : 那么 为了让kernel可以直接通过硬件MMU来使用user pagetable. 我们实现如下措施</p>
+<ul>
+<li>(以下就是所谓的将<strong>内核页表和用户页表合并</strong>)<ul>
+<li>为<strong>每</strong>一个process的<strong>kernel thread 都 分配一个 pagetable.</strong> </li>
+<li>且在这个kernel thread pgtable<ul>
+<li><ol>
+<li>不但维护了kernel 的地址空间映射</li>
+</ol>
+</li>
+<li><strong>2. 还要 维护user thread的user pgtable的地址空间的映射(va-&gt;pa)</strong></li>
+</ul>
+</li>
+<li><strong>对于1.</strong> 我们应当 为 每个kernel thread pgtbl建立和 全局 kenrel pgtbl 基本一样的地址映射关系 (kvminitproc)</li>
+<li><strong>对于2.</strong> 我们应当 将user thread pgtbl 的维护的地址映射关系 拷贝到 kernel thread pgtbl 的 [0,0XC00..00-1]处<ul>
+<li>并在 user thread pgtbl 的地址映射关系发生改变时(pte的增加/删除/修改)，即时拷贝到kernel thread pgtbl上</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>合并之后，kernel 使用 user va的方式 就是 直接通过MMU在kernel thread pgtbl的user部分进行查询. 而不用通过walkaddr,提高效率</li>
+</ul>
+</li>
+<li><p>下图就是一个合并user部分后的kernel thread pgtbl<br><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-41-06.png"></p>
+</li>
+<li><p><strong>本实验后</strong>，xv6的虚拟内存机制如下</p>
+<ul>
+<li><strong>3个pgtbtl</strong><ul>
+<li>全局 kernel pgtbl (kernel的scheduler thread用)</li>
+<li>user thread pgtbl (user thread用)</li>
+<li>kernel thread pgtbl(包含user部分) (kernel 用)</li>
+</ul>
+</li>
+<li>主流的OS也是用这种方法.</li>
+</ul>
+</li>
+<li><p>关于 vm.c 注释见文</p>
+</li>
+<li><p>关于虚拟内存是否连续见文末</p>
+</li>
+</ul>
+<span id="more"></span>
+
+<h2 id="part-1"><a href="#part-1" class="headerlink" title="part 1"></a>part 1</h2><ul>
+<li>简单递归</li>
+<li>对于PTE，当PTE_V=1时，代表着该PTE有效。<ul>
+<li>对于非叶子pte，代表整个pte指向下一级pgtbl，且可以被使用。</li>
+<li>对于叶子pte，也即其所指向的physical page 有效的physical page，所谓有效，也即该pagetable建立了从virtual address 到这个 physical page的映射，也即这个physical page 归本pgtbl所有。</li>
+</ul>
+</li>
+<li>当PTE = 0时，意味着本PTE第一次被使用，故其也没有指向下一级页表或是物理页。<ul>
+<li>核心code<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">vmprint</span><span class="params">(<span class="keyword">pagetable_t</span> pagetable,<span class="keyword">int</span> depth)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(depth &gt; <span class="number">2</span>) <span class="keyword">return</span> ;</span><br><span class="line">  <span class="comment">//  pagetable = 512 ptes = 512 uint64 = 512 * 8 bytes = 4096 bytes</span></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">512</span>;++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">pte_t</span> pte = pagetable[i];</span><br><span class="line">    <span class="keyword">if</span>(pte &amp; PTE_V)</span><br><span class="line">    &#123;</span><br><span class="line">      uint64 next = PTE2PA(pte);    <span class="comment">//  nextlevel_pagetable_or_mem_pa</span></span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">&quot;%d: pte %p pa %p\n&quot;</span>,i,(<span class="keyword">void</span>*)pte,next);</span><br><span class="line">      vmprint((<span class="keyword">pagetable_t</span>)next,depth+<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> ;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h2 id="part2-：独立内核页表"><a href="#part2-：独立内核页表" class="headerlink" title="part2 ：独立内核页表"></a>part2 ：独立内核页表</h2><ul>
+<li><p>独立内核页表  </p>
+<ul>
+<li>我们需要 将共享内核页表改成独立内核页表 ，使得每个进程拥有自己独立的内核页表。</li>
+</ul>
+</li>
+<li><p>在这一部分，仅仅是让每个process有自己的kernel pagetable，但实际上，在这里，对于该proc的kernel page table，使用的方法都是和之前全局的kernel pagetable一样的。</p>
+</li>
+<li><p>proc.h</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">  <span class="comment">// Per-process state</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">proc</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// p-&gt;lock must be held when using these:</span></span><br><span class="line">  <span class="class"><span class="keyword">enum</span> <span class="title">procstate</span> <span class="title">state</span>;</span>        <span class="comment">// Process state</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">parent</span>;</span>         <span class="comment">// Parent process</span></span><br><span class="line">  <span class="keyword">void</span> *chan;                  <span class="comment">// If non-zero, sleeping on chan</span></span><br><span class="line">  <span class="keyword">int</span> killed;                  <span class="comment">// If non-zero, have been killed</span></span><br><span class="line">  <span class="keyword">int</span> xstate;                  <span class="comment">// Exit status to be returned to parent&#x27;s wait</span></span><br><span class="line">  <span class="keyword">int</span> pid;                     <span class="comment">// Process ID</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// these are private to the process, so p-&gt;lock need not be held.</span></span><br><span class="line">  uint64 kstack;               <span class="comment">// Virtual address of kernel stack   //  kernel stack 不是直接映射</span></span><br><span class="line">  uint64 kstack_pa;             <span class="comment">//  kernel stack的physical address</span></span><br><span class="line">  uint64 sz;                   <span class="comment">// Size of process memory (bytes)</span></span><br><span class="line">  <span class="keyword">pagetable_t</span> pagetable;       <span class="comment">// User page table</span></span><br><span class="line">  <span class="keyword">pagetable_t</span> kpagetable;       <span class="comment">//  kernel page table</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">trapframe</span> *<span class="title">trapframe</span>;</span> <span class="comment">// data page for trampoline.S</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">context</span> <span class="title">context</span>;</span>      <span class="comment">// swtch() here to run process</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">ofile</span>[<span class="title">NOFILE</span>];</span>  <span class="comment">// Open files</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">inode</span> *<span class="title">cwd</span>;</span>           <span class="comment">// Current directory</span></span><br><span class="line">  <span class="keyword">char</span> name[<span class="number">16</span>];               <span class="comment">// Process name (debugging)</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h3 id="RISCV-PGTABLE结构"><a href="#RISCV-PGTABLE结构" class="headerlink" title="RISCV PGTABLE结构"></a>RISCV PGTABLE结构</h3><h4 id="三级页表"><a href="#三级页表" class="headerlink" title="三级页表"></a>三级页表</h4><p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-25-21-41-55.png"></p>
+<h4 id="PTE结构"><a href="#PTE结构" class="headerlink" title="PTE结构"></a>PTE结构</h4><p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-25-21-42-05.png"></p>
+<ul>
+<li>PTE分为两部分：物理地址页帧号和标志位。具体的结构如上图。<ul>
+<li>保留位：第54-63位，共10位。</li>
+<li>PPN: 物理页帧号，第10-53位，共44位。</li>
+<li>Flags：标志位，第0-9位，共10位。其中第8-9位为保留位，暂不使用。<ul>
+<li>第0位 Valid：该页表项有效。对于叶子页表来说，这个位置为1说明虚拟地址有映射到物理地址，否则说明没有该映射。对于次页表来说，为1说明有对应的叶子页表，对于根页表说明有对应次页表。</li>
+<li>第1-3位 Readable/ Writable/ Executable： 该页表项是可读/写/执行（作为代码运行）的。通常我们只需要关心叶子页表项的这三个位，因为这代表对应的物理页帧的标志，而不是页表的标志。对于根页表和次页表的目录项，这三个位往往置为0。</li>
+<li>第4位 User： 该页表项指向的物理页能在用户态访问。内核页表中的代码和数据我们不会将其给用户使用，所以会置0，但是用户页表的代码和数据应该要置1。同样，对于内核页表中的页表项，如果该位置1，则计算机的硬件不会允许内核访问对应地址，但可以通过其他的手段访问，后文会介绍。</li>
+<li>其他位,查阅riscv-privileged.pdf 4.3~4.4</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="关键问题"><a href="#关键问题" class="headerlink" title="关键问题"></a>关键问题</h3><ul>
+<li><p><strong>问题：proc的kernel pagetable都需要映射什么？</strong></p>
+<ul>
+<li>在本部分，与全局kernel pagetable的不同之处在于<ul>
+<li>只需要映射自己proc的kernel stack</li>
+<li>不需要映射CLINT</li>
+</ul>
+</li>
+<li>实际上，在下一部分完成后，proc kernel pagetable的PLIC之下，还需映射到proc user pgtbl维护的地址空间（即user虚拟地址指向的物理地址）</li>
+<li>详情见下一部分。</li>
+<li>本部分只是负责建立一个不完全proc的kernel pgtbl，并替代全局kernel pgtbl，并不改变其他机制。</li>
+</ul>
+</li>
+<li><p><strong>一个进程到底是什么？</strong></p>
+<ul>
+<li>感觉就是一堆上下文和代码。。</li>
+</ul>
+</li>
+<li><p><strong>为什么要保留初始内核页表？</strong></p>
+<ul>
+<li>保留原有的全局 kernel pagetable</li>
+<li>因为cpu上不是一直都在执行用户进程。当执行用户进程之前，需要切换成user的kpgtbl；执行结束后，需要切成全局的kpgtbl。因为user的kpgtbl此时可能已经在freeproc函数中被释放，如果继续使用user的kpgtbl，会crash。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span>(p = proc; p &lt; &amp;proc[NPROC]; p++) &#123;</span><br><span class="line">  acquire(&amp;p-&gt;lock);</span><br><span class="line">  <span class="keyword">if</span>(p-&gt;state == RUNNABLE) &#123;</span><br><span class="line">    <span class="comment">// Switch to chosen process.  It is the process&#x27;s job</span></span><br><span class="line">    <span class="comment">// to release its lock and then reacquire it</span></span><br><span class="line">    <span class="comment">// before jumping back to us.</span></span><br><span class="line">    p-&gt;state = RUNNING;</span><br><span class="line">    c-&gt;proc = p;</span><br><span class="line">    <span class="comment">//  切换进程的同时 切换成proc的kernel pgtbl</span></span><br><span class="line">    kvminithartproc(p-&gt;kpagetable);</span><br><span class="line">    <span class="comment">//  运行p进程</span></span><br><span class="line">    swtch(&amp;c-&gt;context, &amp;p-&gt;context);</span><br><span class="line">    <span class="comment">//  没有user进程运行时 即 运行scheduler时 换回全局kernel pgtbl</span></span><br><span class="line">    kvminithart();</span><br><span class="line">    <span class="comment">// Process is done running for now.</span></span><br><span class="line">    <span class="comment">// It should have changed its p-&gt;state before coming back.</span></span><br><span class="line">    <span class="comment">// cpu dosen&#x27;t run any user process now</span></span><br><span class="line">    c-&gt;proc = <span class="number">0</span>; </span><br><span class="line">  &#125;</span><br><span class="line">  release(&amp;p-&gt;lock);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><ul>
+<li><p>Step 1 ：proc中新添 pagetable_t kernel_pagetable 以及kstack_pa</p>
+<ul>
+<li>属于proc的kernel pagetable</li>
+<li>kernel stack的物理地址</li>
+</ul>
+</li>
+<li><p>Step 2 ：实现 pagetable_t kvminitproc()。</p>
+<ul>
+<li>模仿kvminit，创建进程的内核页表，并建立除了CLINT之外的映射。</li>
+</ul>
+</li>
+<li><p>Step 3 ：修改procinit。</p>
+<ul>
+<li>procinit()：系统引导时（见kernel/main.c的main函数），用于给proc分配kernel stack的physical page 并在全局kernel pgtbl建立映射。</li>
+<li>记录下kernel stack的physical address。为了之后allocproc分配进程创建proc kernel pagetable时，在proc kpgtbl中建立kernel stack的映射。</li>
+</ul>
+</li>
+<li><p>Step 4 ：修改allocproc。</p>
+<ul>
+<li>allocproc何时被调用？<ul>
+<li>在系统启动时被第一个process 和 fork 调用</li>
+</ul>
+</li>
+<li>allocproc功能<ul>
+<li>在进程表proc数组中查找UNSUEDPCB，<ul>
+<li>如果找到，<ul>
+<li>创建用户页表初始化在内核中运行所需的状态trapframe,user pagetable , kpgtable , 处于forkret的上下文等，并保持p-&gt;lock返回。</li>
+</ul>
+</li>
+<li>如果没有PCB，或者内存分配失败<ul>
+<li>return 0</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>创建proc的kpgtbl，并在其中建立该proc的kstack的映射。 <ul>
+<li>只是把本proc的kstack在全局的kernel pgtbl的映射又在proc的kernel pgtbl上又做了一次。virtual address 和 kernel address 都是一样的</li>
+<li>之前记录kstack_pa就是为了在这里建立映射。</li>
+<li>虚拟地址也是之前创建kstack时记录下的p-&gt;kstack<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">p-&gt;kpagetable = kvminitproc();</span><br><span class="line"><span class="comment">//  映射kstack</span></span><br><span class="line">kvmmapproc(p-&gt;kpagetable,p-&gt;kstack,p-&gt;kstack_pa,PGSIZE,PTE_R | PTE_W);</span><br><span class="line"><span class="comment">//  此时user pgtbl 除了trapframe和trampoline之外还没有section 无需同步 user kernel pgtbl</span></span><br><span class="line"><span class="comment">//  也即0xC000000之下 user pgtbl没有建立va-pa</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Step 5 ：scheduler 切换进程的同时切换pagetable。没有用户进程的时候切回全局kernel pgtbl</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">kvminithartproc(p-&gt;kpagetable);</span><br><span class="line"><span class="comment">//  运行p进程</span></span><br><span class="line">swtch(&amp;c-&gt;context, &amp;p-&gt;context);</span><br><span class="line"><span class="comment">//  没有user进程运行时 即 运行scheduler时 换回全局kernel pgtbl</span></span><br><span class="line">kvminithart();</span><br></pre></td></tr></table></figure></li>
+<li><p>Step 6 ：进程结束时，释放proc的kpgtbl，但不释放其映射的物理内存。因为内核的代码和数据都是唯一的。只是有很多人指向而已.</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  释放以pgtbl为根节点的所有pgtbl，并将pgtbl的所有pte清0，但不释放映射到的物理内存</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">freepgtblonly</span><span class="params">(<span class="keyword">pagetable_t</span> pgtbl)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">512</span>;++i)</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">pte_t</span> pte = pgtbl[i];</span><br><span class="line">    <span class="comment">//  前两级的pte</span></span><br><span class="line">    <span class="keyword">if</span>((pte &amp; PTE_V) &amp;&amp; (pte &amp; (PTE_R|PTE_W|PTE_X)) == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      uint64 child = PTE2PA(pte);</span><br><span class="line">      freepgtblonly((<span class="keyword">pagetable_t</span>)child);   <span class="comment">//  释放下一级pte</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  对于叶子pte 不必操作</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//  释放整个pgtbl自身</span></span><br><span class="line">  kfree((<span class="keyword">void</span>*)pgtbl);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><p>一遍过 yes!</p>
+</li>
+</ul>
+<h2 id="part-3-：简化软件模拟地址翻译"><a href="#part-3-：简化软件模拟地址翻译" class="headerlink" title="part 3 ：简化软件模拟地址翻译"></a>part 3 ：简化软件模拟地址翻译</h2><h3 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h3><p>进程user态的虚拟地址 即 proc的user pgtbl维护的虚拟地址<br>进程内核（kernel） 态的虚拟地址 即 proc的kernel pgtbl维护的虚拟地址<br>全局的kernel pgtbl 即 全局的kernel pgtbl</p>
+<ul>
+<li><strong>在做part3之前，proc在内核态如何使用user态传递到kenerl的user virtual address – 通过walkaddr</strong>？ <ul>
+<li>kernel从user态的va读取数据：copyin ; 写入数据到user的va：copyout</li>
+<li>比如在copyin的时候，如果拿到了user态的虚拟地址，如果按照之前的流程的话，需要通过copyin函数，copyin函数通过walkaddr软件模拟翻译获得user va对应的pa，再读取pa的内容，将其复制进kernel_dst对应的pa的physical memory。</li>
+<li><strong>软件模拟翻译</strong> : <ul>
+<li>通过walkaddr去user pgtbl查找user va对应的pa的过程。效率低。不如MMU查找快。</li>
+</ul>
+</li>
+<li>kernel_dst如何得到pa？<ul>
+<li>经硬件MMU查询翻译得到。不是在软件层面实现的。</li>
+<li>当cpu发出这条kernel_dst后，会经MMU查询全局的kernel pagetable 翻译成pa。</li>
+</ul>
+</li>
+<li>大概意思如下<blockquote>
+<p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-55-40.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>即便在做完part2之后，上述情况也并无差别，只是将MMU查询使用的全局的kernel pagetable替换成了proc的kernel pagetable。proc的kpgtbl和全局的kpgtbl的区别只是CLINT，不影响上述行为。</li>
+</ul>
+<ul>
+<li><strong>做完part3，如何使用user的传入kernel的va？ – 直接使用</strong><ul>
+<li>手段：将proc的user pgtbl所维护的从va到pa的映射，拷贝到kernel pgtbl的中。</li>
+<li>这样我们在kernel的时候，比如在copyin的时候，拿到user传来的user va，我们不必去walkaddr去查询user va对应的pa，而是直接使用就好。将va到pa的翻译交给MMU。这样，user的va 直接使用，kernel的va 本就直接使用，省去了walkaddr的过程，全权交给硬件实现物理地址的翻译，提高效率。<ul>
+<li>因为此时cpu的$satp 是 proc的kernel pagetable。而我们又将整个user pgtbl维持的va到pa的映射关系，原封不动的搬到了proc 的 kernel pgtbl。</li>
+<li>因此MMU可以使用user的va在kernel的pgtbl中找到对应的pte，得到对应的pa。</li>
+</ul>
+</li>
+<li>copyin_new核心code如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy from user to kernel.</span></span><br><span class="line"><span class="comment">// Copy len bytes to dst from virtual address srcva in a given page table.</span></span><br><span class="line"><span class="comment">// Return 0 on success, -1 on error.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">copyin_new</span><span class="params">(<span class="keyword">pagetable_t</span> user_pagetable, <span class="keyword">char</span> *kernel_dst, uint64 user_srcva, uint64 len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="comment">//  直接使用user的srcva 而不必先去walkaddr得到pa！</span></span><br><span class="line">  memmove((<span class="keyword">void</span> *) kernel_dst, (<span class="keyword">void</span> *)user_srcva, len);</span><br><span class="line">  stats.ncopyin++;   <span class="comment">// XXX lock</span></span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-19-45-40.png"></li>
+</ul>
+</li>
+</ul>
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><ul>
+<li><p><strong>part3实现思路</strong>：</p>
+<ul>
+<li><strong>让proc的kpgtbl也维护一套user态的地址空间（拷贝并同步user pgtbl）</strong></li>
+<li><strong>拷贝</strong>：开始，将proc的user pgtbl所维护的从va到pa的映射，拷贝到kernel pgtbl的中</li>
+<li><strong>同步</strong>：user pgtbl发生改变的时候，将 变化的pte拷贝到user pgtbl中。所谓改变，即新增pte 、删除pte、改变pte的时候。<ul>
+<li>具体什么函数会令user pgtbl改变？<ul>
+<li>uvmalloc –&gt; mappages —&gt; walk(1)  </li>
+<li>uvmdealloc –&gt; uvmunmap –&gt; kfree(pa) *pte = 0</li>
+</ul>
+</li>
+<li>但是 如果是对那块已经建立的physical memory填充字节或者读取写入之类的云云（比如copyin copyout），就不必同步kernel pgtbl,因为映射关系没变，pte自然也没有变化</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>step</strong></p>
+<ul>
+<li><strong>step1</strong> : 将user pgtbl的pte复制到kernel中并同步变化.<ul>
+<li><strong>用户页表是从虚拟地址0开始，用多少就建多少，但最高地址不能超过内核的起始地址，这样用户程序可用的虚拟地址空间就为0x0 - 0xC000000。</strong></li>
+<li>也即，在user pgtbl变化的时候，将变化同步到kpgtbl中</li>
+<li>故在growproc fork userinit exec中 调用u2kvmcopymappingonly。<ul>
+<li>例如fork中<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(uvmcopy(p-&gt;pagetable, np-&gt;pagetable, p-&gt;sz) &lt; <span class="number">0</span> || u2kvmcopymappingonly(np-&gt;kpagetable,np-&gt;pagetable,<span class="number">0</span>,p-&gt;sz) &lt; <span class="number">0</span>)&#123;</span><br><span class="line">  freeproc(np);</span><br><span class="line">  release(&amp;np-&gt;lock);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>还有在user pgtbl清空pte时 也要同步到kpgtbl中，也即uvmdalloc和kvmdeallocpgtblonly要配套使用。代码见growproc以及exec。</li>
+</ul>
+</li>
+<li><strong>step2</strong> : copyin 替换为 copin_new</li>
+</ul>
+</li>
+</ul>
+<h3 id="3个pgtbl"><a href="#3个pgtbl" class="headerlink" title="3个pgtbl"></a>3个pgtbl</h3><ul>
+<li><p>全局的kernel pgtbl</p>
+<ul>
+<li>仅包含内核的代码和数据的虚实地址映射，用户程序的代码和数据不包含在内。</li>
+<li><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-42-52.png"></li>
+<li>xv6内核的大部分虚实地址映射是<strong>恒等映射</strong>，虚拟地址和物理地址是一模一样的。对于既要读写虚拟页又要通过PTE管理物理页的xv6内核来说，这样的直接映射降低了复杂性。</li>
+<li>从图中，我们可以看到，有两处虚拟地址<strong>不是直接映射</strong>的：<ul>
+<li><strong>trampoline</strong> 页：它是用户态-内核态跳板，既被映射到内核虚拟空间的顶端，页被映射到用户空间的同样位置。</li>
+<li><strong>kernel stack</strong>：每个进程都有自己的内核栈，它被映射到高位，这样在它下面可以保留一个未映射的守护页。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>proc 的 user pagetable</p>
+<ul>
+<li><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-09-30.png"></li>
+<li>上图是xv6的用户程序虚拟地址空间分布。<strong>其代码实现在kernel/exec.c中，exec使用proc_pagetable分配了TRAMPOLINE和TRAPFRAME的页表映射，然后用uvmalloc来为每个ELF段分配内存及页表映射，并用loadseg把每个ELF段载入内存。</strong></li>
+<li>trampoline ：用户态-内核态跳板。</li>
+<li>trapframe：用来存放每个进程的用户寄存器的内存空间。如果你想查看xv6在trapframe page中存放了什么，详见proc.h的trapframe结构体。</li>
+<li>heap ：堆。程序初始化时堆没有分配任何空间。用户程序可以通过sbrk系统调用调整堆分配的空间，这会把新内存映射到页表中，也可以从页表中移除映射，释放内存。</li>
+<li>stack：用户栈。xv6的用户栈只分配了一个页（PAGESIZE），放置在比堆更低的位置。通常操作系统会把用户栈放置在比堆更高的位置，这也是xv6和常见的操作系统做法不一样的地方。</li>
+<li>guard page：守护页，用来保护Stack。如果stack耗尽了，它会溢出到Guard page，但是因为Guard page的PTE中Valid标志位未设置，会导致立即触发page fault，这样的结果好过内存越界之后造成的数据混乱。</li>
+<li>data：用户程序的数据段。</li>
+<li>text：用户程序的代码段。</li>
+</ul>
+</li>
+<li><p>proc的kernel pgtbl</p>
+<ul>
+<li>与全局kernel最重要的不同在于 只维护了自己kernel stack的地址映射，以及多维护了用户态的地址空间。</li>
+<li><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-41-06.png"></li>
+<li><blockquote>
+<p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-15-49-05.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="vm-c"><a href="#vm-c" class="headerlink" title="vm.c"></a>vm.c</h2><h3 id="工具函数"><a href="#工具函数" class="headerlink" title="工具函数"></a>工具函数</h3><ul>
+<li><p>pte_t * walk(pagetable_t pagetable, uint64 va, int alloc)</p>
+<ul>
+<li>遍历前两级页表，找到第三级页表，返回va对应的第三级页表的叶子PTE , 这个PTE有可能全0</li>
+<li>alloc == 1<ul>
+<li>创建遍历过程中需要遍历到的但不存在的pagetable，最后返回va对应的第三级页表的叶子PTE.如果这个pte原本是不存在的话，那么实际上返回的pte是0</li>
+<li>success : return pte的地址</li>
+<li>fail : return 0 创建失败</li>
+</ul>
+</li>
+<li>alloc == 0<ul>
+<li>不必创建遍历过程中需要遍历到的但不存在的pagetable，如果遍历到的pte还不存在或者需要遍历的页表不存在，那么直接返回0即可。</li>
+<li>success : return pte的地址</li>
+<li>fail : return 0 所需遍历的页表不存在</li>
+</ul>
+</li>
+<li>只有当遍历到的三级页表在遍历前就全部存在，且第三级页表中的va对应的pte也之前就建立了对物理页的映射，才会得到返回有效的指向物理页的pte。</li>
+<li>目前来看只有通过walk接口，才能创建三级页表。</li>
+</ul>
+</li>
+<li><p>uint64 walkaddr(pagetable_t pagetable, uint64 va)</p>
+<ul>
+<li>根据va 去 pagetable里面查找相应的PTE , 进而得到pa。并不新增pte。也不会改变已有pte。对于pgtbl建立的映射关系没有影响。</li>
+<li>success : 如果查到的PTE无效 / 无权限，返回0</li>
+<li>fail : 如果查到的PTE有效，返回pa<ul>
+<li>返回的pa也只是physical page的起始addr，因为舍弃了va的低12位。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)</p>
+<ul>
+<li>在pagetable上（所代表的三级页表），建立从va到pa的映射。一个page一个page的建立映射，perm是指定的权限位。mappages结束后，维护va-&gt;pa的所需的页表以及pte都已经创建和初始化好。<ul>
+<li>建立的映射关系：[va,va+size-1] -&gt; [pa,pa+size-1]。 使用的虚拟地址是连续的，传入的物理内存也是连续的</li>
+<li>建立映射：*pte = PA2PTE(pa) | perm | PTE_V</li>
+</ul>
+</li>
+<li>success : return 0;</li>
+<li>fail : return -1; <ul>
+<li>由于walk函数在创建pagetable自身的时候失败。</li>
+</ul>
+</li>
+<li>mappages 不会kalloc要映射到的物理页，要映射到的物理页时调用mappages之前就准备好的。是传入的pa；但是mappages可能会kalloc所需的pagetables。</li>
+</ul>
+</li>
+<li><p>int test_pagetable()</p>
+<ul>
+<li>检验当前使用的pagetable是全局的kernel pagetable 还是其他pagetable<ul>
+<li>通过$satp比较</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>void freepgtblonly(pagetable_t pgtbl)</p>
+<ul>
+<li>释放以pgtbl为根节点的所有pgtbl，并将pgtbl的所有pte清0，但不释放映射到的物理内存</li>
+</ul>
+</li>
+<li><p>void freewalk(pagetable_t pagetable)</p>
+<ul>
+<li>释放所有存在的pagetable，并且检测叶子page table上面的叶子 PTE 是否已经没有对dram的映射,如果害有对dram的映射，那么panic<ul>
+<li>在此之前应当先销毁整个pgtbl所建立的映射关系。（如调用 uvmunmap使得pte清0，释放映射的物理内存）</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="关于全局-kernel-pgtbl"><a href="#关于全局-kernel-pgtbl" class="headerlink" title="关于全局 kernel pgtbl"></a>关于全局 kernel pgtbl</h3><ul>
+<li><p><strong>关于全局 kernel pagetable的</strong></p>
+</li>
+<li><p>void kvminit()</p>
+<ul>
+<li>建立好direct-map kernel_pagetable 但并没有启动pgtbl</li>
+<li>建立了KERNBASE之下 IO设备的映射以及kernel data . kernel text 以及trampoline的映射</li>
+</ul>
+</li>
+<li><p>void kvminithart()</p>
+<ul>
+<li>设置cpu当前使用页表为kernel_pagetable</li>
+</ul>
+</li>
+<li><p>kvmmap(uint64 va, uint64 pa, uint64 sz, int perm)</p>
+<ul>
+<li>在kernel_pagetable上，建立从va到pa映射，大小为sz。建立失败则panic</li>
+</ul>
+</li>
+<li><p>uint64 kvmpa(uint64 va)</p>
+<ul>
+<li>在kernel pagetable中 查找va对应的pa </li>
+<li>success : return pa (PPN + offset)</li>
+<li>fail : panic  <ul>
+<li>一般在va对应的物理页并不存在或者没有建立映射时（即根据va查询到的pte所指向的物理页无效 PTE_V = 0）</li>
+</ul>
+</li>
+<li>仅仅对kernel stack的va的对应的pa进行查询时有效。因为kernel pagetable只有kernel stack不是直接映射。（其实还有trampoline，不过那是pc指向的地址了）</li>
+</ul>
+</li>
+</ul>
+<h3 id="kernel-和-user-交互"><a href="#kernel-和-user-交互" class="headerlink" title="kernel 和 user 交互"></a>kernel 和 user 交互</h3><p><strong>kernel 和 user之间的数据交互 通过kernel 和user的pgtbl 以下是做lab之前</strong></p>
+<ul>
+<li><p>int copyout(pagetable_t user_pagetable, uint64 user_dstva, char *kernel_src, uint64 len)</p>
+<ul>
+<li>从kernel pagetable维护的src 的内容拷贝 len bytes 到 user pagetable维护的dst</li>
+<li>success : return 0</li>
+<li>fail : return -1</li>
+<li>核心代码如下，去掉了一些页对齐的代码<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy from kernel to user.</span></span><br><span class="line"><span class="comment">// Copy len bytes from src to virtual address dstva in a given page table.</span></span><br><span class="line"><span class="comment">// Return 0 on success, -1 on error.</span></span><br><span class="line"><span class="comment">//  从kernel pagetable维护的src 的内容拷贝 len bytes 到 user pagetable维护的dst</span></span><br><span class="line"><span class="comment">//  success : return 0</span></span><br><span class="line"><span class="comment">//  fail : return -1</span></span><br><span class="line">copyout(<span class="keyword">pagetable_t</span> user_pagetable, uint64 user_dstva, <span class="keyword">char</span> *kernel_src, uint64 len)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">//  src是全局 kpgtbl维护的虚拟地址，其和物理地址是恒等映射的关系。因此使用src实际上就是在使用物理地址 </span></span><br><span class="line">  uint64 n, va0, pa0;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span>(len &gt; <span class="number">0</span>)&#123;</span><br><span class="line">    va0 = PGROUNDDOWN(dstva);</span><br><span class="line">    <span class="comment">//  查找user pgtbl 将va映射到的pa</span></span><br><span class="line">    pa0 = walkaddr(pagetable, va0);</span><br><span class="line">    <span class="comment">//  将pa src的内容复制到pa处  </span></span><br><span class="line">    memmove(pa0, src, n);</span><br><span class="line">    <span class="comment">//  continue</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>int copyin(pagetable_t user_pagetable, char *kernel_dst, uint64 user_srcva, uint64 len)</p>
+<ul>
+<li>从user pagetable维护的srcva 的内容拷贝 len bytes 到 kernel pagetable维护的dst</li>
+<li>success : return 0</li>
+<li>fail : return -1 . 查询srcva对应pa失败<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy from user to kernel.</span></span><br><span class="line"><span class="comment">// Copy len bytes to dst from virtual address srcva in a given page table.</span></span><br><span class="line"><span class="comment">// Return 0 on success, -1 on error.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">copyin</span><span class="params">(<span class="keyword">pagetable_t</span> user_pagetable, <span class="keyword">char</span> *kernel_dst, uint64 user_srcva, uint64 len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">while</span>(len &gt; <span class="number">0</span>)&#123;</span><br><span class="line">    <span class="comment">//  页对齐</span></span><br><span class="line">    va0 = PGROUNDDOWN(srcva);</span><br><span class="line">    <span class="comment">//  user的va翻译成了物理地址pa</span></span><br><span class="line">    pa0 = walkaddr(pagetable, va0);   </span><br><span class="line">    <span class="comment">//  这里可以成功运行 也不过是因为kernel_pagetable 在这个部分对 dram是恒等映射</span></span><br><span class="line">    <span class="comment">//  因为cpu还是会将pa当作kernel pagetable的va来进行翻译。翻译成pa。</span></span><br><span class="line">    <span class="comment">//  将user pgtbl维护的映射到pa0的内容 拷贝到kernel pgtbl维护的dst指向的地址的物理内存</span></span><br><span class="line">    memmove(dst, pa0 ,  n);</span><br><span class="line">    <span class="comment">//  continue      </span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>int copyinstr(pagetable_t user_pagetable, char *kernel_dst, uint64 user_srcva, uint64 max)</p>
+<ul>
+<li>将user pagetable维护的srcva的地址的内容，拷贝kernel pagetable维护的dst。直到遇到’\0’</li>
+</ul>
+</li>
+</ul>
+<p><strong>完成part3之后</strong></p>
+<ul>
+<li>int copyin(pagetable_t user_pagetable, char *kernel_dst, uint64 user_srcva, uint64 len)<ul>
+<li>从proc user pagetable维护的srcva 的内容拷贝 len bytes 到 proc kernel pagetable维护的dst</li>
+<li><strong>此时proc的kpgtbl 也维护了srcva的虚拟地址，故不必去walkaddr，而是直接使用srcva</strong></li>
+<li>success : return 0</li>
+<li>fail : return -1 . <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy from user to kernel.</span></span><br><span class="line"><span class="comment">// Copy len bytes to dst from virtual address srcva in a given page table.</span></span><br><span class="line"><span class="comment">// Return 0 on success, -1 on error.</span></span><br><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">copyin_new</span><span class="params">(<span class="keyword">pagetable_t</span> user_pagetable, <span class="keyword">char</span> *kernel_dst, uint64 user_srcva, uint64 len)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="comment">//  直接使用user的srcva 而不必先去walkaddr得到pa！</span></span><br><span class="line">  memmove((<span class="keyword">void</span> *) kernel_dst, (<span class="keyword">void</span> *)user_srcva, len);</span><br><span class="line">  stats.ncopyin++;   <span class="comment">// XXX lock</span></span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="part-3-proc的kernel-pagetable"><a href="#part-3-proc的kernel-pagetable" class="headerlink" title="(part 3)proc的kernel pagetable"></a>(part 3)proc的kernel pagetable</h3><p><strong>part 3 : proc的kernel pagetable</strong></p>
+<ul>
+<li>pagetable_t kvminitproc()<ul>
+<li>建立proc的kpgtable。仿照kvminit。不同之处在于没有映射CLINT。防止合并user页表时发生重合。</li>
+</ul>
+</li>
+<li>void kvmmapproc(pagetable_t proc_kernel_pagetable, uint64 va, uint64 pa, uint64 sz, int perm)<ul>
+<li>在proc_kernel_pagetable上，建立从va到pa映射，大小为sz。仅仅建立映射，而不负责kalloc映射到的physical page。失败则panic</li>
+</ul>
+</li>
+<li>void kvminithartproc(pagetable_t kpgtbl)<ul>
+<li>设置当前cpu使用页表为proc的kpgtbl</li>
+</ul>
+</li>
+<li>int u2kvmcopymappingonly(pagetable_t kpgtbl,pagetable_t pgtbl,uint64 start,uint64 end)<ul>
+<li>将user pgtbl 的pte拷贝给user kernel pagetable [start,end)范围最大为[0,PLIC)。仅仅拷贝映射关系而已。而不拷贝映射的物理内存。<ul>
+<li>当user的pgtbl 有任何改动(增添或删除)的时候 将改动的pte拷贝给kernel pgtbl</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>uint64 kvmdeallocpgtblonly(pagetable_t kpgtbl, uint64 oldsz, uint64 newsz)<ul>
+<li>解除proc 的 kernel pgtbl 的va从 [newsz,oldsz) 到pa的映射（即将相应pte清0），但不释放physical memory<ul>
+<li>[newsz , oldsz) 应当包含于 [0,PLIC)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="关于proc的user-pagetable"><a href="#关于proc的user-pagetable" class="headerlink" title="关于proc的user pagetable"></a>关于proc的user pagetable</h3><p><strong>关于proc user pagetable</strong></p>
+<ul>
+<li><p>pagetable_t uvmcreate()</p>
+<ul>
+<li>创建一个PGSIZE大小的empty的user的pagetable(通过kalloc) </li>
+<li>success ：return pagetable</li>
+<li>fail    ：return 0</li>
+</ul>
+</li>
+<li><p>void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)</p>
+<ul>
+<li>解除va到pa的映射（pa由pagetable查找）（即使得va对应的pte清0）</li>
+<li>并释放pa对应的物理页(if dofree = 1)。</li>
+<li>总共解除对npages个物理页的映射</li>
+<li>fail : panic。查询pte失败 | te指向的物理页无效 | 查询到的pte不是个叶子 ? </li>
+</ul>
+</li>
+<li><p>void uvminit(pagetable_t pagetable, uchar *src, uint sz)</p>
+<ul>
+<li>在(user的)pagetable上，从虚拟地址的0开始，建立从 virtual [0,PGSIZE-1) 到 physical [mem,mem+PGSIZE-1) 的映射</li>
+<li>只是为了第一个进程，第一个进程需要运行initcode的text。src这段内存中装的是initcode的代码</li>
+</ul>
+</li>
+<li><p>uint64 uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)</p>
+<ul>
+<li>为user pagetable 建立从virtual addr oldsz到virtual addr newsz的虚拟地址空间。为其申请物理内存并建立映射。</li>
+<li>传入的oldsz 和 newsz 都是pgtbl的虚拟地址</li>
+<li>success : return newsz <ul>
+<li>返回pagetable维护的最大的虚拟地址</li>
+</ul>
+</li>
+<li>fail : return 0;   当<ul>
+<li>kalloc申请物理内存失败 / 建立mappages映射失败</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>uint64 uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) </p>
+<ul>
+<li>pagetable维护的虚拟地址空间,从oldsz减到newsz。解除va到pa的映射 并释放physical page<ul>
+<li>传入的oldsz和newsz都是pagetable上的虚拟地址</li>
+</ul>
+</li>
+<li>return pgtbl当前维护的最大vaddr</li>
+</ul>
+</li>
+<li><p>void uvmfree(pagetable_t pagetable, uint64 sz)</p>
+<ul>
+<li>释放user page table 所建立的 虚拟地址 到 物理地址的映射，并释放其所映射的物理内存<ul>
+<li>uvmunmap</li>
+</ul>
+</li>
+<li>释放user page table 自身<ul>
+<li>freewalk(pagetable);</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)</p>
+<ul>
+<li>所谓uvmcopy 就是将old pgtbl所建立的映射关系以及物理内存 拷贝给 new pgtbl<ul>
+<li>本函数令 new pgtbl 也像old pgtbl 一样，建立从[0,sz-1]到physical memory的映射.</li>
+<li>传入的old pgtbl 所维护的映射是从[0,sz-1]到physical memory的映射</li>
+<li>将old(parent) page table 所维护的va到pa的映射中physical memory的内容拷贝给new pagetable 所建立的va所对应的physical memory.</li>
+</ul>
+</li>
+<li>success : return 0</li>
+<li>fail : return -1</li>
+<li>调用场合：Given a parent process’s page table, copy its memory into a child’s page table.</li>
+</ul>
+</li>
+<li><p>void uvmclear(pagetable_t pagetable, uint64 va)</p>
+<ul>
+<li>将va在user pagetable对应的PTE标记为user无权限</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="琐碎问题"><a href="#琐碎问题" class="headerlink" title="琐碎问题"></a>琐碎问题</h2><ol>
+<li>刚切换回scheduler的时候就需要换回全局 kernel pgtbl吗？. 是的</li>
+<li>user pagetable 一定都在0xC00000之下吗? 怎么确定的 ? 我们实现时人为控制的.</li>
+<li>scheduler：怎么switch之后 直接就运行了另一个进程呢？:通过swtch.S . 见后面的thread实验</li>
+<li>uvmcopy 是不是只拷贝了text到heap的这段连续的。trapframe和trampoline不管。:对的</li>
+</ol>
+<ul>
+<li>胡咧咧几句<ul>
+<li>可以看到，相较于Linux，即便我们完成了本实验，xv6实现的虚拟内存还是较为简易的。<ul>
+<li>Linux里面process的virtual address不见得都是连续的. 一段段连续的va的起始地址记录于task_struct中的vm_area_struct中.<blockquote>
+<p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2023-02-26-16-03-44.png"></p>
+</blockquote>
+</li>
+<li>但是在xv6中，user process的virtual address是连续的. 除了顶部的trampoline和trapframe,就是下部的heap stack等. 换句话说,va只分成了两段(见下面的exec.c可以证明)<ul>
+<li>顶部的 trampoline , trapframe</li>
+<li>下部的 heap , stack , guard page , data , text<blockquote>
+<p><img src="/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/2022-11-08-13-09-30.png"></p>
+</blockquote>
+</li>
+<li>当然heap段一开始是空的,并没有va对应的pte记录在pgtable中. 需要uvmalloc</li>
+<li>stack , guard page , data , text 一开始就有pte在pgtable中. 见exec()</li>
+</ul>
+</li>
+<li>那么，对于user传入kernel的va<ul>
+<li>linux 显然会先从vm_area_struct中,寻找,看该va是否属于某一区域. 不属于，则是非法va. 若属于，再看该va对应的pte的权限是否合法. </li>
+<li>xv6 则简化很多，由于va连续，则kernel只需要检查va是否 &lt; sz &amp;&amp; &gt; 0即可. 不属于，则非法va. 属于，则再看该va对应的pte的权限是否合法.<ul>
+<li>见copy on write实验</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>由exec.c可以看出 xv6的user processtext datat stack heap 的 va是连续的<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span></span></span><br><span class="line"><span class="function"><span class="title">exec</span><span class="params">(<span class="keyword">char</span> *path, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="comment">//  create a user pagetable</span></span><br><span class="line">  <span class="comment">//  0. 创建 pagetable</span></span><br><span class="line">  <span class="comment">//  1. 建立 trampoline 和 trapframe 的映射</span></span><br><span class="line">  pagetable = proc_pagetable(p);</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  2. Load program into memory.</span></span><br><span class="line">  <span class="comment">//  建立了 data 段 和 text 段 的 va到pa(申请了phymem)</span></span><br><span class="line">  <span class="keyword">for</span>(i=<span class="number">0</span>, off=elf.phoff; i&lt;elf.phnum; i++, off+=<span class="keyword">sizeof</span>(ph))&#123;</span><br><span class="line">    sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz);</span><br><span class="line">    loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  Allocate two pages at the next page boundary.</span></span><br><span class="line">  <span class="comment">//  Use the second as the user stack.</span></span><br><span class="line">  <span class="comment">//  3. 建立了 stack 段 和 guard page段 的 va到pa的映射 (申请了phymem)</span></span><br><span class="line">  sz = uvmalloc(pagetable, sz, sz + <span class="number">2</span>*PGSIZE);</span><br><span class="line">  uvmclear(pagetable, sz<span class="number">-2</span>*PGSIZE);</span><br><span class="line">  sp = sz;</span><br><span class="line">  stackbase = sp - PGSIZE;</span><br><span class="line">    <span class="comment">//  int main(int argc,char *argv[])</span></span><br><span class="line">    <span class="comment">//  将 argv压入 stack </span></span><br><span class="line">    <span class="comment">//  Push argument strings, prepare rest of stack in ustack.</span></span><br><span class="line">    <span class="keyword">for</span>(argc) &#123;</span><br><span class="line">      sp -= <span class="built_in">strlen</span>(argv[argc]) + <span class="number">1</span>;</span><br><span class="line">      sp -= sp % <span class="number">16</span>; <span class="comment">// riscv sp must be 16-byte aligned</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  记住main一开始的栈指针</span></span><br><span class="line">    p-&gt;trapframe-&gt;a1 = sp;      </span><br><span class="line"></span><br><span class="line">  <span class="comment">//  4. 解除kpgtbl的user部分的旧映射</span></span><br><span class="line">  kvmdeallocpgtblonly(p-&gt;kpagetable,p-&gt;sz,<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  5. 将新的user pgtbl 同步到 kernel pgtbl上</span></span><br><span class="line">  <span class="keyword">if</span>(u2kvmcopymappingonly(p-&gt;kpagetable,pagetable,<span class="number">0</span>,sz)&lt;<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">goto</span> bad;      </span><br><span class="line"></span><br><span class="line">  <span class="comment">// Commit to the user image.</span></span><br><span class="line">  p-&gt;pagetable = pagetable;</span><br><span class="line">  p-&gt;sz = sz;</span><br><span class="line">  p-&gt;trapframe-&gt;sp = sp; <span class="comment">// initial stack pointer</span></span><br><span class="line">  <span class="comment">//  6. 释放旧的user pgtbl</span></span><br><span class="line">  proc_freepagetable(oldpagetable, oldsz);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> argc; <span class="comment">// this ends up in a0, the first argument to main(argc, argv)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/04/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab4-trap/" rel="prev" title="操作系统-xv6-lab4-trap">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-lab4-trap
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/" rel="next" title="操作系统-xv6-lab5-lazy_allocation">
+      操作系统-xv6-lab5-lazy_allocation <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#part-1"><span class="nav-number">1.</span> <span class="nav-text">part 1</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#part2-%EF%BC%9A%E7%8B%AC%E7%AB%8B%E5%86%85%E6%A0%B8%E9%A1%B5%E8%A1%A8"><span class="nav-number">2.</span> <span class="nav-text">part2 ：独立内核页表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RISCV-PGTABLE%E7%BB%93%E6%9E%84"><span class="nav-number">2.1.</span> <span class="nav-text">RISCV PGTABLE结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%89%E7%BA%A7%E9%A1%B5%E8%A1%A8"><span class="nav-number">2.1.1.</span> <span class="nav-text">三级页表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#PTE%E7%BB%93%E6%9E%84"><span class="nav-number">2.1.2.</span> <span class="nav-text">PTE结构</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%94%AE%E9%97%AE%E9%A2%98"><span class="nav-number">2.2.</span> <span class="nav-text">关键问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%81%E7%A8%8B"><span class="nav-number">2.3.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#part-3-%EF%BC%9A%E7%AE%80%E5%8C%96%E8%BD%AF%E4%BB%B6%E6%A8%A1%E6%8B%9F%E5%9C%B0%E5%9D%80%E7%BF%BB%E8%AF%91"><span class="nav-number">3.</span> <span class="nav-text">part 3 ：简化软件模拟地址翻译</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%9D%E8%B7%AF"><span class="nav-number">3.1.</span> <span class="nav-text">思路</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.2.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%E4%B8%AApgtbl"><span class="nav-number">3.3.</span> <span class="nav-text">3个pgtbl</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#vm-c"><span class="nav-number">4.</span> <span class="nav-text">vm.c</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%A5%E5%85%B7%E5%87%BD%E6%95%B0"><span class="nav-number">4.1.</span> <span class="nav-text">工具函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E5%85%A8%E5%B1%80-kernel-pgtbl"><span class="nav-number">4.2.</span> <span class="nav-text">关于全局 kernel pgtbl</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kernel-%E5%92%8C-user-%E4%BA%A4%E4%BA%92"><span class="nav-number">4.3.</span> <span class="nav-text">kernel 和 user 交互</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#part-3-proc%E7%9A%84kernel-pagetable"><span class="nav-number">4.4.</span> <span class="nav-text">(part 3)proc的kernel pagetable</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E4%BA%8Eproc%E7%9A%84user-pagetable"><span class="nav-number">4.5.</span> <span class="nav-text">关于proc的user pagetable</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%90%90%E7%A2%8E%E9%97%AE%E9%A2%98"><span class="nav-number">5.</span> <span class="nav-text">琐碎问题</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '9f719ae3cd6cdc1f925e7147e17e4354',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

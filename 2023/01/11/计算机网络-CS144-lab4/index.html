@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TCPConnection : 基于之前实现的 TCPReciver和TCPSender ; 作为完整的一端的TCP实现 功能以及对应核心函数如下 接收segment : segment_received 本端接收seg 并根据自身receiver以及sender状态 发送相应seg给peer 注意在segment_receive中 会自动调用send_segments()   发送segmen">
+<meta property="og:type" content="article">
+<meta property="og:title" content="计算机网络-CS144-lab4">
+<meta property="og:url" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="TCPConnection : 基于之前实现的 TCPReciver和TCPSender ; 作为完整的一端的TCP实现 功能以及对应核心函数如下 接收segment : segment_received 本端接收seg 并根据自身receiver以及sender状态 发送相应seg给peer 注意在segment_receive中 会自动调用send_segments()   发送segmen">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-20-08-34.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-08-40-28.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-20-08-14.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-16-13-02.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-17-00-20-17.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-12-11-03-42.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-16-49-28.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-16-50-02.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-18-26-39.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-12-59.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-15-51.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-19-35.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-43-12.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-21-53.png">
+<meta property="og:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-15-23-44-33.png">
+<meta property="article:published_time" content="2023-01-11T02:53:08.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:23:41.736Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="CS144">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-20-08-34.png">
+
+<link rel="canonical" href="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>计算机网络-CS144-lab4 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          计算机网络-CS144-lab4
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-11 10:53:08" itemprop="dateCreated datePublished" datetime="2023-01-11T10:53:08+08:00">2023-01-11</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:23:41" itemprop="dateModified" datetime="2023-02-27T23:23:41+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CS144/" itemprop="url" rel="index"><span itemprop="name">CS144</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>19k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>17 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>TCPConnection : 基于之前实现的 TCPReciver和TCPSender ; 作为完整的一端的TCP实现<ul>
+<li>功能以及对应核心函数如下<ul>
+<li>接收segment : segment_received<ul>
+<li>本端接收seg 并根据自身receiver以及sender状态 发送相应seg给peer</li>
+<li>注意在segment_receive中 会自动调用send_segments()</li>
+</ul>
+</li>
+<li>发送segment : send_segment. (会捎带ack)</li>
+<li>pass时间 : tick. 可能触发重传</li>
+<li>shutdown关闭连接<ul>
+<li>unclean_shutdown : 清空要发送的seg , 根据是否主动异常,发送rst , 设置_sender和receiver状态error , active_ = false<ul>
+<li>active unclean_shutdown : send rst</li>
+<li>passive unclean shut_down : not send rst</li>
+</ul>
+</li>
+<li>clean_shutdown : active = false<ul>
+<li>active clean_shutdown : 在tick时 判断是否经历完TIME_WAIT, 经历完，则clean_shutdown</li>
+<li>passive clean_shutdown : 在segment_recieve接收完FIN的ACK后发现进入CLOSED状态，则clean_shutdown</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>最核心的一点 : <strong>如何确定结束连接</strong>. When TCPConnection is Done<ul>
+<li>unclean shutdown : 接收或发送rst就立刻结束连接</li>
+<li>clean shutdown<ul>
+<li>需要满足#1#2#3#4</li>
+<li>只有一端同时满足四个条件，该端才能认为TCPConnection is done. 结束连接.</li>
+<li>对于#4有两种情况可以满足<ul>
+<li>active close : A. 无法确定100%满足,只能通过TIME_WAIT接近100%<ul>
+<li>这也就是由于两军问题,不可能去保证两端(主动关闭的无法一定达成clean shutdown)都能达成clean shutdown，但是TCP已经尽可能地接近了。</li>
+</ul>
+</li>
+<li>passive close : B. 100%满足<ul>
+<li>被动关闭的一端无需linger time，可以100%达成clean_shutdown</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<span id="more"></span>
+
+<h1 id="TCPConnection"><a href="#TCPConnection" class="headerlink" title="TCPConnection"></a>TCPConnection</h1><h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p><strong>为什么满足#1234 本端就能connection is donw ?</strong> </p>
+<ul>
+<li><p>因为首先明确clean_shutdown的目标是 双方都完全的可靠的接收到了对方的outbound stream.</p>
+</li>
+<li><p>其次这四个条件含义分别如下</p>
+<ul>
+<li>.#2是为了保证local的outbound_stream全部字节都已经被发送出去（其实按照我们所实现的，满足了#3就一定满足#2）(TCPSender.state = FIN_SENT)</li>
+<li>.#3是为了保证local知道，local的outbound stream全部被peer接收(TCPSender.state = FIN_ACKED)</li>
+<li>.#1是为了保证peer的outbound stream全部被local接收(TCPReceiver.state = FIN_RECV)</li>
+<li>.#4是为了保证peer知道，其outbound stream 已经全部被local接收，不然根据重传机制，peer会不断重传outbound stream字节或如fin segment(remote TCPSender.state = FIN_ACKED)</li>
+</ul>
+</li>
+<li><p><strong>为什么说TCP的字节流是双向的 ?</strong></p>
+<ul>
+<li>因为TCP有两条单向的字节流</li>
+<li>每一端都有TCPSender 和 TCPReceiver</li>
+<li><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-20-08-34.png"></li>
+<li>从A到B的字节流 是 由 TCPSender A 向 TCPReceiver B 发起的 , 并由TCPSender A 和 TCPReceiver B维护.<ul>
+<li>TCPSender A 给 TCPReceiver B发送的是 outbound_stream A的payload以及影响该连接的syn 和 fin。这三者都会占据seq空间. 这是sender A向 receiver B发送数据</li>
+<li>TCPReceiver A给TCPSender B发送 ackno 以及 rwnd. 是receiver A向sender B反应接收情况.</li>
+<li>TCPReceiver B给TCPSender A发送 ackno 以及 rwnd. 是receiver B向sender A反应接收情况.</li>
+<li>TCPSender B 给 TCPReceiver A发送的是 outbound_stream B的payload以及影响该连接的syn 和 fin。这三者都会占据seq空间. 这是sender B向 receiver A发送数据</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>为什么(A发送的)ack不占据(A发送的)seqno空间 ? 也即为什么 empty ack segment的大小为0 ?</strong></p>
+<ul>
+<li>约定下A的seqno空间 : TCPSender A 发起 并 维护的 seqno空间. TCPReceiver B依据该seqno空间发送ackno报文向B进行确认(当然报文中的rwnd是依据TCPReceiver B自己的接收窗口空间)</li>
+<li><strong>一言以蔽之</strong>：A发送给B的ack，并不是A要发送给B的数据，而仅仅是A为了使得B正常工作，所发送的交互辅助信息. 只有A要发送给B的数据(outbound_stream(payload))才会占据A的seqno空间,除此之外还有syn和fin（因为他们会对A到B的连接产生影响）</li>
+<li><strong>复杂来说如下</strong>（已知每一端都可分为Receiver和Sender）<ul>
+<li><ol>
+<li>A端发送给B端的segment , 其中的seqno , 是A发送给B的字节 在 A的空间的下标.</li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>只有TCPSender A 发送给 TCPReceiver B 的 报文内容才会占据seqno空间(syn + payload(outbound_stream) + fin)</strong></li>
+</ol>
+</li>
+<li><ol start="3">
+<li>而TCPReceiver A发送给TCPSender B的ackno 并不会占据TCPSender A的seqno空间</li>
+</ol>
+<ul>
+<li>因为这是<strong>TCPReceiver A发送给TCPSender B的,ackno</strong>并不是来自TCPSender。况且<strong>ackno</strong>本身也并不是数据，而是一个辅助TCPSender B进行工作的<strong>辅助信息</strong>.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>所有报文都有ack吗？所有报文都有seqno吗？</p>
+<ul>
+<li>任何报文都有seqno，发送的任何segment都需要有一个seqno,即便该segment本身可能并不占据/消耗seqno空间。</li>
+<li>几乎所有报文都有ackno 以及 rwnd. (除了client发送给sender的第一个syn 报文)</li>
+<li>如A给B发送了一个empty ack segment with seqno x, 那么A给B发送的下一个segment的seqno仍然是x</li>
+</ul>
+</li>
+<li><p>How does the application read from the inbound stream?</p>
+<ul>
+<li>TCPConnection::inbound_stream() is implemented in the header file already. </li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>关于rst<ul>
+<li>This flag (“reset”) means instant death to the connection</li>
+<li>发送和接收到rst segment的后果是一样的：<ul>
+<li>unclean shutdown :<ul>
+<li>将outbound_stream和outbound_stream置为error</li>
+<li>销毁连接 active = false</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>什么时候发送rst segment ?<ul>
+<li>重传次数过多</li>
+<li>当active = true时 调用了TCPConnection的析构函数</li>
+<li><blockquote>
+<p>There are two situations where you’ll want to <strong>abort the entire connection</strong>:</p>
+<ol>
+<li>If the sender has sent too many consecutive retransmissions without success (more than TCPConfig::MAX RETX ATTEMPTS, i.e., 8).</li>
+<li>If the TCPConnection destructor is called while the connection is still active (active() returns true).</li>
+</ol>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>rst不占据seqno空间</li>
+</ul>
+</li>
+</ul>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-08-40-28.png"> </p>
+<ul>
+<li>You have reached the summit.</li>
+<li>lab0 ，我们实现了一个 flow-controlled(流量控制) 的 bytestream</li>
+<li>lab123 , 我们实现了一个 in-both-direction(双向的) 在bytestream和网络提供的unreliable datagrams之间进行通信的 工具（TCPSender和TCPReceiver）</li>
+<li>lab4 , now , 我们将实现一个称为TCPConnection的整体模块 , 整合我们的TCPSender 和 TCPReceiver ，并处理connection的global housekeeping.</li>
+<li>connection的TCPSegment 可以被封装进 uesr UDP segment(TCP-in-UDP) 或者 Internet IP datagrams(TCP/IP) -&gt; 使得你的代码可以和Internet上同样使用TCP/IP的主机进行交互.</li>
+<li>需要注意的是 , TCPConnection只是将TCPSender和TCPReceiver进行组合. TCPConnection本身的实现只需要100行代码. TCPConnection依赖于TCPSender和TCPReceiver的鲁棒性</li>
+</ul>
+<ul>
+<li><strong>Lab4 : the TCP Connection</strong><ul>
+<li>本周 实现一个可工作的TCP, 我们已将做了大部分的工作 : 已经实现了TCPSender 和 TCPReceiver. lab4的工作是将他们组合在一起，组成一个class TCPConnection , 处理一些对于connection来说全局的事务</li>
+<li>class TCPConnection就是一个peer. 负责接收和发送segment. 确保TCPSender和TCPReceiver 都可以在收到和发送的segment上 添写和读取相应的字段.</li>
+<li>回忆 : <ul>
+<li>TCP reliably conveys a pair of flow-controlled byte streams, one in each direction<ul>
+<li>TCP可靠的 传输一对双向的流量控制的字节流.</li>
+</ul>
+</li>
+<li>Two parties participate in the TCP connection, and each party acts as both “sender” (of its own outbound byte-stream) and “receiver” (of an inbound byte-stream) at the same time<ul>
+<li>TCPConnection的两端，每一端都同时扮演者sender和receiver的角色.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>AB两方被称为connection的endpoint / peer.<img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-20-08-14.png"></li>
+</ul>
+</li>
+</ul>
+<p>Here are the basic rules the TCPConnection has to follow</p>
+<p>约定一下 将本端称为local … , 将对端称为 peer …</p>
+<h2 id="功能"><a href="#功能" class="headerlink" title="功能"></a>功能</h2><h3 id="Receiving-segments"><a href="#Receiving-segments" class="headerlink" title="Receiving segments"></a>Receiving segments</h3><ul>
+<li>TCPConnection收到segment : <strong>segment_received()</strong> called<br>In this method :  </li>
+<li><strong>对于rst segment</strong><ul>
+<li>如果local收到的segment 有 rst flag , 那么将 <ul>
+<li>set inbound_stream and outbound_stream as error state , </li>
+<li>并且不发送任何报文回复给peer , </li>
+<li>并立刻杀死本连接. </li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>对于非rst segment</strong><ul>
+<li>报文发送给 TCPReceiver : <strong>TCPReceiver</strong>接收<strong>segment中的seqno , syn , payload , fin</strong></li>
+<li>如果ack flag , segment 告知 <strong>TCPSender</strong> 接收 <strong>ackno + window_size</strong>  </li>
+<li>只要收到的segment占据了peer的seqno空间, 那么TCPConnection(本端的TCPReceiver)需要至少回复一个segment,来告知对端(的TCPSender) ackno 以及 window_size<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (seg.length_in_sequence_space() &gt; <span class="number">0</span>)  <span class="comment">//  receiver recv syn , payload , fin</span></span><br><span class="line">        ack_to_send = <span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>special case:<ul>
+<li>TCP : Keepalive保活机制. 我们只实现回复keep-alive segment,不实现发送keep-alive segment <ul>
+<li>对端会发送segment with invalid seqno 去检验本端的TCP是否还活着.</li>
+<li>本端的TCPConnection需要回复该segment , 即便该segment不消耗任何 seqno.</li>
+<li>如下<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (_receiver.ackno().has_value() <span class="keyword">and</span> (seg.length_in_sequence_space() == <span class="number">0</span>) <span class="keyword">and</span> seg.header().seqno == _receiver.ackno().value() - <span class="number">1</span>) &#123;    <span class="comment">//  local TCP expect the seqno to be _receiver.ackno().value()</span></span><br><span class="line">  _sender.send_empty_segment();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li><strong>从这里也可以看出，keep-alive segment只是检验对端的TCP层是否存活,而不是检验对端的应用层是否正常工作. 因为该keep-alive报文根本不会被送到应用层程序.</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Sending-segments"><a href="#Sending-segments" class="headerlink" title="Sending segments."></a>Sending segments.</h3><ul>
+<li>The TCPConnection will send TCPSegments over the Internet:</li>
+<li>TCPConnection将要发送的报文 其字段由两部分组成: TCPSender添写 + TCPReceiver添写<br><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-16-16-13-02.png"><ul>
+<li>TCPSender负责 seqno + syn + payload + fin + rst</li>
+<li>TCPReceiver负责ackno 以及receive window_size , 如果存在ackno 则 将ackno填入将要发送的segment（应该只有client主动发起连接的那一条syn segment中没有ackno）</li>
+</ul>
+</li>
+<li>How does the TCPConnection actually send a segment?<ul>
+<li>Similar to the TCPSender—push it on to the segments out queue. As far as your TCPConnection is concerned, consider it sent as soon as you push it on to this queue.</li>
+<li>Soon the owner will come along and pop it (using the public segments_out() accessor method) and really send it.</li>
+</ul>
+</li>
+</ul>
+<h3 id="When-time-passes"><a href="#When-time-passes" class="headerlink" title="When time passes."></a>When time passes.</h3><ul>
+<li>TCPConnection通过调用tick()代表时间流逝</li>
+<li>TCPConnection::tick():<ul>
+<li>tell the TCPSender about the passage of time : TCPSender::tick()</li>
+<li>当重传次数过多, 放弃该连接 , 并发送an empty segment with the rst flag set给对端</li>
+<li>end the connection cleanly if necessary  <ul>
+<li>necessary : 满足#1234，TIME_WAIT阶段结束</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Decide-when-connection-is-done"><a href="#Decide-when-connection-is-done" class="headerlink" title="Decide when connection is done"></a><strong>Decide when connection is done</strong></h3><p><strong>One important function of the TCPConnection is to decide when the TCP connection is fully “done.”</strong></p>
+<p>以下就是关于tcp何时结束的讨论</p>
+<p><strong>The end of a TCP connection: consensus takes work</strong></p>
+<h4 id="connection-is-down-的方式"><a href="#connection-is-down-的方式" class="headerlink" title="connection is down 的方式"></a>connection is down 的方式</h4><ul>
+<li><p><strong>when tcpconnection is down</strong></p>
+<ul>
+<li><strong>释放其对本地端口号的独占声明</strong></li>
+<li><strong>停止发送ack作为回复</strong></li>
+<li><strong>将连接视为历史记录</strong></li>
+<li><strong>active() return false</strong></li>
+</ul>
+</li>
+<li><p><strong>connection有两种结束的方式</strong></p>
+</li>
+<li><p><strong>Unclean shutdown</strong></p>
+<ul>
+<li>情况: 本端发送或者收到一个rst segment<ul>
+<li>关于rst segment : 接收和发送的作用都是一样的：导致unclean shutdown</li>
+</ul>
+</li>
+<li>动作: <ul>
+<li>outbound and inbound stream 置为 state error</li>
+<li>active() return false from now on immediately</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>clean shutdown</strong></p>
+<ul>
+<li>the connection get to “done” without error</li>
+<li>clean shutdown更复杂但是更优美，因为他尽可能地保证了双方的outbound bytestream被可靠的完全的交付给peer receiver.</li>
+</ul>
+</li>
+</ul>
+<h4 id="如何尽可能达成clean-shutdown"><a href="#如何尽可能达成clean-shutdown" class="headerlink" title="如何尽可能达成clean_shutdown"></a>如何尽可能达成clean_shutdown</h4><ul>
+<li><strong>由于Two Generals Problem两军问题,不可能去保证两端都能达成clean shutdown，但是TCP已经尽可能地接近了。</strong>下面从一端的角度来看tcp如何做到这点 </li>
+<li><strong>若要在一条连接中 和 remote peer 达成clean shutdown，需要先满足四个先决条件</strong><ul>
+<li><strong>Prereq #1 The inbound_stream has been fully assembled and has ended.</strong><ul>
+<li>TCPReceiver的inbound_stream已经顺序的存了所有字节，且 已经存了最后的那个fin.(TCPReciever receive fin —&gt; inbound_stream.end_input())</li>
+<li><strong>即 TCPReceiver.state = FIN_RECV</strong></li>
+</ul>
+</li>
+<li><strong>Prereq #2 The outbound_stream has been ended by the local application and fully sent (including the fact that it ended, i.e. a segment with fin ) to the remote peer.</strong><ul>
+<li>local outbound_stream 已经关闭(上层app调用了outbound.end_input()),且outbound_stream的全部字节都已经发送，且TCPSender 已经发送了最后的fin segment.</li>
+<li><strong>即TCPSender.state = FIN_SENT</strong></li>
+</ul>
+</li>
+<li><strong>Prereq #3 The outbound stream has been fully acknowledged by the remote peer.</strong><ul>
+<li>local outbound_stream 已经全部被remote peer 所确认.<ul>
+<li>即 local收到了remote peer 为fin返回的一个ack。因为这代表local发送的fin及之前的全部都被确认；且fin代表这就是发送的全部字节。</li>
+</ul>
+</li>
+<li><strong>即TCPSender.state = FIN_ACKED</strong></li>
+<li>易知若达成#3 则#2必然已经达成 </li>
+</ul>
+</li>
+<li><strong>Prereq #4 The local TCPConnection is confident that the remote peer can satisfy prerequisite #3</strong>. This is the brain-bending part. There are two alternative ways this can happen:<ul>
+<li><strong>即local确认 remote peer满足TCPSender.state = FIN_ACKED</strong></li>
+<li>即local确认 remote peer 接收到了自己回复fin的ack</li>
+<li>这有点绕，有两种方式满足#4<ul>
+<li><strong>option A</strong> : local 几乎可以认为 peer满足#3，但并不肯定。也即<strong>local几乎满足#4</strong></li>
+<li><strong>option B</strong> : local 可以百分之分确定 peer满足#3，即<strong>local肯定满足#4</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>为什么满足了1234，local就可以销毁了？local就可以完全断开连接了？（关闭Sender和Receiver，不再与外界交互）</strong><ul>
+<li>因为首先明确clean_shutdown的目标是 双方都完全的可靠的接收到了对方的outbound stream.</li>
+<li>其次这四个条件含义分别如下<ul>
+<li>.#2是为了保证local的outbound_stream全部字节都已经被发送出去（其实按照我们所实现的，满足了#3就一定满足#2）(TCPSender.state = FIN_SENT)</li>
+<li>.#3是为了保证local知道，local的outbound stream全部被peer接收(TCPSender.state = FIN_ACKED)</li>
+<li>.#1是为了保证peer的outbound stream全部被local接收(TCPReceiver.state = FIN_RECV)</li>
+<li>.#4是为了保证peer知道，其outbound stream 已经全部被local接收，不然根据重传机制，peer会不断重传outbound stream字节或如fin segment(remote TCPSender.state = FIN_ACKED)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h5 id="条件4如何达成"><a href="#条件4如何达成" class="headerlink" title="条件4如何达成"></a>条件4如何达成</h5><h6 id="Option-A"><a href="#Option-A" class="headerlink" title="Option A"></a>Option A</h6><p><strong>Option A: lingering after both streams end.</strong><br>这种情况发生在local<strong>主动发起关闭</strong>，<strong>lingering</strong> 即 close前的最后一个状态的 <strong>TIME_WAIT</strong>。<br>等待linger time是为了local尽可能地满足#4</p>
+<ul>
+<li><p><strong>local满足#1 和 #3 ; 且peer似乎满足#3。(即local似乎满足#4.)</strong></p>
+<ul>
+<li><strong>local并不能准确的得知peer满足#3,因为TCP不可靠的传输ack（TCP不会为ack回复ack）</strong>，local发给对方的ack可能丢失.</li>
+</ul>
+</li>
+<li><p><strong>local</strong>可以通过很<strong>自信的认为</strong>remote peer满足#3</p>
+<ul>
+<li><strong>local通过等待一段时间（linger time），且这段时间内remote peer没有重传任何报文</strong></li>
+</ul>
+</li>
+<li><p>linger time = 10 * initial _retransmission_timeout; 在生产环境中 = 2 MSL(60~120s)</p>
+<ul>
+<li>具体的，当本端满足#1和#3，且距离上次收到ack已经至少过去了10倍的initial _retransmission_timeout 时 , the connection is done . 这种双方stream结束之后的等待 称为 lingering : 它的目的是确保远端不会尝试重传 [本端需要回复ack的] 报文.</li>
+<li>这也就意味着local class TCPConnection需要再存活一会，仍旧占据着端口，并为收到的segment回复ack.即使本端的inbound,outbound stream已经关闭,并且TCPSender,TCPReceiver都已经正确的完成了所负责的工作。我的实现也做到了这一点</li>
+</ul>
+</li>
+<li><p>TIME_WAIT作用例子如下</p>
+<blockquote>
+<p><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-17-00-20-17.png"><br>在TCP的生产环境中，linger timer (also known as the time-wait timer or twice the Maximum Segment Lifetime (MSL)) 一般来说是60～120秒。实际上这是一段相当长的时间占据着端口，没有人愿意等这么久，尤其是当你还想用这个端口号去启动本地的另一个服务的时候。Socket编程里，有一个选项是SO_REUSEADDR，可以让Linux忽视端口的占用，强制把一个Socket服务绑定到正在被使用中的端口号上。</p>
+</blockquote>
+</li>
+<li><p>但是即便有lingering，也不能保证peer一定满足#3，因为peer重传的FIN可能在linger time之后才到达local 或者 根本就是丢失了. 故可能会造成peer的class tcpconnection一直存在，一直重传fin segment。即便此时local的outbound stream 和 inbound stream已经关闭；peer的outbound stream 和 inbound stream都已经关闭.</p>
+</li>
+</ul>
+<ul>
+<li><strong>综上，active close 时 , 若满足#1#3，则local不一定满足了#4，需通过linger time来尽可能地满足#4</strong></li>
+</ul>
+<h6 id="Option-B"><a href="#Option-B" class="headerlink" title="Option B"></a>Option B</h6><p><strong>Option B: passive close.</strong><br><strong>发生在local被动关闭连接，直接进入CLOSED状态，而不必进入TIME_WAIT</strong></p>
+<ul>
+<li><p><strong>满足 #1和#3，且local100%确认remote peer满足#3</strong>.(既local确定renmote收到了local的所发送的fin ack)</p>
+<ul>
+<li><strong>怎么做到100%确认的？由上所述TCP也不ack ack.</strong>  </li>
+<li><strong>因为在这种passive close的情况下，remote peer首先关闭了其outbound_stream。</strong></li>
+</ul>
+</li>
+<li><p>OptionB rule是如何工作的 ? <strong>为什么passive close的时候就可以100%确定remote peer满足#4 ?</strong></p>
+<ul>
+<li>这有一点烧脑，不过可以更深入的理解 两军问题 以及 在不可靠的网络上提供可靠服务的固有限制<ul>
+<li>it’s fun to think about and gets to the deep reasons for the Two Generals Problem and the inherent constraints on reliability across an unreliable network.</li>
+</ul>
+</li>
+<li><strong>原因如下</strong>: <ul>
+<li>local在收到了remote peer的fin之后(#1)，发送ack报文（至少要发送<strong>FIN segment with ack and fin</strong>以满足 #2），易知该local发送的fin报文ack的是remote peer’s fin. </li>
+<li>已知local满足#3 , 那么remote peer 一定已经ack了该local发送的fin+ack报文, 意味着remote peer已经看到了local peer发送的fin报文（上的ackno）, <strong>该ackno ack了remote之前发送的fin。那么，就可以保证 remote peer一定已经满足#3了</strong>。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>综上，passive close 时 , 若满足#1#3，则local一定满足了#4，无需通过linger time来尽可能地满足#4</strong></p>
+</li>
+</ul>
+<ul>
+<li>The bottom line is that if the TCPConnection’s inbound stream ends before the TCPConnection has ever sent a fin segment(local outbound_stream_end), （即如果local被动关闭连接）then the TCPConnection doesn’t need to linger after both streams finish</li>
+</ul>
+<h4 id="The-end-of-a-TCP-connection-practical-summary）"><a href="#The-end-of-a-TCP-connection-practical-summary）" class="headerlink" title="The end of a TCP connection (practical summary）"></a>The end of a TCP connection (practical summary）</h4><p>指导书给出的实践指导<br>我们可以根据local的state，来判断是active close(optionA) 还是 passive close(optionB)</p>
+<ul>
+<li><p>class TCPConnection 有一个变量linger_after_streams_finish 代表本端是否需要等待linger time再关闭连接</p>
+<ul>
+<li>一开始是true</li>
+<li>如果inbound_stream在outbound_stream eof之前被对端end,那么置为false. (即如果是被动关闭连接)</li>
+</ul>
+</li>
+<li><p><strong>在任何时候 #1 和 #3 被满足</strong>，</p>
+<ul>
+<li><strong>a.</strong> 如果linger_after_streams_finish = false ，则 connection is done(active() should return false)</li>
+<li><strong>b.</strong> 如果linger_after_streams_finish = true , 则 本端等待足够长的时间(尽可能的满足#4），然后connection is done(active() should return false)</li>
+</ul>
+</li>
+</ul>
+<p>约定 TCPConnection的调用者称为owner<br>约定 A主动关闭连接 ：A先断开 A到B的字节流<br>约定 A主动被动连接 ：A后断开 A到B的字节流</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><h3 id="重要成员"><a href="#重要成员" class="headerlink" title="重要成员"></a>重要成员</h3><ul>
+<li>TCPConnection如何发送segment:<ul>
+<li><strong>std::queue<TCPSegment> _segments_out{}</TCPSegment></strong>;</li>
+<li><strong>void TCPConnection::send_segments()</strong><ul>
+<li>将TCPSender的segment移动到TCPConnection的segment_queue中</li>
+<li>而后owner会将该segment_queue发送出去</li>
+<li>注意会捎带ack</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>关于_linger_after_streams_finish</strong></p>
+<ul>
+<li><strong>只有在clean_shutdown的情况下 , _linger_after_streams_finish才有意义</strong></li>
+<li><strong>unclean_shutdown 时 , _linger_after_streams_finish无意义</strong>。因为unclean_shutdown 不在乎bytestream有没有 正确的完全的 递送给接收方</li>
+<li>_linger_after_streams_finish含义 : <strong>本端在满足#1 #3之后 是否需要再等待一段时间以满足 #4</strong><ul>
+<li>也即，断开连接时是进入TIME_WAIT状态,还是直接进入CLOSED</li>
+<li><strong>bool _linger_after_streams_finish{true};</strong><ul>
+<li>在TCPConnection刚构造时初始化为true , 意味着初始时认为本端在满足#1#2#3之后，必须等待linger time才能满足#4，达成connection is down条件</li>
+<li>宏观来看只有<strong>主动关闭连接</strong>时才有_linger_after_streams_finish = true</li>
+</ul>
+</li>
+<li><strong>_linger_after_streams_finish = false</strong><ul>
+<li>本端在满足#1#2#3之后，#4自动满足，不必等待linger time</li>
+<li><strong>如果本端的inbound_stream 在本端的outbound_stream发送fin segemnt之前就end了，那么 本端是不必在双端stream finish后，等待linger time再关闭连接</strong>。</li>
+<li>宏观来看只有<strong>被动关闭连接</strong>时才有_linger_after_streams_finish = false<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (_receiver.state() == TCPReceiver::State::FIN_RECV &amp;&amp;</span><br><span class="line">    (_sender.state() == TCPSender::State::SYN_ACKED_2 || _sender.state() == TCPSender::State::SYN_ACKED_1))</span><br><span class="line">    _linger_after_streams_finish = <span class="literal">false</span>;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>使用</strong>: 由后文易知，在满足#1#2#3#4时，本端tcpconnection is done<ul>
+<li>被动关闭连接 </li>
+<li>CLOSE_WAIT -&gt; [LAST ACK -&gt; CLOSED]</li>
+<li>满足#123 , 且自动满足#4(!_linger_after_streams_finish), 进入closed<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPConnection::segment_received</span><span class="params">(<span class="keyword">const</span> TCPSegment &amp;seg)</span> :</span></span><br><span class="line"><span class="function"><span class="comment">//  clean shutdown 之 本端 主动被动连接 进入 CLOSED</span></span></span><br><span class="line"><span class="function"><span class="title">if</span> <span class="params">(_receiver.state() == TCPReceiver::State::FIN_RECV &amp;&amp; _sender.state() == TCPSender::State::FIN_ACKED &amp;&amp;</span></span></span><br><span class="line"><span class="params"><span class="function">    !_linger_after_streams_finish)</span> </span>&#123;</span><br><span class="line">    clean_shutdown();</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// //  clean shutdown 之 本端 主动关闭连接 进入 TIME_WAIT</span></span><br><span class="line"><span class="comment">// if (_receiver.state() == TCPReceiver::State::FIN_RECV &amp;&amp; _sender.state() == TCPSender::State::FIN_ACKED &amp;&amp;</span></span><br><span class="line"><span class="comment">//     _linger_after_streams_finish) &#123;</span></span><br><span class="line"><span class="comment">//         //  TIME_WAIT !</span></span><br><span class="line"><span class="comment">//         //  在tick时检验是否需要断开连接</span></span><br><span class="line"><span class="comment">// &#125;</span></span><br></pre></td></tr></table></figure></li>
+<li>主动关闭连接</li>
+<li>FIN_WAIT1 -&gt; [FIN_WAIT2 -&gt; TIME_WAIT -&gt; CLOSED]</li>
+<li>满足#123，且需要等待linger time才能满足#4<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPConnection::tick</span><span class="params">(<span class="keyword">const</span> <span class="keyword">size_t</span> ms_since_last_tick)</span> :</span></span><br><span class="line"><span class="function"><span class="title">if</span> <span class="params">(_receiver.state() == TCPReceiver::State::FIN_RECV &amp;&amp; _sender.state() == TCPSender::State::FIN_ACKED &amp;&amp;</span></span></span><br><span class="line"><span class="params"><span class="function">    _linger_after_streams_finish)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (_time_since_last_segment_received &gt;= <span class="number">10</span> * _cfg.rt_timeout)</span><br><span class="line">        clean_shutdown();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>反应本端tcp是否仍然存活</p>
+<ul>
+<li>bool _active{true};</li>
+<li>什么时候为true ?<ul>
+<li>一开始就是true</li>
+</ul>
+</li>
+<li>什么时候为false ?<ul>
+<li>clean shutdown 和 unclean shutdown</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>size_t _time_since_last_segment_received{0};  </p>
+<ul>
+<li>距离收到上个sgement过去了多长时间，用于TIME_WAIT</li>
+</ul>
+</li>
+<li><p><strong>clean shutdown</strong></p>
+<ul>
+<li><strong>each of the two ByteStreams has been reliably delivered completely to the receiving peer</strong><ul>
+<li>more complicated but beautiful</li>
+<li>尽可能地保证两个outbound_stream 都被<strong>完全的可靠的</strong> 传递给receiver_peer</li>
+</ul>
+</li>
+<li>clean_shutdown()<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPConnection::clean_shutdown</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    _active = <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>unclean shutdown</strong></p>
+<ul>
+<li>tcpconnection 接收或者发送 rst segment</li>
+<li>动作<ul>
+<li>outbound and inbound stream 置为 state error</li>
+<li>active() can return false immediately.</li>
+</ul>
+</li>
+<li>unclean shutdown()<ul>
+<li>发送rst segment，主动: true ;</li>
+<li>接收rst segment，被动: false</li>
+<li>已知在发送rst segment之前，segments_out()可能会有未发送的报文，将他们清空。（未找到理论依据，不过test让我们这么干）<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">TCPConnection::unclean_shutdown</span><span class="params">(<span class="keyword">bool</span> rst_to_send <span class="comment">/* = false */</span>)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">queue</span>&lt;TCPSegment&gt; empty;</span><br><span class="line">    _sender.segments_out().swap(empty);</span><br><span class="line">    <span class="keyword">if</span> (rst_to_send) &#123;</span><br><span class="line">        _sender.send_empty_segment(<span class="literal">true</span>);</span><br><span class="line">        <span class="keyword">this</span>-&gt;send_segments();</span><br><span class="line">    &#125;</span><br><span class="line">    _sender.stream_in().set_error();</span><br><span class="line">    _receiver.stream_out().set_error();</span><br><span class="line"></span><br><span class="line">    _active = <span class="literal">false</span>;</span><br><span class="line">    _linger_after_streams_finish = <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="TCP-State-Transitions"><a href="#TCP-State-Transitions" class="headerlink" title="TCP State Transitions"></a><strong>TCP State Transitions</strong></h3><p><a target="_blank" rel="noopener" href="https://ttcplinux.sourceforge.net/documents/one/tcpstate/tcpstate.html">重要参考</a></p>
+<p>tcpconnection状态<br><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-12-11-03-42.png"></p>
+<ul>
+<li>我的实现中，虽然指导书说不要求在Sender和Receiver维护状态，不过为了更清晰，我还是为Sender和Reciever依据lab123所述分别维护了状态。<ul>
+<li>Receiver<img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-16-49-28.png"></li>
+<li>Sender<img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-16-50-02.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>TCPConnection和TCPSender、TCPReciever的状态关系如下表<ul>
+<li>背景:1. client 主动发起连接 到 server，2. client主动断开连接.</li>
+<li>server状态表如下<table>
+<thead>
+<tr>
+<th>TCPConnection State</th>
+<th>TCPReceiver State</th>
+<th>TCPSender State</th>
+<th>linger_after_stream_finish</th>
+<th>active</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. (被动发起连接)LISTEN</td>
+<td>LISTEN</td>
+<td>CLOSED</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>SYN_RCVD</td>
+<td>SYN_RECV(recv syn)</td>
+<td>SYN_SENT(send syn)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>ESTABLISHED</td>
+<td>SYN_RECV</td>
+<td>SYN_ACKED(recv ack)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>2. (被动关闭连接)CLOSE_WAIT</td>
+<td>FIN_RECV(recv fin)</td>
+<td>SYN_ACKED</td>
+<td>false</td>
+<td>true</td>
+</tr>
+<tr>
+<td>LAST_ACK</td>
+<td>FIN_RECV</td>
+<td>FIN_SENT(fin send)</td>
+<td>false</td>
+<td>true</td>
+</tr>
+<tr>
+<td>CLOSED</td>
+<td>FIN_RECV</td>
+<td>FIN_ACKED(recv ack)</td>
+<td>false</td>
+<td>false</td>
+</tr>
+</tbody></table>
+</li>
+<li>client状态表如下<table>
+<thead>
+<tr>
+<th>TCPConnection State</th>
+<th>TCPReceiver State</th>
+<th>TCPSender State</th>
+<th>linger_after_stream_finish</th>
+<th>active</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. (主动发起连接)LISTEN</td>
+<td>LISTEN</td>
+<td>CLOSED</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>SYN_SENT</td>
+<td>LISTEN</td>
+<td>SYN_SENT</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>ESTABLISHED</td>
+<td>SYN_RECV(recv syn)</td>
+<td>SYN_ACKED(recv ack)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>2. (主动关闭连接)FIN_WAIT1</td>
+<td>SYN_RECV</td>
+<td>FIN_SENT(send syn)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>FIN_WAIT2</td>
+<td>SYN_RECV</td>
+<td>FIN_ACKED(recv ack)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>TIME_WAIT</td>
+<td>FIN_RECV</td>
+<td>FIN_ACKED</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>CLOSED</td>
+<td>FIN_RECV</td>
+<td>FIN_ACKED</td>
+<td>false</td>
+<td>false</td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="主动关闭连接可能会经历的四种状态"><a href="#主动关闭连接可能会经历的四种状态" class="headerlink" title="主动关闭连接可能会经历的四种状态"></a>主动关闭连接可能会经历的四种状态</h4><ul>
+<li><p>关于连接关闭时的state <strong>FIN_WAIT1 , FIN_WAIT2 , CLOSING , CLOSED</strong> 关系。<br><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-18-26-39.png"></p>
+</li>
+<li><p>FIN_WAIT1 -&gt; FIN_WAIT2 -&gt; TIME_WAIT -&gt; CLOSED </p>
+<ul>
+<li>是常规的client主动关闭连接。如上client表所述</li>
+</ul>
+</li>
+<li><p><strong>FIN_WAIT1 -&gt; CLOSING -&gt; TIME_WAIT -&gt; CLOSED</strong></p>
+<ul>
+<li><strong>为什么会有 CLOSING</strong> ? <ul>
+<li><strong>双方同时主动的关闭连接，也即都主动的发送fin segment</strong><ul>
+<li>使得local 在收到local发送的fin的ack之前，先收到了remote peer发送的fin</li>
+<li><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-12-59.png"><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-15-51.png"></li>
+</ul>
+</li>
+<li>好比说 client主动关闭连接,发送fin；同时server也主动关闭连接,发送fin<ul>
+<li>下图为client表,server表和client表一模一样。<ul>
+<li>为什么需要有time_wait：当从closing -&gt; 变成 fin_recv + fin_acked的时候，已经满足#123，但无法满足#4，因为是主动发送fin，无法保证对方收到了fin的ack（被动发送fin的话，对方fin的ack会随着我方的fin被发送过去，而对方返回的对我们的fin的ack，就代表了对方收到了fin ack）<table>
+<thead>
+<tr>
+<th>TCPConnection State</th>
+<th>TCPReceiver State</th>
+<th>TCPSender State</th>
+<th>linger_after_stream_finish</th>
+<th>active</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>(主动关闭连接)FIN_WAIT1</td>
+<td>SYN_RECV</td>
+<td>FIN_SENT(send syn)</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>CLOSING</td>
+<td>FIN_RECV(recv fin)</td>
+<td>FIN_SENT</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>TIME_WAIT</td>
+<td>FIN_RECV</td>
+<td>FIN_ACKED</td>
+<td>true</td>
+<td>true</td>
+</tr>
+<tr>
+<td>CLOSED</td>
+<td>FIN_RECV</td>
+<td>FIN_ACKED</td>
+<td>false</td>
+<td>false</td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://xiaolincoding.com/network/3_tcp/tcp_three_fin.html#%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%BC%9A%E5%87%BA%E7%8E%B0%E4%B8%89%E6%AC%A1%E6%8C%A5%E6%89%8B">FIN_WAIT1 -&gt; TIME_WAIT</a><ul>
+<li>peer的fin和ack for local fin在同一个segment里一起发送过来</li>
+<li>当被动关闭方（上图的服务端）在 TCP 挥手过程中，「没有数据要发送」并且「开启了 TCP 延迟确认机制」，那么第二和第三次挥手就会合并传输，这样就出现了三次挥手。</li>
+<li>TCP 延迟确认机制:为尽量减少发送空的ack segment</li>
+<li><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-19-35.png"></li>
+</ul>
+</li>
+</ul>
+<h4 id="Simultaneous"><a href="#Simultaneous" class="headerlink" title="Simultaneous"></a><strong>Simultaneous</strong></h4><h5 id="Simultaneous-Open"><a href="#Simultaneous-Open" class="headerlink" title="Simultaneous Open"></a>Simultaneous Open</h5><ul>
+<li>双方同时发送syn报文</li>
+<li>It’s possible for two applications to send a SYN to each other to start a TCP connection, although the possibility is small, because both sides have to know which port on the other side to send to. This process is called “<strong>Simultaneous Open</strong>“, or “<strong>simultaneous active open on both sides</strong>“.</li>
+<li>For example: An application at host A uses 7777 as the local port and connects to port 8888 on host B. At the same time, an application at host B uses 8888 as the local port and connects to port 7777 on host A. This is “Simultaneous Open”.</li>
+<li>TCP is specially designed to deal with “Simultaneous Open”, during which only one TCP connection is established, not two. The state transitions are shown in the following figure:<br><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-43-12.png"></li>
+</ul>
+<h5 id="Simultaneous-Close"><a href="#Simultaneous-Close" class="headerlink" title="Simultaneous Close"></a>Simultaneous Close</h5><ul>
+<li>双方同时发送 fin 报文</li>
+<li>It’s permitted in TCP for both sides to do “active close”, which is called “<strong>Simultaneous Close</strong>“. The state transitions are shown in the following figure:<br><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-18-19-21-53.png"></li>
+</ul>
+<p>故此 当然我的实现也可以正常处理这2种情况</p>
+<h2 id="bug"><a href="#bug" class="headerlink" title="bug"></a>bug</h2><p>我写完第一次测试时 在模拟测试阶段，遇到了一些special case的bug，不过改起来也很愉快，写在case里。</p>
+<p>第二次测试时，惊人的发现所有真实发送segment的测试都fail了，一度心态崩溃道心破碎，自己开server client 来回发送segment抓包还能正常工作，也看不到有什么异常的segment。明明没错啊但是还一个test都过不了，简直是给我搞得抓心挠肝。</p>
+<p>后来研究了一下他的测试原理，应该是将我们tcpconnection收发的segment以及tcpconnection的类中所有的输出 都重定向到了测试文件a里。然后将这个a和输入的文件进行比较是否相等。由于重定向，我在code中的cout也被输入到了文件a中，故fail。</p>
+<p>相等，则pass<br>不等，则fail</p>
+<p>这谁能想到，遂将所有cout注释掉，测试，all passed，吾喜而笑，洗盏更酌，睡觉。</p>
+<p>测试原理明天再整理.</p>
+<h2 id="Over"><a href="#Over" class="headerlink" title="Over !"></a>Over !</h2><p><img src="/2023/01/11/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab4/2023-01-15-23-44-33.png"></p>
+<h2 id="Case"><a href="#Case" class="headerlink" title="Case"></a>Case</h2><p>closing case. 整理完上面的Closing State , 这个就很显然了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cout</span>&lt;&lt;<span class="string">&quot;*********************start in CLOSING, send ack, time out**********************&quot;</span>&lt;&lt;<span class="built_in">endl</span>;</span><br><span class="line"><span class="comment">//  review</span></span><br><span class="line"><span class="comment">// test #2: start in CLOSING, send ack, time out</span></span><br><span class="line">&#123;</span><br><span class="line">    TCPTestHarness test_2 = TCPTestHarness::in_closing(cfg);    <span class="comment">//  closing . TCPSender : FIN_SENT , TCPReceiver : FIN_RECV</span></span><br><span class="line">    test_2.execute(Tick(<span class="number">4</span> * cfg.rt_timeout));                   <span class="comment">//  超时 local重传fin segment</span></span><br><span class="line">    test_2.execute(ExpectOneSegment&#123;&#125;.with_fin(<span class="literal">true</span>));          <span class="comment">//  check local是否重传fin segment</span></span><br><span class="line">    test_2.execute(ExpectState&#123;State::CLOSING&#125;);                <span class="comment">//  local state still = closing</span></span><br><span class="line">    test_2.send_ack(WrappingInt32&#123;<span class="number">2</span>&#125;, WrappingInt32&#123;<span class="number">2</span>&#125;);        <span class="comment">//  收到ack</span></span><br><span class="line">    test_2.execute(ExpectNoSegment&#123;&#125;);                          <span class="comment">//  local send no segment</span></span><br><span class="line">    test_2.execute(ExpectState&#123;State::TIME_WAIT&#125;);              <span class="comment">//  local in time_wait</span></span><br><span class="line">    test_2.execute(Tick(<span class="number">10</span> * cfg.rt_timeout - <span class="number">1</span>));              </span><br><span class="line">    test_2.execute(ExpectState&#123;State::TIME_WAIT&#125;);</span><br><span class="line">    test_2.execute(Tick(<span class="number">2</span>));</span><br><span class="line">    test_2.execute(ExpectState&#123;State::CLOSED&#125;);                 <span class="comment">//  local pass time_wait</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>再举出一个client、server的例子</p>
+<hr>
+<h2 id="优化-后续"><a href="#优化-后续" class="headerlink" title="优化.. 后续"></a>优化.. 后续</h2><ul>
+<li>Does the TCPConnection need any fancy data structures or algorithms?<ul>
+<li>No, it really doesn’t. The <strong>heavy lifting is all done by the TCPSender and TCPReceiver</strong> that you’ve already implemented.  </li>
+<li>The work here is really just about wiring everything up, and dealing with some lingering connection-wide subtleties that can’t easily be factored in to the sender and receiver.</li>
+<li><strong>The hardest part will be deciding when to fully terminate a TCPConnection and declare it no longer active.</strong></li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CS144/" rel="tag"># CS144</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/10/muduo-http/" rel="prev" title="muduo-http">
+      <i class="fa fa-chevron-left"></i> muduo-http
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/18/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C-CS144-lab5/" rel="next" title="计算机网络-CS144-lab5">
+      计算机网络-CS144-lab5 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#TCPConnection"><span class="nav-number">1.</span> <span class="nav-text">TCPConnection</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98"><span class="nav-number">1.1.</span> <span class="nav-text">问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.2.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%9F%E8%83%BD"><span class="nav-number">1.3.</span> <span class="nav-text">功能</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Receiving-segments"><span class="nav-number">1.3.1.</span> <span class="nav-text">Receiving segments</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Sending-segments"><span class="nav-number">1.3.2.</span> <span class="nav-text">Sending segments.</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#When-time-passes"><span class="nav-number">1.3.3.</span> <span class="nav-text">When time passes.</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Decide-when-connection-is-done"><span class="nav-number">1.3.4.</span> <span class="nav-text">Decide when connection is done</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#connection-is-down-%E7%9A%84%E6%96%B9%E5%BC%8F"><span class="nav-number">1.3.4.1.</span> <span class="nav-text">connection is down 的方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%B0%BD%E5%8F%AF%E8%83%BD%E8%BE%BE%E6%88%90clean-shutdown"><span class="nav-number">1.3.4.2.</span> <span class="nav-text">如何尽可能达成clean_shutdown</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E6%9D%A1%E4%BB%B64%E5%A6%82%E4%BD%95%E8%BE%BE%E6%88%90"><span class="nav-number">1.3.4.2.1.</span> <span class="nav-text">条件4如何达成</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#Option-A"><span class="nav-number">1.3.4.2.1.1.</span> <span class="nav-text">Option A</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Option-B"><span class="nav-number">1.3.4.2.1.2.</span> <span class="nav-text">Option B</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#The-end-of-a-TCP-connection-practical-summary%EF%BC%89"><span class="nav-number">1.3.4.3.</span> <span class="nav-text">The end of a TCP connection (practical summary）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.4.</span> <span class="nav-text">实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8D%E8%A6%81%E6%88%90%E5%91%98"><span class="nav-number">1.4.1.</span> <span class="nav-text">重要成员</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TCP-State-Transitions"><span class="nav-number">1.4.2.</span> <span class="nav-text">TCP State Transitions</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%BB%E5%8A%A8%E5%85%B3%E9%97%AD%E8%BF%9E%E6%8E%A5%E5%8F%AF%E8%83%BD%E4%BC%9A%E7%BB%8F%E5%8E%86%E7%9A%84%E5%9B%9B%E7%A7%8D%E7%8A%B6%E6%80%81"><span class="nav-number">1.4.2.1.</span> <span class="nav-text">主动关闭连接可能会经历的四种状态</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Simultaneous"><span class="nav-number">1.4.2.2.</span> <span class="nav-text">Simultaneous</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Simultaneous-Open"><span class="nav-number">1.4.2.2.1.</span> <span class="nav-text">Simultaneous Open</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Simultaneous-Close"><span class="nav-number">1.4.2.2.2.</span> <span class="nav-text">Simultaneous Close</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#bug"><span class="nav-number">1.5.</span> <span class="nav-text">bug</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Over"><span class="nav-number">1.6.</span> <span class="nav-text">Over !</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Case"><span class="nav-number">1.7.</span> <span class="nav-text">Case</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96-%E5%90%8E%E7%BB%AD"><span class="nav-number">1.8.</span> <span class="nav-text">优化.. 后续</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '841c63c1c3ebbc89ec414bafc90ea9b9',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

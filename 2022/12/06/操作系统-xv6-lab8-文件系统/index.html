@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TODO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="操作系统-xv6-lab9-文件系统">
+<meta property="og:url" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="TODO">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-07-35.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-17-09.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-44-23.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-25-56.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-10-18.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-10-38-30.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-42-41.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-10-03-32.png">
+<meta property="og:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-37-47.png">
+<meta property="article:published_time" content="2022-12-06T13:19:06.000Z">
+<meta property="article:modified_time" content="2023-02-27T15:22:38.868Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="xv6">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-07-35.png">
+
+<link rel="canonical" href="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>操作系统-xv6-lab9-文件系统 | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          操作系统-xv6-lab9-文件系统
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-12-06 21:19:06" itemprop="dateCreated datePublished" datetime="2022-12-06T21:19:06+08:00">2022-12-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:22:38" itemprop="dateModified" datetime="2023-02-27T23:22:38+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.3k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>TODO</p>
+<span id="more"></span>
+
+<h1 id="PART1"><a href="#PART1" class="headerlink" title="PART1"></a>PART1</h1><h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>实验目的：就是扩增一个inode所能引用的datablock大小</p>
+<ul>
+<li><p>原先inode的结构如下</p>
+<ul>
+<li>addrs[0,11]是直接块</li>
+<li>addrs[12]是一级间接块</li>
+<li>总共能引用的block 数量为 268 = 12 + 256<br><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-07-35.png"></li>
+</ul>
+</li>
+<li><p>改动后的结构如下</p>
+<ul>
+<li>addrs[0,10]是直接块</li>
+<li>addrs[11]一级间接块</li>
+<li>addrs[12]二级间接块</li>
+<li>总共能引用的block 数量为 65803 = 11 + 256 + 256*256<br><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-17-09.png"></li>
+</ul>
+</li>
+<li><p>我愿将single indirect block 称为一级块表, double indirect block 称为二级块表</p>
+</li>
+</ul>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><ul>
+<li><p>以下为我所做的工作</p>
+</li>
+<li><p>struct inode和dinode中的addrs数组</p>
+  <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// On-disk inode structure</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dinode</span> &#123;</span></span><br><span class="line"><span class="keyword">short</span> type;           <span class="comment">// File type  文件 / 目录 / 特殊文件 / 0表示inode空闲</span></span><br><span class="line"><span class="keyword">short</span> major;          <span class="comment">// Major device number (T_DEVICE only)</span></span><br><span class="line"><span class="keyword">short</span> minor;          <span class="comment">// Minor device number (T_DEVICE only)</span></span><br><span class="line"><span class="keyword">short</span> nlink;          <span class="comment">// Number of links to inode in file system</span></span><br><span class="line">uint size;            <span class="comment">// Size of file (bytes)</span></span><br><span class="line">uint addrs[NDIRECT+<span class="number">2</span>];   <span class="comment">// Data block addresses 保存inode代表的文件的内容的磁盘块号</span></span><br><span class="line"><span class="comment">// 11 * direct block + 1 single indirect block + 1 * double indirect block</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+<li><p>bmap </p>
+<ul>
+<li>功能: 查询并返回ip所引用的第bn个datablockno。过程中按需分配datablock。</li>
+<li>可以看成是<strong>将inode的逻辑块号转化成disk上的物理块号</strong>。</li>
+<li>修改：增添对于二级块表的从逻辑到物理的映射的处理<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> uint <span class="title">bmap</span><span class="params">(struct inode *ip, uint bn)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    uint addr, *a;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">bp</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  1. NDIRECT = 11 </span></span><br><span class="line">    <span class="comment">//  11 个 direct block</span></span><br><span class="line">    <span class="comment">//  如果inode的bn为直接地址块，且还没引用datablock</span></span><br><span class="line">    <span class="keyword">if</span>(bn &lt; NDIRECT)&#123;</span><br><span class="line">        <span class="keyword">if</span>((addr = ip-&gt;addrs[bn]) == <span class="number">0</span>)</span><br><span class="line">        ip-&gt;addrs[bn] = addr = balloc(ip-&gt;dev);</span><br><span class="line">        <span class="keyword">return</span> addr;</span><br><span class="line">    &#125;</span><br><span class="line">    bn -= NDIRECT;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  2. NINDIRECT = 256</span></span><br><span class="line">    <span class="comment">//  1 个 single indirect block</span></span><br><span class="line">    <span class="keyword">if</span>(bn &lt; NINDIRECT)&#123;</span><br><span class="line">        <span class="comment">//  Load indirect block, allocating if necessary.</span></span><br><span class="line">        <span class="keyword">if</span>((addr = ip-&gt;addrs[NDIRECT]) == <span class="number">0</span>)</span><br><span class="line">        ip-&gt;addrs[NDIRECT] = addr = balloc(ip-&gt;dev);</span><br><span class="line">        <span class="comment">//  get indirect block cache</span></span><br><span class="line">        bp = bread(ip-&gt;dev, addr);</span><br><span class="line">        a = (uint*)bp-&gt;data;</span><br><span class="line">        <span class="comment">//  如果第bn项并没有指向一个block，则为其balloc分配一个freeblock，并记录</span></span><br><span class="line">        <span class="keyword">if</span>((addr = a[bn]) == <span class="number">0</span>)&#123;</span><br><span class="line">        a[bn] = addr = balloc(ip-&gt;dev);</span><br><span class="line">        log_write(bp);</span><br><span class="line">        &#125;</span><br><span class="line">        brelse(bp);   <span class="comment">//  bread brelse 搭配</span></span><br><span class="line">        <span class="keyword">return</span> addr;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    bn -= NINDIRECT;</span><br><span class="line">    <span class="comment">//  3. DOUBLE_NINDIRECT = 256 * 256</span></span><br><span class="line">    <span class="comment">//  1 个 double indirect block</span></span><br><span class="line">    <span class="keyword">if</span>(bn &lt; DOUBLE_NINDIRECT)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  addr pointed to the first level indirect block </span></span><br><span class="line">        <span class="keyword">if</span>((addr = ip-&gt;addrs[NDIRECT+NINDIRECT]) == <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            ip-&gt;addrs[NDIRECT+NINDIRECT] = addr = balloc(ip-&gt;dev);</span><br><span class="line">        &#125;</span><br><span class="line">        bp = bread(ip-&gt;dev,addr);</span><br><span class="line">        a = (uint*)bp-&gt;data;</span><br><span class="line">        <span class="keyword">int</span> n = bn / NINDIRECT;</span><br><span class="line">        <span class="keyword">int</span> m = bn % NINDIRECT;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  the first level indirect block pointed to the second level indirect block</span></span><br><span class="line">        <span class="keyword">if</span>((addr = a[n]) == <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            a[n] = addr = balloc(ip-&gt;dev);  <span class="comment">//  modify cache</span></span><br><span class="line">            log_write(bp);</span><br><span class="line">        &#125;</span><br><span class="line">        brelse(bp);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  the second level indirect block pointed to the target data block</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">m_bp</span> =</span> bread(ip-&gt;dev,addr);</span><br><span class="line">        uint *m_a = (uint*)m_bp-&gt;data;</span><br><span class="line">        <span class="keyword">if</span>((addr = m_a[m]) == <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            m_a[m] = addr = balloc(ip-&gt;dev);</span><br><span class="line">            log_write(m_bp);</span><br><span class="line">        &#125;</span><br><span class="line">        brelse(m_bp);</span><br><span class="line">        <span class="keyword">return</span> addr;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">    <span class="comment">// 如果块号超过NDIRECT+NINDIRECT，则bmap调用panic崩溃</span></span><br><span class="line">    panic(<span class="string">&quot;bmap: out of range&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>同理，在itrunc释放块表的时候也需要释放下二级块表</p>
+<ul>
+<li>注意不要忘记清空addrs本身<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">itrunc</span><span class="params">(struct inode *ip)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> i, j;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">bp</span>;</span></span><br><span class="line">    uint *a;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  释放所有直接引用的disk上的块 并清空addrs</span></span><br><span class="line">    <span class="keyword">for</span>(i = <span class="number">0</span>; i &lt; NDIRECT; i++)&#123;</span><br><span class="line">        <span class="keyword">if</span>(ip-&gt;addrs[i])&#123;</span><br><span class="line">            bfree(ip-&gt;dev, ip-&gt;addrs[i]);</span><br><span class="line">            ip-&gt;addrs[i] = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  释放所有间接引用的disk上的块 并清空addrs</span></span><br><span class="line">    <span class="keyword">if</span>(ip-&gt;addrs[NDIRECT])&#123;</span><br><span class="line">        walkfreeblock(ip-&gt;addrs[NDIRECT],ip);</span><br><span class="line">        ip-&gt;addrs[NDIRECT] = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  释放double indirect block 及 其所引用的block</span></span><br><span class="line">    <span class="keyword">if</span>(ip-&gt;addrs[NDIRECT + NINDIRECT])</span><br><span class="line">    &#123;</span><br><span class="line">        bp = bread(ip-&gt;dev,ip-&gt;addrs[NDIRECT + NINDIRECT]);</span><br><span class="line">        a = (uint*)bp-&gt;data;</span><br><span class="line">        <span class="keyword">for</span>(j = <span class="number">0</span>; j&lt;NINDIRECT;++j)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">if</span>(a[j])</span><br><span class="line">                walkfreeblock(a[j],ip);</span><br><span class="line">        &#125;</span><br><span class="line">        brelse(bp);</span><br><span class="line">        <span class="comment">//  释放二级块表本身</span></span><br><span class="line">        bfree(ip-&gt;dev,ip-&gt;addrs[NDIRECT + NINDIRECT]);</span><br><span class="line">        ip-&gt;addrs[NDIRECT + NINDIRECT] = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  inode代表的文件大小为0</span></span><br><span class="line">    ip-&gt;size = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">//  更新inode之后 应当立刻落入磁盘记入日志</span></span><br><span class="line">    iupdate(ip);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>工具函数</p>
+<ul>
+<li>释放single indirect block所引用的256个datablock，并释放一级块标自身所占的datablock</li>
+<li>传入一级块表的所在的datablock的blockno，以及disk编号<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  blockno是一块direct address blockno</span></span><br><span class="line"><span class="comment">//  其中所有的数据都是指向datablock。也即都是datablockno</span></span><br><span class="line"><span class="comment">//  walkfreeblock : 存储在释放blockno中引用的所有datablock</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">walkfreeblock</span><span class="params">(<span class="keyword">int</span> indirect_blockno,struct inode *ip)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">buf</span> *<span class="title">bp</span> =</span> bread(ip-&gt;dev,indirect_blockno);</span><br><span class="line">    uint* pd = (uint*)bp-&gt;data;   <span class="comment">//  pointer to datablock</span></span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> k=<span class="number">0</span>;k&lt;NINDIRECT;++k)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span>(pd[k])</span><br><span class="line">        bfree(ip-&gt;dev,pd[k]);</span><br><span class="line">    &#125;</span><br><span class="line">    brelse(bp);                       <span class="comment">//  不要忘记释放自身cache</span></span><br><span class="line">    bfree(ip-&gt;dev,indirect_blockno);  <span class="comment">//  不要忘记释放自身</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h1 id="PART2"><a href="#PART2" class="headerlink" title="PART2"></a>PART2</h1><h2 id="背景-1"><a href="#背景-1" class="headerlink" title="背景"></a>背景</h2><p>约定路径为path:path处有个entry指向该inode<br>软链接文件的inode为:symbolic inode</p>
+<ul>
+<li>目标：为xv6实现软链接系统调用。</li>
+</ul>
+<ul>
+<li>int symlink(char *target, char *path)<ul>
+<li>在路径path，创建一个symbloic inode，导向target下的inode</li>
+<li>即便目标target inode并不存在，symlink也可以成功。只是当open symbolic inode时会fail。</li>
+<li>success : return 0;</li>
+<li>fail : return -1</li>
+<li>open symbolic inode时，如果trace到的还是一个symbloic inode，那么递归的追踪下去，直到深度超过上限。</li>
+<li>You do not have to handle symbolic links to directories for this lab.</li>
+</ul>
+</li>
+</ul>
+<h2 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h2><ul>
+<li>我所做的工作如下</li>
+<li>新增一种inode类型：T_SYMLINK，代表symbolic inode</li>
+<li>open新增一种访问权限:O_NOFOLLOW<ul>
+<li>When a process specifies O_NOFOLLOW in the flags to open, open should open the symlink (and not follow the symbolic link).</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p>uint64 <strong>sys_symlink</strong>(void)</p>
+<ul>
+<li>创建一个symbolic inode</li>
+<li>向该symbolic inode的datablock写入数据:char *target。当open的时候访问该target路径对应的inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">uint64 <span class="title">sys_symlink</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">char</span> target[MAXPATH] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="keyword">char</span> path[MAXPATH] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="keyword">if</span>(argstr(<span class="number">0</span>, target, MAXPATH) &lt; <span class="number">0</span> || argstr(<span class="number">1</span>, path, MAXPATH) &lt; <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    begin_op();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  1. 创建一个symbolic inode</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">inode</span>* <span class="title">ip</span> =</span> namei(path); </span><br><span class="line">    <span class="keyword">if</span>(ip==<span class="number">0</span>)   </span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  如果之前没有，创建inode</span></span><br><span class="line">        ip = create(path,T_SYMLINK,<span class="number">0</span>,<span class="number">0</span>);</span><br><span class="line">        <span class="keyword">if</span>(ip == <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">        end_op();</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        itrunc(ip);                     <span class="comment">//  清空inode的引用</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    <span class="comment">//  如果之前就有,那么写覆盖datablock即可</span></span><br><span class="line">    &#123;</span><br><span class="line">        ilock(ip);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  2. 向该symbolic inode的datablock写入数据:char *target。当open的时候访问该target路径对应的inode </span></span><br><span class="line">    <span class="keyword">int</span> ret = writei(ip,<span class="number">0</span>,(uint64)target,<span class="number">0</span>,MAXPATH);</span><br><span class="line">    <span class="keyword">if</span>(ret != MAXPATH) </span><br><span class="line">    &#123;</span><br><span class="line">        iunlockput(ip);</span><br><span class="line">        end_op();</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    iunlockput(ip);     <span class="comment">//  注意这里应当是iunlockput而非iunlock</span></span><br><span class="line">    end_op();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>sys_open</strong></p>
+<ul>
+<li>增添两部分</li>
+<li><ol>
+<li>对于访问symbolic inode</li>
+</ol>
+<ul>
+<li>递归的找到target inode 然后访问</li>
+</ul>
+</li>
+<li><ol start="2">
+<li>对于以O_NOFOLLOW方式访问symbolic inode</li>
+</ol>
+<ul>
+<li>直接访问symbolic inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">uint64 <span class="title">sys_open</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">    begin_op();</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  create 创建inode</span></span><br><span class="line">    <span class="keyword">if</span>(omode &amp; O_CREATE)&#123;</span><br><span class="line">    <span class="comment">//  寻找已有inode</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">//  open(&quot;/testsymlink/b&quot;, O_RDWR)</span></span><br><span class="line">        <span class="keyword">if</span>((ip = namei(path)) == <span class="number">0</span>)&#123;</span><br><span class="line">            end_op();</span><br><span class="line">            <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  1. trace symlink . </span></span><br><span class="line">        <span class="comment">//  失败则返回NULL ,syscall return -1。</span></span><br><span class="line">        <span class="comment">//  成功则获得目标inode指针 , syscall return fd。</span></span><br><span class="line">        <span class="keyword">if</span>(ip-&gt;type == T_SYMLINK &amp;&amp; ((omode &amp; O_NOFOLLOW) == <span class="number">0</span>))</span><br><span class="line">        &#123;</span><br><span class="line">            ip = dfs_trace_symlink(ip,<span class="number">0</span>);</span><br><span class="line">            <span class="keyword">if</span>(ip == <span class="number">0</span>) </span><br><span class="line">            &#123;</span><br><span class="line">                end_op();</span><br><span class="line">                <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//  2. </span></span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            ilock(ip);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(ip-&gt;type == T_DIR &amp;&amp; omode != O_RDONLY)&#123;</span><br><span class="line">            iunlockput(ip);</span><br><span class="line">            end_op();</span><br><span class="line">            <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  从ftable中分配free struct file 来承载inode + 从p-&gt;ofile中分配free fd 来索引struct file</span></span><br><span class="line">    <span class="keyword">if</span>((f = filealloc()) == <span class="number">0</span> || (fd = fdalloc(f)) &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        <span class="keyword">if</span>(f)</span><br><span class="line">        fileclose(f);</span><br><span class="line">        iunlockput(ip);</span><br><span class="line">        end_op();</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  ...</span></span><br><span class="line"></span><br><span class="line">    iunlock(ip);</span><br><span class="line">    end_op();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> fd;    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>工具函数 <strong>dfs_trace_symlink</strong><ul>
+<li>递归的追踪symbolic inode</li>
+<li>如果超出最大深度,则返回0</li>
+<li>如果是要target路径的inode不存在，则返回0</li>
+<li>如果本inode是个非symbolic inode，那么返回该inode</li>
+<li><strong>注意在读写inode之前（如通过readi读取），一定要先通过ilock(inode)锁定</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  fail : return 0</span></span><br><span class="line"><span class="comment">//  success : return locked inode*</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> struct inode* <span class="title">dfs_trace_symlink</span><span class="params">(struct inode *ip,<span class="keyword">int</span> h)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//  如果超出最大深度,则返回0</span></span><br><span class="line">    <span class="comment">//  如果是要target路径的inode不存在，则返回0</span></span><br><span class="line">    <span class="keyword">if</span>(h &gt; <span class="number">10</span> || ip == <span class="number">0</span>) &#123;<span class="keyword">return</span> <span class="number">0</span>;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 注意！！！</span></span><br><span class="line">    <span class="comment">//  在读写inode的元数据或内容之前，代码必须使用ilock锁定inode</span></span><br><span class="line">    ilock(ip);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  如果本inode是个软链接inode，那么一路追踪到非软链接inode</span></span><br><span class="line">    <span class="keyword">if</span>(ip-&gt;type != T_SYMLINK) <span class="keyword">return</span> ip; </span><br><span class="line">    <span class="keyword">char</span> target[MAXPATH] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="keyword">int</span> ret = readi(ip,<span class="number">0</span>,(uint64)target,<span class="number">0</span>,MAXPATH);</span><br><span class="line">    <span class="keyword">if</span>(ret != MAXPATH) panic(<span class="string">&quot;open symlink&quot;</span>);</span><br><span class="line"></span><br><span class="line">    iunlockput(ip);</span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">inode</span>* <span class="title">ne</span> =</span> namei(target);</span><br><span class="line">    <span class="keyword">return</span> dfs_trace_symlink(ne,h+<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+<h3 id="待解决问题"><a href="#待解决问题" class="headerlink" title="待解决问题"></a>待解决问题</h3><ul>
+<li><strong>遇见bug：</strong><ul>
+<li>在sys_symlink中，不再引用inode时我只是iunlock(inode)，并没有iunlockput(inode)，造成panic virtio_disk_intr status</li>
+<li>iunlock(inode ip) <ul>
+<li>只是释放了当前thread对于该ip的占有，不意味着该ip对本thread已经无用，意味着稍后该ip仍会存在于inode cache，不会从inode cache中踢出。长此会造成inode cache满。</li>
+</ul>
+</li>
+<li>iunlockput(inode ip) <ul>
+<li>iunlock (inode) : 不但释放了当前thread对于该ip的占有</li>
+<li>iput(inode) : 还多了一步，也即释放了本thread对于ip的引用（通过减小ip的ref）<ul>
+<li>意味着本thread再也不会引用该ip。如此，ip的ref引用计数降至0，那么该ip就可以从inodecache中替换走。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>不过我还是不知道为什么这样会造成panic virtio_disk_intr status。我以为应当造成的是iget: no inodes。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>拿下<br><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-09-44-23.png"></li>
+</ul>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>话说path追踪的时候会用到entry吗？<br>会。<br>最一开始的directory inode 如何得到 ？<br>  开始path追踪时，会天然的得到path最一开始所在的目录inode<br>  因为该path 要么是一个绝对路径（从root’/‘开始），要么是一个相对路劲（从本目录开始），这两个都可以直接得到。<br>如何用到entry？<br>追踪时会扫描当前追踪到的directoy inode的entry，检查是否有path中的目标下一级（根据name是否是下一级目标enrty）的entry。<br>如果有，则使用该entry（通过inum）索引到的inode，继续遍历该direcoty inode。<br>如果该inode不是directry inode，且name等于path的最后一级元素，则搜索inode成功。</p>
+<h3 id="文件表-文件描述符表-file-inode"><a href="#文件表-文件描述符表-file-inode" class="headerlink" title="文件表 文件描述符表 file inode"></a>文件表 文件描述符表 file inode</h3><ul>
+<li><p><strong>对比一下Linux中的概念</strong></p>
+</li>
+<li><p>Linux中的<strong>全局的文件表</strong>，在xv6中体现为<strong>全局的ftable</strong></p>
+<ul>
+<li><strong>所有打开的文件以struct file的形式都存在于ftable</strong><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">spinlock</span> <span class="title">lock</span>;</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">file</span> <span class="title">file</span>[<span class="title">NFILE</span>];</span></span><br><span class="line">&#125; ftable;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><strong>每个进程的文件描述符表</strong></p>
+<ul>
+<li>fd table</li>
+<li>&lt;fd - struct file *&gt; </li>
+<li><strong>fd table 的 file* 指向ftable里的 file</strong>。struct file又指向inode<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">proc</span>&#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">ofile</span>[<span class="title">NOFILE</span>];</span>  <span class="comment">// Open files</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-25-56.png"></p>
+</li>
+</ul>
+<ul>
+<li><strong>我们用户程序是如何使用file的？</strong><ul>
+<li><strong>打开file并以fd来引用他</strong></li>
+<li><strong>open -&gt; sys_open</strong>   <ul>
+<li>sys_open <ul>
+<li><ol>
+<li>创建(create)/找到(namei)已有文件</li>
+</ol>
+</li>
+<li><ol start="2">
+<li><strong>从全局的ftable中分配free struct file 作为该文件结构体</strong></li>
+</ol>
+<ul>
+<li><strong>filealloc()</strong></li>
+</ul>
+</li>
+<li><ol start="3">
+<li><strong>从进程的fd表ofile中分配fd来给该struct file*。也即，在fd表中记录了fd-struct file*</strong></li>
+</ol>
+<ul>
+<li><strong>fdalloc()</strong></li>
+</ul>
+</li>
+<li><ol start="4">
+<li>设置struct file的一些metadata如权限</li>
+</ol>
+</li>
+<li><ol start="5">
+<li>return fd to user</li>
+</ol>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>之后用户在即可<strong>通过fd来引用文件</strong>。<ul>
+<li>fd -&gt; struct file -&gt; inode</li>
+</ul>
+</li>
+<li>如read(fd, &amp;de, sizeof(de)<ul>
+<li><strong>read -&gt; sys_read</strong><blockquote>
+<p><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-10-18.png"></p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>name是inode的属性吗？</strong></p>
+<ul>
+<li>不是的。name是entry的属性。entry通过inum索引到inode。</li>
+<li>entry(name,inum)<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  文件夹中的一系列entry 而非 文件夹</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">dirent</span> &#123;</span></span><br><span class="line">ushort inum;    <span class="comment">//  用于索引inode</span></span><br><span class="line"><span class="keyword">char</span> name[DIRSIZ];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><p>我们在<strong>目录下看到的，实际上是一个个条目entry</strong>。ls时是读取了并打印了目录下的所有entry。</p>
+<blockquote>
+<p><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-10-38-30.png"></p>
+</blockquote>
+</li>
+<li><p>directory 和 entry 和 其他inode的关系<br><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-42-41.png"></p>
+</li>
+</ul>
+<h3 id="硬链接、软链接"><a href="#硬链接、软链接" class="headerlink" title="硬链接、软链接"></a>硬链接、软链接</h3><ul>
+<li><strong>什么是硬链接？</strong><ul>
+<li><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-10-03-32.png"></li>
+<li>name是entry的属性；hardlink是inode(dinode)的属性。</li>
+<li><strong>硬链接：引用本inode的entry的数量</strong><ul>
+<li>entry是真实存在于disk上的结构,断电之后还会保存在磁盘里面</li>
+<li>一个entry指向一个inode，就是该inode一条硬链接hardlink。</li>
+<li>多个entry指向同一个inode，就是该inode的多条hardlink。</li>
+<li>hardlink!=0时，该disk上的dinode就不会被释放。当nlink = 0时，就在disk上真正释放该inode。xv6中相关函数为iput。</li>
+</ul>
+</li>
+<li>可以看到，硬链接并不是文件，也即并不是inode，不以inode的形式存在。而是作为directory inode的数据存在于其datablock中。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>什么是软链接?</strong><ul>
+<li>与硬链接不同，硬链接是entry，而<strong>软链接是个文件，以inode的形式存在</strong></li>
+<li><strong>软链接的datablock中存储的是 target inode path</strong></li>
+<li>通过open访问软链接inode时，通过其datablock的存储的路径去访问那个路径对应的inode。<br><img src="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/2022-12-07-11-37-47.png"></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><strong>如何利用path找到对应inode的？</strong><ul>
+<li>接口：namex(path)</li>
+<li>namex(path) -&gt; dirlookup(dp,name) -&gt; iget(inum)</li>
+<li>将path一级级，逐级拆分出一个个name。</li>
+<li>在每一级拆分出一个name之后，<ul>
+<li>通过dirlookup在当前directory inode下查找出name对应entry，进而得到inum。<ul>
+<li>dirlookup 遍历directory inode的datablock的entry</li>
+</ul>
+</li>
+<li>得到inum之后，通过iget(inum)，遍历inode cache，(从中找出/从磁盘加载出)inum匹配的inode</li>
+<li>在非最后一轮，得到的inode应该是个directory inode</li>
+</ul>
+</li>
+<li>拆解到最后一轮，iget所得到的inode就是path最后一个element的inode。</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/xv6/" rel="tag"># xv6</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F2/" rel="prev" title="操作系统-xv6-文件系统2">
+      <i class="fa fa-chevron-left"></i> 操作系统-xv6-文件系统2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/12/11/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F-%E6%97%A5%E5%BF%97%E5%B0%8F%E7%BB%93/" rel="next" title="操作系统-xv6-文件系统-日志小结">
+      操作系统-xv6-文件系统-日志小结 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#PART1"><span class="nav-number">1.</span> <span class="nav-text">PART1</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#PART2"><span class="nav-number">2.</span> <span class="nav-text">PART2</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF-1"><span class="nav-number">2.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0-1"><span class="nav-number">2.2.</span> <span class="nav-text">实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BE%85%E8%A7%A3%E5%86%B3%E9%97%AE%E9%A2%98"><span class="nav-number">2.2.1.</span> <span class="nav-text">待解决问题</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%8F%E7%BB%93"><span class="nav-number">2.3.</span> <span class="nav-text">小结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E8%A1%A8-%E6%96%87%E4%BB%B6%E6%8F%8F%E8%BF%B0%E7%AC%A6%E8%A1%A8-file-inode"><span class="nav-number">2.3.1.</span> <span class="nav-text">文件表 文件描述符表 file inode</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A1%AC%E9%93%BE%E6%8E%A5%E3%80%81%E8%BD%AF%E9%93%BE%E6%8E%A5"><span class="nav-number">2.3.2.</span> <span class="nav-text">硬链接、软链接</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">87</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">622k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:25</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '1da14789602026f4f46fcdc44c1a1209',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>
