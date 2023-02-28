@@ -5715,7 +5715,10 @@
 <li><img src="/muduo-http/2023-02-21-20-09-13.png"><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">状态行 statusline : HTTP/<span class="number">1.1</span> <span class="number">200</span> OK\r\n</span><br><span class="line">首部行 headerline : Content-Encoding: gzip\r\n</span><br><span class="line">首部行 headerline : Content-Type: text/html\r\n</span><br><span class="line">首部行 headerline : Date: Thu, <span class="number">16</span> Jul <span class="number">2020</span> <span class="number">06</span>:<span class="number">45</span>:<span class="number">26</span> GMT\r\n</span><br><span class="line">首部行 headerline : Content-Length: <span class="number">78</span>\r\n</span><br><span class="line">首部行 headerline : Connection: keep-alive\r\n</span><br><span class="line">\r\n</span><br><span class="line">实体体 entity body : &lt;div&gt;&lt;div id=<span class="string">&quot;__status&quot;</span>&gt;<span class="number">0</span>&lt;/div&gt;&lt;div id=<span class="string">&quot;__redirect&quot;</span>&gt;<span class="number">0</span>&lt;/div&gt;&lt;div id=<span class="string">&quot;__switchtime&quot;</span>&gt;<span class="number">0</span>&lt;/div&gt;&lt;/div&gt;</span><br></pre></td></tr></table></figure></li>
 </ul>
 </li>
-<li><p>压测<br>  <img src="/muduo-http/2023-02-22-12-23-54.png"></p>
+<li><p>压测</p>
+<ul>
+<li>2核4G腾讯云服务器. Server设置1个mainReactor,1个subReactor<br><img src="/muduo-http/2023-02-22-12-23-54.png"><br>应该是由于网络原因,比Server在本地测试慢很多.本地压测能达到十万.</li>
+</ul>
 </li>
 </ul>
 ]]></content>
@@ -8779,7 +8782,7 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
   <entry>
     <title>操作系统-xv6-lab9-文件系统</title>
     <url>/2022/12/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/</url>
-    <content><![CDATA[<p>TODO</p>
+    <content><![CDATA[<p>实现二级间接块、实现软链接系统调用</p>
 <span id="more"></span>
 
 <h1 id="PART1"><a href="#PART1" class="headerlink" title="PART1"></a>PART1</h1><h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>实验目的：就是扩增一个inode所能引用的datablock大小</p>
@@ -19834,13 +19837,13 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
       </tags>
   </entry>
   <entry>
-    <title>nginx内存池</title>
+    <title>轮子-nginx内存池</title>
     <url>/2022/04/22/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0/</url>
     <content><![CDATA[<p>nginx内存池原理</p>
 <!---more--->
 
 
-<h1 id="nginx内存池"><a href="#nginx内存池" class="headerlink" title="nginx内存池"></a>nginx内存池</h1><ul>
+<h1 id="轮子-nginx内存池"><a href="#轮子-nginx内存池" class="headerlink" title="轮子-nginx内存池"></a>轮子-nginx内存池</h1><ul>
 <li>内存池中分为大内存block和小内存block</li>
 <li>大内存block的头信息在小内存块中。大内存块头信息通过链表连接起来。</li>
 </ul>
@@ -19957,7 +19960,6 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
 <li>nginx对于小块内存的分配效率绝对比sgi stl二级空间配置器高，因为nginx只需要移动指针。</li>
 <li>nginx无法释放小块内存。sgi stl 小块和大块都释放。<ul>
 <li>故nginx适用于短连接Web服务器（http服务器）。sgi stl适用于长连接服务器。</li>
-<li>？why？</li>
 </ul>
 </li>
 </ul>
@@ -20020,7 +20022,7 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
 <li>quit 退出</li>
 <li>l 当前附近代码</li>
 </ul>
-<h2 id="nginx内存池不足（我认为）"><a href="#nginx内存池不足（我认为）" class="headerlink" title="nginx内存池不足（我认为）"></a>nginx内存池不足（我认为）</h2><ul>
+<h2 id="轮子-nginx内存池不足（我认为）"><a href="#轮子-nginx内存池不足（我认为）" class="headerlink" title="轮子-nginx内存池不足（我认为）"></a>轮子-nginx内存池不足（我认为）</h2><ul>
 <li>链表管理<ul>
 <li>链表的查找遍历时间复杂度是 O(n)。ngx_pfree 效率不高</li>
 </ul>
@@ -20046,9 +20048,9 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
       </tags>
   </entry>
   <entry>
-    <title>sgi_stl二级空间配置器</title>
+    <title>轮子-sgi_stl二级空间配置器</title>
     <url>/2022/04/16/%E8%BD%AE%E5%AD%90-sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8/</url>
-    <content><![CDATA[<p>sgi_stl二级空间配置器原理</p>
+    <content><![CDATA[<p>轮子-sgi_stl二级空间配置器原理</p>
 <span id="more"></span>
 
 <ul>
@@ -20382,7 +20384,7 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
       </tags>
   </entry>
   <entry>
-    <title>nginx内存池移植代码</title>
+    <title>轮子-nginx内存池移植代码</title>
     <url>/2022/04/30/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0%E7%A7%BB%E6%A4%8D/</url>
     <content><![CDATA[<p>nginx 内存池移植</p>
 <span id="more"></span>
@@ -20405,13 +20407,12 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
 <li>环境 ubuntu / VS均可<figure class="highlight c++"><table><tr><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/nginx/my_nginx$ ./test_mem_pool.out </span><br><span class="line">~ngx_mem_pool</span><br><span class="line">self_handler_02</span><br><span class="line">free ptr mem!</span><br><span class="line">self_handler</span><br><span class="line">free ptr mem!</span><br><span class="line">free ptr mem!</span><br><span class="line">close file!</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="Bug"><a href="#Bug" class="headerlink" title="Bug"></a>Bug</h2><ul>
-<li>VS Debug下出现<code>heap corruption detected</code><ul>
+<li>出现<code>heap corruption detected</code><ul>
 <li>测试代码问题：添加外部资源时的大小不对。已解决</li>
 </ul>
 </li>
 </ul>
-<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2><p><a href="https://zhuanlan.zhihu.com/p/439961487">https://zhuanlan.zhihu.com/p/439961487</a></p>
-]]></content>
+<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2>]]></content>
       <categories>
         <category>轮子</category>
       </categories>
@@ -20420,9 +20421,9 @@ server<img src="/2022/10/12/muduo-%E5%85%B3%E4%BA%8EEventLoop%E7%9A%84runInLoop%
       </tags>
   </entry>
   <entry>
-    <title>sgi_stl二级空间配置器移植代码</title>
+    <title>轮子-sgi_stl二级空间配置器移植代码</title>
     <url>/2022/04/30/%E8%BD%AE%E5%AD%90-sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/</url>
-    <content><![CDATA[<p>sgi_stl二级空间配置器移植</p>
+    <content><![CDATA[<p>轮子-sgi_stl二级空间配置器移植</p>
 <span id="more"></span>
 
 <h1 id="sgi-stl-内存池"><a href="#sgi-stl-内存池" class="headerlink" title="sgi_stl 内存池"></a>sgi_stl 内存池</h1><h2 id="图示"><a href="#图示" class="headerlink" title="图示"></a>图示</h2><ul>

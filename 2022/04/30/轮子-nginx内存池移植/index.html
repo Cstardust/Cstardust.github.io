@@ -22,14 +22,14 @@
 
   <meta name="description" content="nginx 内存池移植">
 <meta property="og:type" content="article">
-<meta property="og:title" content="nginx内存池移植代码">
+<meta property="og:title" content="轮子-nginx内存池移植代码">
 <meta property="og:url" content="http://example.com/2022/04/30/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0%E7%A7%BB%E6%A4%8D/index.html">
 <meta property="og:site_name" content="不落辰">
 <meta property="og:description" content="nginx 内存池移植">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/2022/04/30/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0%E7%A7%BB%E6%A4%8D/2022-05-01-09-17-05.png">
 <meta property="article:published_time" content="2022-04-30T00:45:11.000Z">
-<meta property="article:modified_time" content="2023-02-27T15:26:02.077Z">
+<meta property="article:modified_time" content="2023-02-28T12:28:43.301Z">
 <meta property="article:author" content="Cstardust">
 <meta property="article:tag" content="轮子">
 <meta name="twitter:card" content="summary">
@@ -48,7 +48,7 @@
   };
 </script>
 
-  <title>nginx内存池移植代码 | 不落辰</title>
+  <title>轮子-nginx内存池移植代码 | 不落辰</title>
   
 
 
@@ -188,7 +188,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          nginx内存池移植代码
+          轮子-nginx内存池移植代码
         </h1>
 
         <div class="post-meta">
@@ -205,7 +205,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-02-27 23:26:02" itemprop="dateModified" datetime="2023-02-27T23:26:02+08:00">2023-02-27</time>
+                <time title="修改时间：2023-02-28 20:28:43" itemprop="dateModified" datetime="2023-02-28T20:28:43+08:00">2023-02-28</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -270,13 +270,12 @@
 <li>环境 ubuntu / VS均可<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">shc@shc-<span class="keyword">virtual</span>-machine:~/code/nginx/my_nginx$ ./test_mem_pool.out </span><br><span class="line">~ngx_mem_pool</span><br><span class="line">self_handler_02</span><br><span class="line">free ptr mem!</span><br><span class="line">self_handler</span><br><span class="line">free ptr mem!</span><br><span class="line">free ptr mem!</span><br><span class="line">close file!</span><br></pre></td></tr></table></figure></li>
 </ul>
 <h2 id="Bug"><a href="#Bug" class="headerlink" title="Bug"></a>Bug</h2><ul>
-<li>VS Debug下出现<code>heap corruption detected</code><ul>
+<li>出现<code>heap corruption detected</code><ul>
 <li>测试代码问题：添加外部资源时的大小不对。已解决</li>
 </ul>
 </li>
 </ul>
-<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2><p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/439961487">https://zhuanlan.zhihu.com/p/439961487</a></p>
-
+<h2 id="性能测试"><a href="#性能测试" class="headerlink" title="性能测试"></a>性能测试</h2>
     </div>
 
     
@@ -294,12 +293,12 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2022/04/22/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0/" rel="prev" title="nginx内存池">
-      <i class="fa fa-chevron-left"></i> nginx内存池
+    <a href="/2022/04/22/%E8%BD%AE%E5%AD%90-nginx%E5%86%85%E5%AD%98%E6%B1%A0/" rel="prev" title="轮子-nginx内存池">
+      <i class="fa fa-chevron-left"></i> 轮子-nginx内存池
     </a></div>
       <div class="post-nav-item">
-    <a href="/2022/04/30/%E8%BD%AE%E5%AD%90-sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/" rel="next" title="sgi_stl二级空间配置器移植代码">
-      sgi_stl二级空间配置器移植代码 <i class="fa fa-chevron-right"></i>
+    <a href="/2022/04/30/%E8%BD%AE%E5%AD%90-sgi_stl%E4%BA%8C%E7%BA%A7%E7%A9%BA%E9%97%B4%E9%85%8D%E7%BD%AE%E5%99%A8%E7%A7%BB%E6%A4%8D%E4%BB%A3%E7%A0%81/" rel="next" title="轮子-sgi_stl二级空间配置器移植代码">
+      轮子-sgi_stl二级空间配置器移植代码 <i class="fa fa-chevron-right"></i>
     </a></div>
     </div>
       </footer>
