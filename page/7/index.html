@@ -170,428 +170,6 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/" class="post-title-link" itemprop="url">Linux IO模型</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-09-04 20:52:42" itemprop="dateCreated datePublished" datetime="2022-09-04T20:52:42+08:00">2022-09-04</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-02-27 23:19:13" itemprop="dateModified" datetime="2023-02-27T23:19:13+08:00">2023-02-27</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Muduo/" itemprop="url" rel="index"><span itemprop="name">Muduo</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>2.5k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="阻塞、非阻塞、同步、异步"><a href="#阻塞、非阻塞、同步、异步" class="headerlink" title="阻塞、非阻塞、同步、异步"></a>阻塞、非阻塞、同步、异步</h1><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-04-22-50-44.png"></p>
-<p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-04-23-22-56.png"></p>
-<h2 id="网络IO阶段一：数据准备"><a href="#网络IO阶段一：数据准备" class="headerlink" title="网络IO阶段一：数据准备"></a>网络IO阶段一：数据准备</h2><ul>
-<li><strong>数据准备：根据系统IO操作的就绪状态。</strong><ul>
-<li>阻塞 blocking</li>
-<li>非阻塞  non-blocking</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li><strong>解释</strong><ul>
-<li>比如API recv</li>
-<li>远端是否有数据过来，也即内核对应的sockfd的TCP缓冲区是否有数据可读</li>
-<li>在<strong>阻塞</strong>时，如果远端没有数据过来，那么recv会阻塞在那里。</li>
-<li>在<strong>非阻塞</strong>时，无论有没有数据过来，recv都会立刻返回。通过recv的返回值，判断状态。<ul>
-<li>size == -1 &amp;&amp; errno = EAGAIN 非阻塞没数据</li>
-<li>size = 0 网络对端关闭</li>
-<li>size &gt; 0 读到的bytes数</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="网络IO阶段二：数据读取"><a href="#网络IO阶段二：数据读取" class="headerlink" title="网络IO阶段二：数据读取"></a>网络IO阶段二：数据读取</h2><ul>
-<li><p><strong>数据读写：根据应用程序和内核的交互方式</strong></p>
-<ul>
-<li>同步  synchronous</li>
-<li>异步 asynchronous</li>
-</ul>
-</li>
-<li><p><strong>解释</strong></p>
-</li>
-<li><p><strong>同步 synchronous</strong></p>
-<ul>
-<li>API recv </li>
-<li>arg传sockfd，buf</li>
-<li>(无论阻塞和非阻塞时)，如果数据就绪了，sockfdkernel的TCP缓冲区中有数据，那么会将os的内核缓冲区拷贝到应用程序的buf缓冲区，这段时间花的是应用程序自己的时间。等待直到拷贝完成后，recv才返回，应用程序才能向后走。</li>
-</ul>
-</li>
-<li><p><strong>异步 asynchronous</strong></p>
-<ul>
-<li>传sockfd，buf，通知方式</li>
-<li>os负责监听，tcp缓冲区是否有数据可读，有的话，则内核替我将数据从内核缓冲区拷贝到我传给他的buf。拷贝完后再通过约定好的通知方式通知我。这段拷贝的时间是其他进程花费的时间。不是本进程花费的时间</li>
-</ul>
-</li>
-<li><p>也即同步需要自己监听 事件什么时候完成(数据从内核缓冲区被拷贝到用户缓冲区)</p>
-</li>
-<li><p>而异步不需要，当事情完成后，会有别人通知（数据的监听，数据的搬运(读写)都不需要应用程序来花费时间，都是内核做的）</p>
-</li>
-</ul>
-<ul>
-<li><strong>业务的同步异步</strong><ul>
-<li>与IO的同步异步原理相同</li>
-<li>是业务层面的处理逻辑</li>
-<li>同步：A发起请求，等待B操作做完事情，得到返回值，继续处理。</li>
-<li>异步：A操作告诉B操作它感性确定时间以及通知方式，A操作继续执行自己的业务逻辑了；等B监听到相应的事件发生后，B会通知A，A开始相应的数据处理逻辑。</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li>总结<ul>
-<li>同步表示A向B请求调用一个网络IO接口时（或者调用某个业务逻辑API接口时），数据的读写都是由请求方A自己来完成的（不管是阻塞还是非阻塞）；</li>
-<li>异步表示A向B请求调用一个网络IO接口时（或者调用某个业务逻辑API接口时），向B传入请求的事件以及事件发生时通知的方式，A就可以处理其它逻辑了，当B监听到事件处理完成后，会用事先约定好的通知方式，通知A处理结果</li>
-</ul>
-</li>
-</ul>
-<ul>
-<li><p>同步阻塞：int sz = recv(fd,buf,SIZE,0);</p>
-</li>
-<li><p>同步非阻塞：int sz = recv(fd,buf,SIZE,非阻塞);</p>
-</li>
-<li><p>异步阻塞：理论上有，但完全就是浪费时间，没必要，没人用。</p>
-</li>
-<li><p>异步非阻塞：异步一般都是非阻塞。</p>
-</li>
-<li><p><strong>描述逻辑</strong></p>
-<ul>
-<li>用一个IOAPi来讲，比如read/recv</li>
-<li>在阻塞/非阻塞下的表现形式</li>
-<li>接下来再介绍同步、异步（特殊API aio_read）</li>
-</ul>
-</li>
-</ul>
-<blockquote>
-<p>陈硕大神原话：在处理 IO 的时候，阻塞和非阻塞都是同步 IO。只有使用了特殊的 API 才是异步<br>IO。<br><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-04-22-54-02.png"></p>
-</blockquote>
-<h1 id="Linux五种IO模型"><a href="#Linux五种IO模型" class="headerlink" title="Linux五种IO模型"></a>Linux五种IO模型</h1><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-25-16-25-49.png"></p>
-<h2 id="Blocking-IO"><a href="#Blocking-IO" class="headerlink" title="Blocking IO"></a>Blocking IO</h2><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-25-16-02-10.png"></p>
-<ul>
-<li>同步阻塞</li>
-<li>一直阻塞 效率不高。</li>
-<li>分为两阶段<ul>
-<li>等待数据就绪</li>
-<li>拷贝数据从kernel buf -&gt; usr buf</li>
-</ul>
-</li>
-</ul>
-<h2 id="non-Blocking-IO"><a href="#non-Blocking-IO" class="headerlink" title="non-Blocking IO"></a>non-Blocking IO</h2><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-25-16-05-10.png"></p>
-<ul>
-<li>同步非阻塞</li>
-<li>我的问题：<ul>
-<li>真的，就在这里不断轮询有什么用？浪费时间还占用cpu。不如把cpu让给别的线程，在这非阻塞轮询还不如阻塞呢。那非阻塞有什么用？</li>
-</ul>
-</li>
-<li>解决：<ul>
-<li>non-blocking一般是和IO复用配合使用</li>
-</ul>
-</li>
-</ul>
-<h2 id="IO复用（IO-multiplexing）"><a href="#IO复用（IO-multiplexing）" class="headerlink" title="IO复用（IO multiplexing）"></a>IO复用（IO multiplexing）</h2><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-25-16-04-25.png"></p>
-<ul>
-<li><p>epoll/select/poll:同步。异步最大的特点是协商了一个通知事件机制，这里明显没有，就是在等待。</p>
-</li>
-<li><p>read同步</p>
-</li>
-<li><p>IO复用比起轮询和阻塞好在哪？</p>
-<ul>
-<li>一次返回多个事件，从而不用多次在内核态和用户态之间切换。</li>
-</ul>
-</li>
-</ul>
-<h2 id="Signal-Driven-信号驱动"><a href="#Signal-Driven-信号驱动" class="headerlink" title="Signal-Driven 信号驱动"></a>Signal-Driven 信号驱动</h2><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-05-20-18-01.png"></p>
-<ul>
-<li>在第一个阶段异步，在第二个阶段同步。</li>
-<li>如果阻塞的话，需要一直阻塞</li>
-<li>如果非阻塞的话，需要一直轮询检查</li>
-<li>而信号通知机制，使得我们不必阻塞也不必轮询检查，可以去做应用程序自己的事情，同时减少了系统API的调用次数，提高效率。</li>
-<li>很少用。因为信号异步 不好处理</li>
-</ul>
-<h2 id="Asychronous-异步"><a href="#Asychronous-异步" class="headerlink" title="Asychronous 异步"></a>Asychronous 异步</h2><p><img src="/2022/09/04/muduo-Linux_IO%E6%A8%A1%E5%9E%8B/2022-09-25-16-08-42.png"></p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">aiocb</span> &#123;</span></span><br><span class="line">  <span class="keyword">int</span> aio_fildes</span><br><span class="line">  <span class="keyword">off_t</span> aio_offset</span><br><span class="line">  <span class="keyword">volatile</span> <span class="keyword">void</span> *aio_buf</span><br><span class="line">  <span class="keyword">size_t</span> aio_nbytes</span><br><span class="line">  <span class="keyword">int</span> aio_reqprio</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sigevent</span> <span class="title">aio_sigevent</span></span></span><br><span class="line"><span class="class">  <span class="title">int</span> <span class="title">aio_lio_opcode</span></span></span><br><span class="line"><span class="class">&#125;</span></span><br></pre></td></tr></table></figure>
-<ul>
-<li>异步非阻塞，根本不消耗应用程序的时间，应用程序完全可以去做其他事情，等待内核通知即可</li>
-<li>编写困难。</li>
-</ul>
-<h1 id="one-loop-per-thread"><a href="#one-loop-per-thread" class="headerlink" title="one loop per thread"></a>one loop per thread</h1><ul>
-<li><strong>one loop per thread is usually a good model   ——libv作者</strong><ul>
-<li>如果采用<strong>one loop per thread</strong>的模型，多线程服务器端编程就<strong>简化</strong>为如何<strong>设计一个高效，且易于使用的event loop，然后每个thread run 一个 event loop</strong>就行了。 再加上同步、互斥等。</li>
-</ul>
-</li>
-<li><strong>event loop 是 non-blocking 网络编程的核心</strong></li>
-</ul>
-<h1 id="non-blocking-amp-IO-multiplexing"><a href="#non-blocking-amp-IO-multiplexing" class="headerlink" title="non-blocking &amp; IO multiplexing"></a>non-blocking &amp; IO multiplexing</h1><ul>
-<li>在现实生活中，<strong>non-blocking 几乎总是和 IO multiplexing</strong> 一起使用，原因有两点：<ul>
-<li><strong>单单non-blocking</strong>：不断轮询<strong>busy looping</strong>检查某个non-blocking IO操作是否完成，<strong>耗费时间，浪费CPU</strong>。没人这么做的</li>
-<li><strong>单单IO-multiplex</strong>：IO-multiplex 一般不能和 blocking IO 用在一起，因为 blocking IO 中 read()/write()/accept()/connect() 都有可能<strong>阻塞当前线程</strong>，这样线程就没办法处理其他 socket上的 IO 事件了。<ul>
-<li>例如：epoll返回一个可读事件，用户程序进行读取，会一直循环直到读完这个可读fd，如果我们用的是阻塞的socket的话，那么在read读完之后就会阻塞在这个read上，本线程在这里阻塞住，程序无法继续向下走，也无法返回到epoll中。</li>
-</ul>
-</li>
-</ul>
-</li>
-<li>所以，当我们提到 non-blocking 的时候，实际上指的是<strong>non-blocking + IO-multiplexing</strong>，单用其中任何一个都没有办法很好的实现功能。</li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/" class="post-title-link" itemprop="url">csapp-9-虚拟内存2-Linux内存系统</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-09-01 20:40:03" itemprop="dateCreated datePublished" datetime="2022-09-01T20:40:03+08:00">2022-09-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-02-27 23:18:23" itemprop="dateModified" datetime="2023-02-27T23:18:23+08:00">2023-02-27</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>7.1k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>6 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>Linux 内存系统<br>memory map 内存映射</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/09/01/csapp-9-%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%982-Linux%E5%86%85%E5%AD%98%E7%B3%BB%E7%BB%9F/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/" class="post-title-link" itemprop="url">网络_socket流程</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-09-01 11:31:38" itemprop="dateCreated datePublished" datetime="2022-09-01T11:31:38+08:00">2022-09-01</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-02-27 23:12:20" itemprop="dateModified" datetime="2023-02-27T23:12:20+08:00">2023-02-27</time>
-              </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>2.3k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>2 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p><img src="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/2022-09-25-16-37-53.png"></p>
-<p>只记录API关键信息方便快速回忆。API的具体信息还请man。以前初学的时候记录的信息太冗杂了。现在看也不方便看，这回力求精简，痛苦的重写一遍概要。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/09/01/%E7%BD%91%E7%BB%9C_socket%E6%B5%81%E7%A8%8B/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2022/08/26/csapp-Cache-Lab/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1274,6 +852,298 @@
   
   
 
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/" class="post-title-link" itemprop="url">csapp_6_存储器层次结构</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-27 07:31:03" itemprop="dateCreated datePublished" datetime="2022-06-27T07:31:03+08:00">2022-06-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:00" itemprop="dateModified" datetime="2023-02-27T23:18:00+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <ul>
+<li>各类存储技术 <ul>
+<li>RAM：SRAM DRAM</li>
+<li>ROM</li>
+<li>磁盘</li>
+</ul>
+</li>
+<li>访问主存，访问磁盘流程</li></ul>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/06/27/csapp-6-%E5%AD%98%E5%82%A8%E5%99%A8%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/" class="post-title-link" itemprop="url">csapp_3_程序的机器级表示2</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-07 08:18:42" itemprop="dateCreated datePublished" datetime="2022-06-07T08:18:42+08:00">2022-06-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:17:53" itemprop="dateModified" datetime="2023-02-27T23:17:53+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>Procedure</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/06/07/csapp-3-%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%BA%E5%99%A8%E7%BA%A7%E8%A1%A8%E7%A4%BA2/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/06/06/csapp-Data-Lab/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/06/06/csapp-Data-Lab/" class="post-title-link" itemprop="url">datalab</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-06-06 15:16:31" itemprop="dateCreated datePublished" datetime="2022-06-06T15:16:31+08:00">2022-06-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:18:29" itemprop="dateModified" datetime="2023-02-27T23:18:29+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CSAPP/" itemprop="url" rel="index"><span itemprop="name">CSAPP</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.6k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>位运算 tips</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/06/06/csapp-Data-Lab/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
 
   
   <nav class="pagination">
@@ -1343,7 +1213,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">88</span>
+          <span class="site-state-item-count">85</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1393,13 +1263,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">638k</span>
+    <span title="站点总字数">639k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">9:40</span>
+    <span title="站点阅读时长">9:41</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
   </div>
