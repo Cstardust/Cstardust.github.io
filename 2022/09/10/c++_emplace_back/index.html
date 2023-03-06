@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="emplace_back作用 将原本用来构造临时量的参数传入emplace_back，然后直接在vector容器的内存上调用构造函数；而非在外面构造完临时对象再传入容器，再通过construct在vector上调用拷贝构造。 节省了一个临时对象的构造和析构。12345678910111213141516171819202122232425262728293031323334353637383940">
+<meta property="og:type" content="article">
+<meta property="og:title" content="c++_emplace_back">
+<meta property="og:url" content="http://example.com/2022/09/10/c++_emplace_back/index.html">
+<meta property="og:site_name" content="不落辰">
+<meta property="og:description" content="emplace_back作用 将原本用来构造临时量的参数传入emplace_back，然后直接在vector容器的内存上调用构造函数；而非在外面构造完临时对象再传入容器，再通过construct在vector上调用拷贝构造。 节省了一个临时对象的构造和析构。12345678910111213141516171819202122232425262728293031323334353637383940">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-09-10T04:52:15.000Z">
+<meta property="article:modified_time" content="2023-03-06T02:21:40.285Z">
+<meta property="article:author" content="Cstardust">
+<meta property="article:tag" content="C++">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://example.com/2022/09/10/c++_emplace_back/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>c++_emplace_back | 不落辰</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="不落辰" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">不落辰</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">知不可乎骤得,托遗响于悲风</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="fa fa-sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/09/10/c++_emplace_back/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          c++_emplace_back
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-09-10 12:52:15" itemprop="dateCreated datePublished" datetime="2022-09-10T12:52:15+08:00">2022-09-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-06 10:21:40" itemprop="dateModified" datetime="2023-03-06T10:21:40+08:00">2023-03-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="emplace-back"><a href="#emplace-back" class="headerlink" title="emplace_back"></a><strong>emplace_back</strong></h1><h2 id="作用"><a href="#作用" class="headerlink" title="作用"></a>作用</h2><ul>
+<li>将原本用来构造临时量的参数传入emplace_back，然后直接在vector容器的内存上调用构造函数；而非在外面构造完临时对象再传入容器，再通过construct在vector上调用拷贝构造。</li>
+<li>节省了一个临时对象的构造和析构。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="function">vector&lt;Test&gt; <span class="title">v</span><span class="params">(<span class="number">10</span>)</span></span>;</span><br><span class="line">    <span class="function">Test <span class="title">t</span><span class="params">(<span class="number">5</span>)</span></span>;</span><br><span class="line">    v.<span class="built_in">push_back</span>(t);</span><br><span class="line">    v.<span class="built_in">emplace_back</span>(t);</span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;======================&quot;</span>&lt;&lt;endl;</span><br><span class="line">    v.<span class="built_in">push_back</span>(<span class="built_in">Test</span>(<span class="number">5</span>));   <span class="comment">//  临时对象Test(int) -&gt; 右值拷贝构造Test(Test&amp;&amp;) -&gt; 临时对象析构~Test()</span></span><br><span class="line">    v.<span class="built_in">emplace_back</span>(<span class="built_in">Test</span>(<span class="number">5</span>));    <span class="comment">//  临时对象Test(int) -&gt; 右值拷贝构造Test(Test&amp;&amp;) -&gt; 临时对象析构~Test()</span></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;======================&quot;</span>&lt;&lt;endl;</span><br><span class="line"><span class="comment">//    v.push_back(10,20);   error</span></span><br><span class="line"><span class="comment">//  原地构造 无需临时对象</span></span><br><span class="line"><span class="comment">//  emplace 原地构造：将原本用来构造临时量的对象传入vector容器，在vector容器内存上利用这些参数构造对象；而在外面非构造完临时对象再传入容器，再在容器上调用拷贝构造。节省了一个对象的构造和析构</span></span><br><span class="line">    v.<span class="built_in">emplace_back</span>(<span class="number">5</span>);      <span class="comment">//  直接在vector管理的内存上构造 Test(int) 无需临时对象。省去了构造和析构</span></span><br><span class="line">    v.<span class="built_in">emplace_back</span>(<span class="number">10</span>,<span class="number">5</span>);   <span class="comment">//  直接在vector管理的内存上构造 Test(int int) 无需临时对象。省去了构造和析构</span></span><br><span class="line">    cout&lt;&lt;<span class="string">&quot;======================&quot;</span>&lt;&lt;endl;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">int</span>)</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">const</span> Test&amp;)</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">const</span> Test&amp;)</span><br><span class="line">======================</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">int</span>)</span><br><span class="line"><span class="built_in">Test</span>(Test&amp;&amp;)</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">int</span>)</span><br><span class="line"><span class="built_in">Test</span>(Test&amp;&amp;)</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">======================</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">int</span>)</span><br><span class="line"><span class="built_in">Test</span>(<span class="keyword">int</span>,<span class="keyword">int</span>)</span><br><span class="line">======================</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br><span class="line">~<span class="built_in">Test</span>()</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h2><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br><span class="line">373</span><br><span class="line">374</span><br><span class="line">375</span><br><span class="line">376</span><br><span class="line">377</span><br><span class="line">378</span><br><span class="line">379</span><br><span class="line">380</span><br><span class="line">381</span><br><span class="line">382</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Created by dell on 2022-04-13.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span><span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Test</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">Test</span>(<span class="keyword">int</span> x) &#123;cout&lt;&lt;<span class="string">&quot;Test(int)&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">    <span class="built_in">Test</span>(<span class="keyword">int</span> a,<span class="keyword">int</span> b)&#123;cout&lt;&lt;<span class="string">&quot;Test(int,int)&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">    <span class="built_in">Test</span>(<span class="keyword">const</span> Test&amp; )&#123;cout&lt;&lt;<span class="string">&quot;Test(const Test&amp;)&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">    <span class="built_in">Test</span>(Test &amp;&amp;)&#123;cout&lt;&lt;<span class="string">&quot;Test(Test&amp;&amp;)&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">    ~<span class="built_in">Test</span>()&#123;cout&lt;&lt;<span class="string">&quot;~Test()&quot;</span>&lt;&lt;endl;&#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 容器的空间配置器 allocator</span></span><br><span class="line"><span class="comment"> * 内存的开辟释放,对象的构造析构,都是通过空间配置器完成.而不是直接通过new delete</span></span><br><span class="line"><span class="comment"> * template&lt;class _Ty</span></span><br><span class="line"><span class="comment"> *      class _Alloc = allocator&lt;_Ty&gt;&gt;</span></span><br><span class="line"><span class="comment"> *      class vector</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//  定义容器的空间配置器</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Allocator</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="function">T* <span class="title">allocate</span><span class="params">(<span class="keyword">int</span> size)</span>   <span class="comment">//  负责内存开辟</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> (T*)<span class="built_in">malloc</span>(<span class="built_in"><span class="keyword">sizeof</span></span>(T) * size);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">T* <span class="title">deallocate</span><span class="params">(<span class="keyword">void</span>* p)</span>  <span class="comment">//  负责内存释放</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">free</span>(p);</span><br><span class="line">        <span class="keyword">return</span> (T*)p;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Ty&gt;    <span class="comment">//  不定个数参数</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(T *p,Ty&amp;&amp;... val)</span>    <span class="comment">//  引用折叠</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">new</span> (p) <span class="built_in">T</span>(std::forward&lt;Ty&gt;(val)...);    <span class="comment">//  ...不定参数+完美转发 传入相应构造函数</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    template&lt;typename Ty&gt;</span></span><br><span class="line"><span class="comment">    void construct(T* p, Ty&amp;&amp; val)</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">        new (p) T(std::forward&lt;Ty&gt;(val));</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    void construct(T* p, const T&amp; val)   //  负责对象构造(在已有的内存上)</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">        new (p) T(val);     //  定位new  在p指向的内存上构造(拷贝构造)</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment">    void construct(T* p, T&amp;&amp; rval)   //  参数val匹配右值</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">        //  在p处定位new 调用T的拷贝构造函数。</span></span><br><span class="line"><span class="comment">        //  rval这个右值引用变量本身为左值；但是他所引用的那个变量val是个右值。因此我们要通过mover(val)来实现类型的转换</span></span><br><span class="line"><span class="comment">        //  move实现的是语法层面的转换，告诉编译器rval是个右值，让他匹配右值拷贝构造函数。并没有对rval本身内存做出什么更改的事情</span></span><br><span class="line"><span class="comment">        // 只是改变了语法层面的类型，为了让编译器识别出他（所引用的）是个右值</span></span><br><span class="line"><span class="comment">        //  因为val为右值，因此调用拷贝构造函数时，匹配的就是T(&amp;&amp;)</span></span><br><span class="line"><span class="comment">        new (p) T(std::move(rval));</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">destroy</span><span class="params">(T* p)</span>      <span class="comment">//  负责对象析构</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        p-&gt;~<span class="built_in">T</span>();            <span class="comment">//  ~T()</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  容器底层内存开辟,内存释放,对象构造,对象析构,都通过allocator空间配置器来实现</span></span><br><span class="line"><span class="comment">//  类型Alloc 的类型默认是 空间配置器Allocator&lt;T&gt;  模板名称 + 类型参数 = 类名称</span></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span> Alloc = Allocator&lt;T&gt;&gt;</span><br><span class="line">class vector</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:                        <span class="comment">// 默认形参     构造函数:Allocator&lt;T&gt;()</span></span><br><span class="line">    vector&lt;T, Alloc&gt;(<span class="keyword">int</span> sz = <span class="number">10</span>, <span class="keyword">const</span> Alloc&amp; alloc = Allocator&lt;T&gt;())</span><br><span class="line">            :_allocator(alloc)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//  需要把内存开辟和对象构造分开处理    不然在创建vector的时候，不但开辟内存，还构造了所有元素.正常逻辑应当是我们加入元素.</span></span><br><span class="line"><span class="comment">//        _first = new T[sz];</span></span><br><span class="line">        _first = _allocator.<span class="built_in">allocate</span>(sz);   <span class="comment">//  开辟内存</span></span><br><span class="line">        _last = _first;</span><br><span class="line">        _end = _first + sz;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ~<span class="built_in">vector</span>() &#123;</span><br><span class="line">        <span class="comment">//        delete [] _first;</span></span><br><span class="line">        <span class="comment">//  析构有效对象</span></span><br><span class="line">        <span class="keyword">for</span> (T* p = _first; p != _last; ++p)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">destroy</span>(p);  <span class="comment">//  析构p对象</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//  ,并释放所有空间</span></span><br><span class="line">        _allocator.<span class="built_in">deallocate</span>(_first);</span><br><span class="line">        _first = _last = _end = <span class="literal">nullptr</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">vector</span>(<span class="keyword">const</span> vector&lt;T, Alloc&gt;&amp; rhs)  <span class="comment">//  拷贝构造</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">int</span> sz = rhs._end - rhs._first;     <span class="comment">//  容器大小</span></span><br><span class="line"><span class="comment">//        _first = new T[sz];</span></span><br><span class="line">        _first = _allocator.<span class="built_in">allocate</span>(sz);</span><br><span class="line">        _end = _first + sz;</span><br><span class="line">        <span class="keyword">int</span> len = rhs._last - rhs._first;   <span class="comment">//  有效元素长度</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; len; ++i)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">construct</span>(_first[i], rhs.first[i]);</span><br><span class="line">        &#125;</span><br><span class="line">        _last = _first + len;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    vector&lt;T, Alloc&gt;&amp; <span class="keyword">operator</span>=(<span class="keyword">const</span> vector&lt;T, Alloc&gt;&amp; rhs)  <span class="comment">//  拷贝赋值</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == &amp;rhs)      <span class="comment">//  与拷贝构造区别：避免自赋值</span></span><br><span class="line">            <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//        delete [] _first;   //   析构所有对象 销毁原内存</span></span><br><span class="line">        <span class="comment">//  析构有效对象 释放所有内存</span></span><br><span class="line">        <span class="keyword">for</span> (T* p = _first; p != _last; ++p)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">destroy</span>(p);</span><br><span class="line">        &#125;</span><br><span class="line">        _allocator.<span class="built_in">deallocate</span>(_first);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> sz = rhs._end - rhs._first;</span><br><span class="line">        <span class="comment">//        _first = new T[sz];</span></span><br><span class="line">        _first = _allocator.<span class="built_in">allocate</span>(sz);   <span class="comment">// 分配内存</span></span><br><span class="line">        <span class="keyword">int</span> len = rhs._last - rhs._first;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; len; ++i)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">construct</span>(_first + i, rhs._first[i]);  <span class="comment">//  构造有效对象</span></span><br><span class="line">        &#125;</span><br><span class="line">        _last = _first + len;</span><br><span class="line">        _end = _first + sz;</span><br><span class="line">        <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  emplace_back实现 引用折叠 + forward万能转发 + 不定模板参数</span></span><br><span class="line">    <span class="comment">//  emplace实现原地构造，避免临时量的产生：其实就是把原本要构造临时量对象的参数直接传进来，直接在vector容器的内存上定位new，</span></span><br><span class="line">    <span class="comment">//  即调用相应构造函数，而不是先构造临时量对象、传入临时量对象，再在vector容器的内存上调用拷贝构造。从而避免一个临时对象的拷贝和析构</span></span><br><span class="line">    <span class="keyword">template</span>&lt;<span class="keyword">typename</span> ...Ty&gt;    <span class="comment">//  不定模板参数 ...代表有很多模板参数</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">emplace_back</span><span class="params">(Ty&amp;&amp;... args)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;_allocator.<span class="built_in">construct</span>(_last++,std::forward&lt;Ty&gt;(args)...);  <span class="comment">//  ...代表不定个数的参数</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  采用引用折叠 + forward完美转发</span></span><br><span class="line">    <span class="comment">//  引用折叠：推导出val到底是右值引用还是左值引用。使得函数可以同时接收左值引用和右值引用。</span></span><br><span class="line">    <span class="comment">//  forward：传参时保留val他（所引用的）到底是一个左值还是右值的信息，即保留引用的类型。</span></span><br><span class="line">    <span class="comment">//  避免左值引用和右值引用变量本身都是左值而失去左右值信息，那样传参就只能传给左值。</span></span><br><span class="line">    <span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Ty&gt;</span></span><br><span class="line"><span class="function">    <span class="keyword">void</span> <span class="title">push_back</span><span class="params">(Ty&amp;&amp; val)</span>        <span class="comment">//  CMyString&amp;&amp; + &amp;&amp; -》 CMyString&amp;&amp; ; CMyString&amp; + &amp;&amp; -&gt; CMyString&amp;</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">full</span>())</span><br><span class="line">            <span class="built_in">expand</span>();</span><br><span class="line">        _allocator.<span class="built_in">construct</span>(_last++, std::forward&lt;Ty&gt;(val));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  push_back需要写两个 但是核心只有参数列表不同，右值还需要通过move来表示。不同也只是为了向下调用时调用到与左/友值匹配的函数。</span></span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    void push_back(const T&amp; val)</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">        if (full())</span></span><br><span class="line"><span class="comment">            expand();</span></span><br><span class="line"><span class="comment">        //        *_last++ = val;     //  元素的operator=</span></span><br><span class="line"><span class="comment">        _allocator.construct(_last++, val);</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">    //  push_back(&amp;&amp;) -&gt; construct(&amp;&amp;) -&gt; new T(&amp;&amp;)（也就是调用 类型的右值拷贝构造，如CMyString(&amp;&amp;))</span></span><br><span class="line"><span class="comment">    //  传入的实参为右值时（如CMyString(&quot;aa&quot;);会匹配到这里)</span></span><br><span class="line"><span class="comment">    //  push_back了之后，容器里装的对象就和push_back左值一样。后续对于容器的操作也一样.</span></span><br><span class="line"><span class="comment">    void push_back(T&amp;&amp; val)     //  push_back右值</span></span><br><span class="line"><span class="comment">    &#123;</span></span><br><span class="line"><span class="comment">        if (full())</span></span><br><span class="line"><span class="comment">            expand();</span></span><br><span class="line"><span class="comment">        //  因为右值变量本身是左值，因此要move一下，让编译器识别他是右值。</span></span><br><span class="line"><span class="comment">        _allocator.construct(_last++, std::move(val));</span></span><br><span class="line"><span class="comment">    &#125;</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="comment">//  需要析构对象，并且要把析构对象和释放内存的操作分离开</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">pop_back</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">empty</span>())</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        <span class="built_in">verify</span>(_last - <span class="number">1</span>, _last);  <span class="comment">//  检查删除元素后，有哪些迭代器失效    _last-1：最后一个元素。有对应迭代器 _last：后继位置，有对应迭代器</span></span><br><span class="line"><span class="comment">//        --_last;        //  只移动指针,并没有析构元素,也没有释放元素管理的内存。</span></span><br><span class="line">        _allocator.<span class="built_in">destroy</span>(--_last);    <span class="comment">//  不仅移动指针 还需要析构元素s</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">T <span class="title">back</span><span class="params">()</span> <span class="keyword">const</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">empty</span>())</span><br><span class="line">            <span class="keyword">throw</span> <span class="string">&quot;vector is empty&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> *(_last - <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">empty</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123; <span class="keyword">return</span> _first == _last; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">bool</span> <span class="title">full</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123; <span class="keyword">return</span> _last == _end; &#125;</span><br><span class="line">    <span class="function"><span class="keyword">int</span> <span class="title">size</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123; <span class="keyword">return</span> _last - _first; &#125;</span><br><span class="line">    T&amp; <span class="keyword">operator</span>[](<span class="keyword">int</span> index) &#123;</span><br><span class="line">        <span class="keyword">if</span> (index &lt; <span class="number">0</span> || index &gt;= <span class="built_in">size</span>())</span><br><span class="line">            <span class="keyword">throw</span> <span class="string">&quot;OutOfRange&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> _first[index];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">const</span> T&amp; <span class="keyword">operator</span>[](<span class="keyword">int</span> index) <span class="keyword">const</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (index &lt; <span class="number">0</span> || index &gt;= <span class="built_in">size</span>())</span><br><span class="line">            <span class="keyword">throw</span> <span class="string">&quot;OutOfRange&quot;</span>;</span><br><span class="line">        <span class="keyword">return</span> _first[index];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  实现迭代器</span></span><br><span class="line">    <span class="comment">//  迭代器一般实现成容器的嵌套类型</span></span><br><span class="line">    <span class="class"><span class="keyword">class</span> <span class="title">iterator</span>  //  迭代器就是包装了遍历方法(++)的一个指针</span></span><br><span class="line"><span class="class">    &#123;</span></span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="keyword">friend</span> <span class="class"><span class="keyword">class</span> <span class="title">vector</span>&lt;</span>T, Alloc&gt;;</span><br><span class="line">        <span class="comment">//  产生迭代器对象 自动将自己加入迭代器链表</span></span><br><span class="line">        <span class="built_in">iterator</span>(vector&lt;T, Alloc&gt;* pvec, T* p = <span class="literal">nullptr</span>)</span><br><span class="line">                :_pVec(pvec), _ptr(p)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  cout &lt;&lt; cnt++ &lt;&lt; endl;</span></span><br><span class="line">            <span class="comment">//  链表头插法                       节点内容    节点指向</span></span><br><span class="line">            Iterator_Base* ib = <span class="keyword">new</span> <span class="built_in">Iterator_Base</span>(<span class="keyword">this</span>, _pVec-&gt;_head._next);</span><br><span class="line">            _pVec-&gt;_head._next = ib;        <span class="comment">//  指针ib是局部变量，会被销毁无所谓。因为ib指向的内存是new出来的啊哈哈哈。不会被销毁的。</span></span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">bool</span> <span class="keyword">operator</span>!=(<span class="keyword">const</span> iterator&amp; iter)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  _pVec == nullptr 代表迭代器失效</span></span><br><span class="line">            <span class="comment">//  首先判断是否是同一容器的迭代器（比较迭代器指向容器的地址是否相同）</span></span><br><span class="line">            <span class="keyword">if</span> (_pVec == <span class="literal">nullptr</span> || _pVec != iter._pVec)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="string">&quot;iterator incompatable!&quot;</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> _ptr != iter._ptr;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">void</span> <span class="keyword">operator</span>++()</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  _pVec == nullptr 迭代器失效</span></span><br><span class="line">            <span class="keyword">if</span> (_pVec == <span class="literal">nullptr</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="string">&quot;iterator inValid&quot;</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            _ptr++;</span><br><span class="line">        &#125;</span><br><span class="line">        T&amp; <span class="keyword">operator</span>*()</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//  检查迭代器失效</span></span><br><span class="line">            <span class="keyword">if</span> (_pVec == <span class="literal">nullptr</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="string">&quot;iterator inValid&quot;</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> *_ptr;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">const</span> T&amp; <span class="keyword">operator</span>*() <span class="keyword">const</span> &#123; <span class="keyword">return</span> *_ptr; &#125;</span><br><span class="line">        ~<span class="built_in">iterator</span>()</span><br><span class="line">        &#123;</span><br><span class="line">            cout &lt;&lt; <span class="string">&quot;hh&quot;</span> &lt;&lt; endl;</span><br><span class="line">        &#125;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="comment">//  指向元素</span></span><br><span class="line">        T* _ptr;</span><br><span class="line">        <span class="comment">//  指明是哪个容器的迭代器 T和Alloc都是已知的（外层vector就确定了） 因为同一迭代器的比较才有效</span></span><br><span class="line">        vector&lt;T, Alloc&gt;* _pVec;     <span class="comment">//  迭代器是否有效标志</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  容器需要提供begin end方法</span></span><br><span class="line">    <span class="function">iterator <span class="title">begin</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">iterator</span>(<span class="keyword">this</span>, _first); &#125;</span><br><span class="line">    <span class="function">iterator <span class="title">end</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> <span class="built_in">iterator</span>(<span class="keyword">this</span>, _last); &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">iterator <span class="title">insert</span><span class="params">(iterator it, <span class="keyword">const</span> T&amp; val)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">verify</span>(it._ptr - <span class="number">1</span>, _last);    <span class="comment">//  [it._ptr , last]的迭代器 如果存在，都要失效</span></span><br><span class="line">        T* p = _last;   <span class="comment">//  p是指针 不是迭代器</span></span><br><span class="line">        <span class="keyword">while</span> (p &gt; it._ptr)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">construct</span>(p, *(p - <span class="number">1</span>));</span><br><span class="line">            _allocator.<span class="built_in">destroy</span>(p - <span class="number">1</span>);</span><br><span class="line">            --p;</span><br><span class="line">        &#125;</span><br><span class="line">        _allocator.<span class="built_in">construct</span>(p, val);    <span class="comment">//  插入</span></span><br><span class="line">        ++_last;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">iterator</span>(<span class="keyword">this</span>, p);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//  1.置迭代器为无效 + 2.移动元素</span></span><br><span class="line">    <span class="function">iterator <span class="title">erase</span><span class="params">(iterator iter)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="built_in">verify</span>(iter._ptr - <span class="number">1</span>, _last);  <span class="comment">//  1.</span></span><br><span class="line">        T* p = iter._ptr;           <span class="comment">//  2.</span></span><br><span class="line">        <span class="keyword">while</span> (p &lt; _last - <span class="number">1</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">destroy</span>(p);</span><br><span class="line">            _allocator.<span class="built_in">construct</span>(p, *(p + <span class="number">1</span>));</span><br><span class="line">            ++p;</span><br><span class="line">        &#125;</span><br><span class="line">        _allocator.<span class="built_in">destroy</span>(p);</span><br><span class="line">        _last--;</span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">iterator</span>(<span class="keyword">this</span>, iter._ptr);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    T* _first; <span class="comment">//  指向数组起始位置</span></span><br><span class="line">    T* _last;  <span class="comment">//  指向数组中有效元素的后继位置</span></span><br><span class="line">    T* _end;   <span class="comment">//  指向数组空间的后继位置</span></span><br><span class="line">    Alloc _allocator;   <span class="comment">// 空间配置器对象</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  为应对迭代器失效 增加代码</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  用一个链表来维护每个迭代器之间的顺序（可以当成是一个用来维护（装载）迭代器的容器</span></span><br><span class="line">    <span class="comment">//  迭代器节点 _cur指向迭代器 _next指向下一个iterator_base节点</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">Iterator_Base</span></span></span><br><span class="line"><span class="class">    &#123;</span></span><br><span class="line">        <span class="built_in">Iterator_Base</span>(iterator* c = <span class="literal">nullptr</span>, Iterator_Base* ne = <span class="literal">nullptr</span>)</span><br><span class="line">                :_cur(c), _next(ne) &#123;&#125;</span><br><span class="line">        iterator* _cur;</span><br><span class="line">        Iterator_Base* _next;</span><br><span class="line">    &#125;;</span><br><span class="line">    Iterator_Base _head;    <span class="comment">//  一个容器只有一个迭代器头节点</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//  检查</span></span><br><span class="line">    <span class="comment">//  将(first,last]之间的元素，如果存在对应的迭代器，那么都要置为失效。并将维护他们的节点从链表中移除。</span></span><br><span class="line">    <span class="comment">//  遍历链表</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">verify</span><span class="params">(T* first, T* last)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        Iterator_Base* pre = &amp;<span class="keyword">this</span>-&gt;_head;   <span class="comment">//  头节点</span></span><br><span class="line">        Iterator_Base* it = <span class="keyword">this</span>-&gt;_head._next;   <span class="comment">//  第一个有效节点</span></span><br><span class="line">        <span class="keyword">while</span> (it != <span class="literal">nullptr</span>)</span><br><span class="line">        &#123;   <span class="comment">//  it 节点 _cur 迭代器 _ptr 指向的元素</span></span><br><span class="line">            <span class="keyword">if</span> (it-&gt;_cur-&gt;_ptr &gt; first &amp;&amp; it-&gt;_cur-&gt;_ptr &lt;= last)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  标记迭代器失效 ：iterator持有的_pVec = nullptr</span></span><br><span class="line">                it-&gt;_cur-&gt;_pVec = <span class="literal">nullptr</span>;</span><br><span class="line">                pre-&gt;_next = it-&gt;_next;</span><br><span class="line">                <span class="keyword">delete</span> it;          <span class="comment">//  delete掉用于维护迭代器的节点</span></span><br><span class="line">                it = pre-&gt;_next;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                pre = it;</span><br><span class="line">                it = it-&gt;_next;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//  容器的二倍扩容操作</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">expand</span><span class="params">()</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> sz = _end - _first;</span><br><span class="line">        <span class="keyword">int</span> len = _last - _first;</span><br><span class="line">        <span class="comment">//        T *p_tmp = new T[sz*2];</span></span><br><span class="line">        <span class="comment">//  开辟内存 构造对象</span></span><br><span class="line">        T* p_tmp = _allocator.<span class="built_in">allocate</span>(sz * <span class="number">2</span>);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; len; ++i)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//            p_tmp[i] = _first[i];</span></span><br><span class="line">            _allocator.<span class="built_in">construct</span>(p_tmp + i, _first[i]);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//  析构对象 释放内存</span></span><br><span class="line">        <span class="keyword">for</span> (T* p = _first; p != _last; ++p)</span><br><span class="line">        &#123;</span><br><span class="line">            _allocator.<span class="built_in">destroy</span>(p);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//        delete [] _first;   //  释放原先内存 析构所有对象</span></span><br><span class="line">        _allocator.<span class="built_in">deallocate</span>(_first);</span><br><span class="line"></span><br><span class="line">        _first = p_tmp;</span><br><span class="line">        _last = _first + len;</span><br><span class="line">        _end = _first + <span class="number">2</span> * sz;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/C/" rel="tag"># C++</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_CPU%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5/" rel="prev" title="CPU调度策略">
+      <i class="fa fa-chevron-left"></i> CPU调度策略
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/12/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9105-bug-%E6%AD%BB%E9%94%81/" rel="next" title="操作系统_并发05-死锁">
+      操作系统_并发05-死锁 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#emplace-back"><span class="nav-number">1.</span> <span class="nav-text">emplace_back</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%9C%E7%94%A8"><span class="nav-number">1.1.</span> <span class="nav-text">作用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">代码实现</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cstardust</p>
+  <div class="site-description" itemprop="description">知不可乎骤得,托遗响于悲风</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">86</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cstardust</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">656k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:56</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'd683461326668b112a07',
+      clientSecret: 'fbd3f91ac2d4f7b501c4b5f88af770661529c238',
+      repo        : 'BlogComments',
+      owner       : 'Cstardust',
+      admin       : ['Cstardust'],
+      id          : '876c87f93b298a4073ff618e693c0540',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>

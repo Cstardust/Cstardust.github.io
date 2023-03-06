@@ -170,134 +170,6 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Cstardust">
-      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="不落辰">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/" class="post-title-link" itemprop="url">操作系统-xv6-lab5-lazy_allocation</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2022-11-09 13:27:18" itemprop="dateCreated datePublished" datetime="2022-11-09T13:27:18+08:00">2022-11-09</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-02-27 23:22:40" itemprop="dateModified" datetime="2023-02-27T23:22:40+08:00">2023-02-27</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/xv6/" itemprop="url" rel="index"><span itemprop="name">xv6</span></a>
-                </span>
-            </span>
-
-          <br>
-            <span class="post-meta-item" title="本文字数">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">本文字数：</span>
-              <span>6.4k</span>
-            </span>
-            <span class="post-meta-item" title="阅读时长">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">阅读时长 &asymp;</span>
-              <span>6 分钟</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>易知x86-64都实现了lazy allocation<br>例如malloc一块很大的内存，直到对这个内存进行写/读之前，都不会</p>
-<p>为xv6实现懒分配lazy allocation</p>
-<ul>
-<li>lazy allocation<ul>
-<li>目的 : 为防止sbrk大量内存但实际上并没有使用的情况</li>
-<li>实现 : 通过 虚拟内存 和 page fault handler<ul>
-<li>阶段1. 设定va为合法<ul>
-<li>sbrk系统调用 : 仅仅设定user的这段va是合法的，而不分配内存建立映射。</li>
-</ul>
-</li>
-<li>阶段2. 使用va触发pagefault, 进行响应(handle)<ul>
-<li>pagefault handelr : 为va 分配一块physical page 并 建立映射</li>
-<li>阶段2中对于va<ul>
-<li>user使用无效 userva<ul>
-<li>MMU –检测–&gt; trap –&gt; pagefault handler</li>
-</ul>
-</li>
-<li>kernel使用无效 userva<ul>
-<li>argaddr 中检测 –&gt; pagefault handelr</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-<li><ol start="3">
-<li>pgfault handelr之后 返回到造成pgfault的指令继续执行.</li>
-</ol>
-</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/11/09/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab5-lazy-allocation/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2022/11/06/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F-xv6-lab3-pagetable/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1266,6 +1138,116 @@
   
   
 
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cstardust">
+      <meta itemprop="description" content="知不可乎骤得,托遗响于悲风">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="不落辰">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/" class="post-title-link" itemprop="url">操作系统-并发06-bug-数据竞争</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2022-10-17 10:02:35" itemprop="dateCreated datePublished" datetime="2022-10-17T10:02:35+08:00">2022-10-17</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-02-27 23:21:30" itemprop="dateModified" datetime="2023-02-27T23:21:30+08:00">2023-02-27</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/OS/" itemprop="url" rel="index"><span itemprop="name">OS</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>1.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>1 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <ul>
+<li><p>并发bug 之 数据竞争 <strong>Data Race</strong></p>
+<ul>
+<li><strong>不同的线程同时访问同一段内存，且至少有一个是写</strong></li>
+<li>为处理Data Race,我们需要一个互斥的协议，而peterson这种纯软的算法，太难了。故 我们应当使用(互斥)锁 消灭datarace</li>
+</ul>
+</li>
+<li><p><strong>ThreadSanitizer原理</strong></p>
+<ul>
+<li><strong>不同线程对一块共享内存操作 且至少有一个是写。对这些动作的执行顺序进行排序，若检验出无法排序的（即排序结果不唯一），则error</strong></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>学习自jyy</li>
+</ul>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/10/17/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F_%E5%B9%B6%E5%8F%9106-bug-%E6%95%B0%E6%8D%AE%E7%AB%9E%E4%BA%89/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
 
   
   <nav class="pagination">
@@ -1335,7 +1317,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-count">86</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -1385,13 +1367,13 @@
       <i class="fa fa-chart-area"></i>
     </span>
       <span class="post-meta-item-text">站点总字数：</span>
-    <span title="站点总字数">639k</span>
+    <span title="站点总字数">656k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
       <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
-    <span title="站点阅读时长">9:41</span>
+    <span title="站点阅读时长">9:56</span>
 </div>
   <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
   </div>
